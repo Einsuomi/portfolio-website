@@ -1,0 +1,52 @@
+{
+  "skill_name": "portfolio-reviewer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "review the site",
+      "expected_output": "A structured review log with three clearly labelled layers. Layer 1 most findings. Each finding has severity, file:line, problem, and fix. Summary counts at end. No src/ files edited.",
+      "files": [],
+      "assertions": [
+        "Output contains 'Layer 1' (or equivalent Visual/Frontend section heading)",
+        "Output contains 'Layer 2' (or equivalent Code Quality section heading)",
+        "Output contains 'Layer 3' (or equivalent Security/GDPR section heading)",
+        "Output contains at least one severity label: BLOCKER, SHOULD-FIX, or NICE-TO-HAVE",
+        "Output contains a file reference in the format 'file:line' or 'src/pages/index.astro'",
+        "Output contains a Summary section with finding counts",
+        "Layer 1 has more findings than Layer 2 (visual is strictest)",
+        "Output flags the generic 'Astro' title as a finding",
+        "No evidence of editing src/ files (no Write/Edit tool calls)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "check the code before I open a PR for this initial scaffold",
+      "expected_output": "Same structured 3-layer output. Layer 1 flags generic title, missing semantic landmarks, no design tokens. Layer 3 notes API routes don't exist yet. No src/ edits.",
+      "files": [],
+      "assertions": [
+        "Output contains three distinct review layers or sections",
+        "Output contains at least one severity label: BLOCKER, SHOULD-FIX, or NICE-TO-HAVE",
+        "Output mentions missing semantic landmark elements (main, nav, header, or footer)",
+        "Output flags the title 'Astro' as needing to be changed",
+        "Output notes that no API routes exist yet (Layer 3 is limited in scope for now)",
+        "Output contains a Summary section",
+        "No evidence of editing src/ files"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "run the portfolio review on index.astro and tell me what needs fixing",
+      "expected_output": "Review focused on index.astro. All 3 layers applied. Layer 1 most findings. Findings are specific (file:line), actionable, and severity-graded. No file edits.",
+      "files": [],
+      "assertions": [
+        "Output references index.astro specifically",
+        "Output contains three distinct review layers or sections",
+        "Output contains at least one severity label: BLOCKER, SHOULD-FIX, or NICE-TO-HAVE",
+        "Layer 1 has at least 3 distinct findings",
+        "At least one finding includes a concrete suggested fix (not just 'this is bad')",
+        "Output flags missing <main> or landmark elements",
+        "No evidence of editing src/ files"
+      ]
+    }
+  ]
+}

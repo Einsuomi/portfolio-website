@@ -1,17 +1,1492 @@
 ---
+/**
+ * Home page — Tong Nie, Data Engineer & BI Analyst
+ * Cinematic upgrades: GSAP + SplitType hero, Lenis smooth scroll,
+ * ScrollTrigger section reveals, canvas particle network, film grain.
+ */
+import { icons } from '../lib/lucide-icons.js';
 
+function icon(data: any[], size = 16, cls = ''): string {
+  if (!data) return '';
+  const inner = (data as [string, Record<string,string>][])
+    .map(([tag, attrs]) =>
+      `<${tag} ${Object.entries(attrs).map(([k,v]) => `${k}="${v}"`).join(' ')}/>`
+    ).join('');
+  const c = cls ? ` class="${cls}"` : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${c} aria-hidden="true">${inner}</svg>`;
+}
+
+const GithubData: [string, Record<string,string>][] = [
+  ["path",{"d":"M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"}],
+  ["path",{"d":"M9 18c-4.51 2-5-2-7-2"}],
+];
+const LinkedinData: [string, Record<string,string>][] = [
+  ["path",{"d":"M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"}],
+  ["rect",{"width":"4","height":"12","x":"2","y":"9"}],
+  ["circle",{"cx":"4","cy":"4","r":"2"}],
+];
+
+const stack = [
+  { d: icons.Terminal,  label: 'Python' },
+  { d: icons.Database,  label: 'SQL' },
+  { d: icons.Cloud,     label: 'Azure' },
+  { d: icons.Layers,    label: 'Databricks' },
+  { d: icons.Zap,       label: 'Delta Lake' },
+  { d: icons.Server,    label: 'Terraform' },
+  { d: icons.BarChart2, label: 'Power BI' },
+  { d: icons.GitBranch, label: 'GitHub Actions' },
+  { d: icons.Shield,    label: 'Unity Catalog' },
+  { d: icons.Code2,     label: 'PySpark' },
+  { d: icons.Cloud,     label: 'ADF' },
+  { d: icons.Code2,     label: 'dbt' },
+];
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" href="/favicon.ico" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Tong Nie — Data Engineer & BI Analyst. Enterprise pipelines on Azure, Databricks, and AWS." />
+  <meta name="generator" content={Astro.generator} />
+  <title>Tong Nie — Data Engineer & BI Analyst</title>
+
+  <style>
+    /* ── Reset ─────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Dark theme ─────────────────────────────────────────────────── */
+    :root, [data-theme="dark"] {
+      --bg:        #07070a;
+      --surface:   #0f0f14;
+      --surface-2: #15151c;
+      --border:    #222230;
+      --border-dim:#1a1a24;
+      --text:      #edeae2;
+      --text-2:    #b5b0a8;
+      --text-3:    #6e6a65;
+      --accent:    #c9a35a;
+      --accent-dim:#a08040;
+      --accent-bg: rgba(201,163,90,0.07);
+      --grid:      rgba(201,163,90,0.022);
+      --scan:      rgba(201,163,90,0.6);
+    }
+
+    /* ── Light theme ────────────────────────────────────────────────── */
+    [data-theme="light"] {
+      --bg:        #f5f2ec;
+      --surface:   #eceae3;
+      --surface-2: #e4e1d8;
+      --border:    #cac5b8;
+      --border-dim:#d4d0c5;
+      --text:      #1a1814;
+      --text-2:    #48443c;
+      --text-3:    #6a6558;
+      --accent:    #9b7228;
+      --accent-dim:#7a5a1e;
+      --accent-bg: rgba(155,114,40,0.09);
+      --grid:      rgba(155,114,40,0.05);
+      --scan:      rgba(155,114,40,0.4);
+    }
+
+    :root {
+      --serif: 'New York','Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif;
+      --mono:  ui-monospace,'Cascadia Code','JetBrains Mono','Fira Code','Courier New',monospace;
+      --sans:  'Helvetica Neue',Helvetica,'Arial Nova',Arial,sans-serif;
+      --max-w: 1120px;
+      --px:    clamp(1.5rem,5.5vw,5rem);
+      --ease:  cubic-bezier(0.22,1,0.36,1);
+    }
+
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.3s, color 0.3s;
+      /* blueprint grid */
+      background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 52px 52px;
+      overflow-x: hidden;
+    }
+
+    /* Film grain — animated SVG noise fixed over everything */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: -50%;
+      width: 200%;
+      height: 200%;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: 0.032;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 180px 180px;
+      animation: grain 0.55s steps(2) infinite;
+    }
+    @keyframes grain {
+      0%   { transform: translate(0,0); }
+      10%  { transform: translate(-2%,-1%); }
+      20%  { transform: translate(1%,2%); }
+      30%  { transform: translate(-1%,3%); }
+      40%  { transform: translate(2%,-2%); }
+      50%  { transform: translate(-3%,1%); }
+      60%  { transform: translate(1%,-3%); }
+      70%  { transform: translate(-2%,2%); }
+      80%  { transform: translate(3%,-1%); }
+      90%  { transform: translate(-1%,-2%); }
+    }
+
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+    .wrap {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding-left: var(--px);
+      padding-right: var(--px);
+    }
+
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 0.63rem;
+      color: var(--text-3);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.9rem;
+    }
+    .eyebrow::after { content:''; height:1px; width:2rem; background:var(--border); }
+
+    /* ── NAV ──────────────────────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      border-bottom: 1px solid var(--border);
+      background: color-mix(in srgb, var(--bg) 80%, transparent);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      transition: background 0.3s;
+    }
+    .nav-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 0.85rem var(--px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      color: var(--text-2);
+      letter-spacing: 0.12em;
+      text-decoration: none;
+      transition: color 0.2s;
+      cursor: pointer;
+    }
+    .nav-logo:hover { color: var(--text); }
+    .nav-logo em { color: var(--accent); font-style: normal; }
+
+    .nav-right { display: flex; align-items: center; gap: 2rem; }
+    .nav-links { display: flex; gap: 2rem; list-style: none; }
+    .nav-links a {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--text-2);
+      text-decoration: none;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+      cursor: pointer;
+    }
+    .nav-links a:hover { color: var(--accent); }
+
+    .theme-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px; height: 34px;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-3);
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .theme-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+    /* ── HERO ─────────────────────────────────────────────────────── */
+    #hero {
+      position: relative;
+      min-height: 100svh;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    /* Canvas sits behind everything */
+    #hero-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Amber spotlight from top — gives depth to canvas */
+    #hero::before {
+      content: '';
+      position: absolute;
+      top: -5%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 70%;
+      height: 60%;
+      background: radial-gradient(ellipse, rgba(201,163,90,0.08) 0%, transparent 68%);
+      pointer-events: none;
+      z-index: 1;
+    }
+    [data-theme="light"] #hero::before {
+      background: radial-gradient(ellipse, rgba(155,114,40,0.05) 0%, transparent 68%);
+    }
+
+    /* Scanline — one-shot on load */
+    .hero-scan {
+      position: absolute;
+      top: 0; left: -5%; right: -5%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--scan) 40%, var(--scan) 60%, transparent);
+      animation: scan 2.6s var(--ease) forwards;
+      pointer-events: none;
+      z-index: 2;
+    }
+    @keyframes scan {
+      0%   { transform: translateY(0); opacity: 0; }
+      6%   { opacity: 1; }
+      92%  { opacity: 0.3; }
+      100% { transform: translateY(100vh); opacity: 0; }
+    }
+
+    /* Hero content above canvas */
+    .hero-content {
+      position: relative;
+      z-index: 3;
+      padding: clamp(5rem,10vw,8rem) 0 clamp(4rem,8vw,6rem);
+    }
+
+    .hero-rule {
+      width: 3rem; height: 2px;
+      background: var(--accent);
+      margin-bottom: 1.5rem;
+      /* GSAP: starts scaleX 0, transforms from left */
+      transform-origin: left;
+    }
+    .hero-label {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--accent);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
+    }
+
+    /* The name — overflow hidden so chars clip on entry */
+    .hero-name-wrap { overflow: hidden; margin-bottom: 0.2em; }
+    .hero-name {
+      font-family: var(--serif);
+      font-size: clamp(3.8rem, 11vw, 8rem);
+      font-weight: 400;
+      line-height: 0.93;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      text-shadow: 0 0 80px rgba(201,163,90,0.14);
+      /* SplitType will wrap each char — perspective for depth */
+      perspective: 600px;
+    }
+    [data-theme="light"] .hero-name { text-shadow: none; }
+
+    /* SplitType adds .char spans — keep them inline-block for 3D transforms */
+    .hero-name .char { display: inline-block; }
+
+    .hero-role {
+      font-family: var(--serif);
+      font-size: clamp(1.2rem, 2.8vw, 1.75rem);
+      color: var(--text-2);
+      font-style: italic;
+      margin-bottom: 1.5rem;
+    }
+    .hero-tagline {
+      font-size: clamp(1rem, 1.8vw, 1.12rem);
+      color: var(--text);
+      max-width: 460px;
+      line-height: 1.65;
+      margin-bottom: 2rem;
+    }
+    .hero-facts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .fact {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--text-2);
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .fact::before {
+      content: '';
+      width: 1rem; height: 1px;
+      background: var(--accent);
+      display: block; flex-shrink: 0;
+    }
+    .ctas {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .cta-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.8rem 1.5rem;
+      background: var(--accent);
+      color: #07070a;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+    .cta-primary:hover {
+      background: var(--accent-dim);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(201,163,90,0.25);
+    }
+    [data-theme="light"] .cta-primary { color: #f5f2ec; }
+
+    .cta-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.8rem 1.5rem;
+      background: transparent;
+      color: var(--text-2);
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.06em;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s, transform 0.15s;
+    }
+    .cta-secondary:hover { border-color: var(--text-3); color: var(--text); transform: translateY(-1px); }
+
+    .scroll-nudge {
+      font-family: var(--mono);
+      font-size: 0.66rem;
+      color: var(--text-3);
+      letter-spacing: 0.1em;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      cursor: pointer;
+      animation: bob 2.8s ease-in-out infinite;
+    }
+    .scroll-nudge:hover { color: var(--text); }
+    @keyframes bob {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(5px); }
+    }
+
+    /* GSAP initial-state hiding — prevents flash before JS runs */
+    .hero-rule, .hero-label, .hero-name-wrap, .hero-name,
+    .hero-role, .hero-tagline, .hero-facts, .ctas { opacity: 0; }
+
+    /* ── TECH STACK ──────────────────────────────────────────────── */
+    #stack {
+      padding: clamp(3.5rem,7vw,5.5rem) 0;
+      border-top: 1px solid var(--border);
+    }
+    .section-heading {
+      font-family: var(--serif);
+      font-size: clamp(2rem,5vw,3.5rem);
+      font-weight: 400;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      margin-bottom: 0.75rem;
+      line-height: 1.1;
+    }
+    .section-sub {
+      font-family: var(--serif);
+      font-size: 0.95rem;
+      font-style: italic;
+      color: var(--text-2);
+      margin-bottom: 2.25rem;
+    }
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px,1fr));
+      gap: 0.55rem;
+    }
+    .tech-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.75rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border-dim);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--text-2);
+      letter-spacing: 0.04em;
+      cursor: default;
+      transition: border-color 0.2s, color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    .tech-item:hover {
+      border-color: var(--accent);
+      color: var(--text);
+      background: var(--surface-2);
+      box-shadow: 0 0 16px rgba(201,163,90,0.08);
+    }
+    .tech-item svg { color: var(--text-3); flex-shrink: 0; transition: color 0.2s; }
+    .tech-item:hover svg { color: var(--accent); }
+
+    /* ── WORK ────────────────────────────────────────────────────── */
+    #work {
+      padding: clamp(3.5rem,7vw,6rem) 0;
+      border-top: 1px solid var(--border);
+    }
+    .project-group { margin-bottom: 1rem; }
+    .group-label {
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      color: var(--text-3);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding-top: 0.25rem;
+    }
+    .group-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* Project item: flex column — visual on top, then content row */
+    .project-item {
+      display: flex;
+      flex-direction: column;
+      border-bottom: 1px solid var(--border-dim);
+      border-left: 2px solid transparent;
+      cursor: default;
+      transition: border-left-color 0.25s, background 0.25s;
+      overflow: hidden;
+    }
+    .project-item:first-of-type { border-top: 1px solid var(--border-dim); }
+    .project-item:hover {
+      border-left-color: var(--accent);
+      background: linear-gradient(90deg, var(--accent-bg) 0%, transparent 60%);
+    }
+
+    /* Placeholder visual — SVG illustration above the content */
+    .proj-visual {
+      width: 100%;
+      height: 170px;
+      overflow: hidden;
+      border-bottom: 1px solid var(--border-dim);
+      background: var(--surface);
+      flex-shrink: 0;
+      position: relative;
+    }
+    .proj-visual svg { width: 100%; height: 100%; display: block; }
+
+    /* Content row: number + body */
+    .proj-row {
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: 0 2rem;
+      padding: 2rem 0 2rem 0.5rem;
+    }
+    .proj-num {
+      font-family: var(--mono);
+      font-size: 2.75rem;
+      font-weight: 400;
+      color: var(--accent);
+      line-height: 1;
+      letter-spacing: -0.04em;
+      padding-top: 0.1rem;
+      transition: opacity 0.2s;
+    }
+    .project-item:hover .proj-num { opacity: 0.65; }
+    .proj-body { min-width: 0; }
+    .proj-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1.5rem;
+      margin-bottom: 0.4rem;
+    }
+    .proj-title {
+      font-family: var(--serif);
+      font-size: 1.35rem;
+      font-weight: 400;
+      color: var(--text);
+      letter-spacing: -0.015em;
+      line-height: 1.2;
+    }
+    .proj-links {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      align-items: flex-end;
+      flex-shrink: 0;
+    }
+    .proj-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--text-2);
+      text-decoration: none;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .proj-link:hover { color: var(--accent); }
+    .proj-desc {
+      font-size: 0.9rem;
+      color: var(--text-2);
+      margin-bottom: 0.6rem;
+      line-height: 1.55;
+    }
+    .proj-detail {
+      font-size: 0.85rem;
+      color: var(--text-2);
+      margin-bottom: 1rem;
+      line-height: 1.7;
+      max-width: 580px;
+    }
+    .proj-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .tag {
+      font-family: var(--mono);
+      font-size: 0.61rem;
+      color: var(--text-2);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 0.2rem 0.55rem;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── WRITING ─────────────────────────────────────────────────── */
+    #writing {
+      padding: clamp(3rem,6vw,5rem) 0;
+      border-top: 1px solid var(--border);
+    }
+    .study-list { list-style: none; }
+    .study-item { border-bottom: 1px solid var(--border-dim); }
+    .study-item:first-child { border-top: 1px solid var(--border-dim); }
+    .study-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 2rem;
+      padding: 1.4rem 0.5rem;
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      cursor: pointer;
+      transition: border-left-color 0.2s, background 0.2s;
+    }
+    .study-link:hover {
+      border-left-color: var(--accent);
+      background: linear-gradient(90deg, var(--accent-bg) 0%, transparent 50%);
+    }
+    .study-title {
+      font-family: var(--serif);
+      font-size: 1.1rem;
+      font-weight: 400;
+      color: var(--text);
+      margin-bottom: 0.25rem;
+      letter-spacing: -0.01em;
+      transition: color 0.2s;
+    }
+    .study-link:hover .study-title { color: var(--accent); }
+    .study-desc { font-size: 0.84rem; color: var(--text-2); line-height: 1.5; }
+    .study-arrow {
+      color: var(--text-3);
+      flex-shrink: 0;
+      display: inline-flex;
+      transition: color 0.2s, transform 0.2s;
+    }
+    .study-link:hover .study-arrow { color: var(--accent); transform: translateX(5px); }
+
+    /* ── CHAT ────────────────────────────────────────────────────── */
+    #chat {
+      padding: clamp(3.5rem,7vw,6rem) 0;
+      border-top: 1px solid var(--border);
+    }
+    .chat-panel {
+      max-width: 700px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      transition: box-shadow 0.3s;
+    }
+    .chat-panel:hover { box-shadow: 0 0 40px rgba(201,163,90,0.06); }
+    .chat-bar-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.9rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+    .chat-title { font-family: var(--serif); font-size: 1rem; font-weight: 400; color: var(--text); }
+    .chat-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      color: var(--text-3);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border: 1px solid var(--border);
+      padding: 0.2rem 0.55rem;
+    }
+    .badge-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2.5s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+    .chat-msgs {
+      padding: 1.5rem;
+      min-height: 155px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+    .msg-from {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      color: var(--text-3);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0.3rem;
+    }
+    .msg-bubble {
+      background: var(--surface-2);
+      border: 1px solid var(--border-dim);
+      padding: 0.85rem 1.1rem;
+      font-size: 0.87rem;
+      color: var(--text-2);
+      line-height: 1.6;
+      max-width: 88%;
+    }
+    .chat-input-row {
+      display: flex;
+      gap: 0.6rem;
+      padding: 0.9rem 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+    .chat-input {
+      flex: 1;
+      padding: 0.6rem 0.9rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text-3);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      cursor: not-allowed;
+      outline: none;
+    }
+    .chat-send {
+      padding: 0.6rem 1rem;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text-3);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      cursor: not-allowed;
+    }
+    .chat-note {
+      margin-top: 1rem;
+      font-family: var(--mono);
+      font-size: 0.67rem;
+      color: var(--text-3);
+      letter-spacing: 0.04em;
+    }
+    .chat-note a { color: var(--accent); text-decoration: none; }
+    .chat-note a:hover { text-decoration: underline; }
+
+    /* ── FOOTER ──────────────────────────────────────────────────── */
+    footer { border-top: 1px solid var(--border); padding: 2.75rem 0; }
+    .footer-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 0 var(--px);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+    .footer-name { font-family: var(--serif); font-size: 0.95rem; color: var(--text-2); margin-bottom: 0.2rem; }
+    .footer-role { font-family: var(--mono); font-size: 0.65rem; color: var(--text-2); letter-spacing: 0.07em; }
+    .footer-links { display: flex; gap: 0.6rem; list-style: none; }
+    .footer-icon-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px; height: 36px;
+      color: var(--text-3);
+      border: 1px solid var(--border);
+      text-decoration: none;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+    .footer-icon-link:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(201,163,90,0.15);
+    }
+    .footer-bottom {
+      width: 100%;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border-dim);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+    .footer-bottom p { font-family: var(--mono); font-size: 0.6rem; color: var(--text-3); letter-spacing: 0.03em; }
+
+    /* ── RESPONSIVE ──────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .proj-row { grid-template-columns: 1fr; padding: 1.5rem 0.25rem; }
+      .proj-num { font-size: 1.8rem; margin-bottom: 0.6rem; }
+      .proj-head { flex-direction: column; gap: 0.15rem; }
+      .proj-links { flex-direction: row; gap: 1rem; margin-top: 0.6rem; }
+      .proj-visual { height: 120px; }
+      .nav-links { display: none; }
+      .ctas { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+      .footer-inner { flex-direction: column; }
+      .tech-grid { grid-template-columns: repeat(2,1fr); }
+    }
+    @media (min-width: 641px) and (max-width: 900px) {
+      .proj-row { grid-template-columns: 76px 1fr; gap: 0 1.5rem; }
+      .proj-num { font-size: 2.2rem; }
+      .nav-links { gap: 1.25rem; }
+    }
+
+    /* Reduced motion: kill all animations, keep content visible */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      body::after { display: none; }
+      .hero-scan { display: none; }
+      /* Make sure content is visible even without GSAP animations */
+      .hero-rule, .hero-label, .hero-name-wrap, .hero-name,
+      .hero-role, .hero-tagline, .hero-facts, .ctas { opacity: 1 !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV ──────────────────────────────────────────────────────── -->
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">Tong<em>.</em>Nie</a>
+      <div class="nav-right">
+        <ul class="nav-links">
+          <li><a href="#stack">Stack</a></li>
+          <li><a href="#work">Work</a></li>
+          <li><a href="#writing">Writing</a></li>
+          <li><a href="#chat">Chat</a></li>
+          <li><a href="/cv">CV</a></li>
+        </ul>
+        <button class="theme-btn" id="theme-btn" aria-label="Toggle light/dark mode">
+          <span id="icon-sun"  set:html={icon(icons.Sun,  15)} />
+          <span id="icon-moon" set:html={icon(icons.Moon, 15)} style="display:none" />
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+
+    <!-- HERO ─────────────────────────────────────────────────────── -->
+    <section id="hero">
+      <!-- Canvas particle network: fills hero, mouse-reactive -->
+      <canvas id="hero-canvas" aria-hidden="true"></canvas>
+
+      <!-- Cinematic scanline (one-shot on load) -->
+      <div class="hero-scan" aria-hidden="true"></div>
+
+      <div class="wrap hero-content">
+        <div class="hero-rule" aria-hidden="true"></div>
+        <p class="hero-label">Data Engineer</p>
+
+        <div class="hero-name-wrap">
+          <h1 class="hero-name">Tong Nie</h1>
+        </div>
+
+        <p class="hero-role">Data Engineer & BI Analyst</p>
+
+        <p class="hero-tagline">
+          Pipelines that run while you sleep.<br>
+          Built on Azure, Databricks, and AWS — designed to stay out of your way.
+        </p>
+
+        <div class="hero-facts">
+          <span class="fact">3 years professional experience</span>
+          <span class="fact">Azure · Databricks · AWS</span>
+        </div>
+
+        <div class="ctas">
+          <a href="#chat" class="cta-primary">
+            Ask me anything
+            <span set:html={icon(icons.ArrowRight, 14)} />
+          </a>
+          <a href="/cv" class="cta-secondary">
+            View CV
+            <span set:html={icon(icons.ExternalLink, 13)} />
+          </a>
+          <a href="#stack" class="scroll-nudge">
+            explore
+            <span set:html={icon(icons.ArrowDown, 13)} />
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- TECH STACK ───────────────────────────────────────────────── -->
+    <section id="stack">
+      <div class="wrap">
+        <p class="eyebrow">02 — Technologies</p>
+        <h2 class="section-heading">The stack.</h2>
+        <p class="section-sub">What I build with every day.</p>
+        <div class="tech-grid">
+          {stack.map(({ d, label }) => (
+            <div class="tech-item">
+              <span set:html={icon(d, 14)} />
+              {label}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- WORK ─────────────────────────────────────────────────────── -->
+    <section id="work">
+      <div class="wrap">
+        <p class="eyebrow">03 — Selected Work</p>
+        <h2 class="section-heading">Data Engineering & BI</h2>
+
+        <!-- ── DE Pipelines ──────────────────────────────────────── -->
+        <div class="project-group">
+          <p class="group-label">Data Engineering Pipelines</p>
+
+          <article class="project-item">
+            <!-- Generated placeholder visual — swap for screenshot later -->
+            <figure class="proj-visual" aria-hidden="true">
+              <!-- Medallion pipeline diagram -->
+              <svg viewBox="0 0 900 170" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                <rect width="900" height="170" fill="#0f0f14"/>
+                <!-- grid lines -->
+                <line x1="0" y1="85" x2="900" y2="85" stroke="rgba(201,163,90,0.05)" stroke-width="1"/>
+                <line x1="450" y1="0" x2="450" y2="170" stroke="rgba(201,163,90,0.05)" stroke-width="1"/>
+                <!-- Flow line -->
+                <line x1="60" y1="85" x2="840" y2="85" stroke="rgba(201,163,90,0.12)" stroke-width="1" stroke-dasharray="4 6"/>
+                <!-- Bronze -->
+                <rect x="60" y="55" width="140" height="60" rx="2" fill="rgba(201,163,90,0.06)" stroke="rgba(201,163,90,0.35)" stroke-width="1"/>
+                <text x="130" y="79" text-anchor="middle" fill="#c9a35a" font-size="10" font-family="monospace" opacity="0.7">BRONZE</text>
+                <text x="130" y="96" text-anchor="middle" fill="#6e6a65" font-size="8" font-family="monospace">Raw ingestion</text>
+                <!-- Arrow -->
+                <polyline points="200,85 260,85" stroke="rgba(201,163,90,0.3)" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+                <!-- Silver -->
+                <rect x="260" y="55" width="140" height="60" rx="2" fill="rgba(201,163,90,0.09)" stroke="rgba(201,163,90,0.55)" stroke-width="1"/>
+                <text x="330" y="79" text-anchor="middle" fill="#c9a35a" font-size="10" font-family="monospace" opacity="0.85">SILVER</text>
+                <text x="330" y="96" text-anchor="middle" fill="#6e6a65" font-size="8" font-family="monospace">Cleansed / typed</text>
+                <!-- Arrow -->
+                <polyline points="400,85 460,85" stroke="rgba(201,163,90,0.3)" stroke-width="1.5" fill="none"/>
+                <!-- Gold -->
+                <rect x="460" y="47" width="160" height="76" rx="2" fill="rgba(201,163,90,0.13)" stroke="#c9a35a" stroke-width="1.2"/>
+                <text x="540" y="79" text-anchor="middle" fill="#c9a35a" font-size="10" font-family="monospace">GOLD</text>
+                <text x="540" y="96" text-anchor="middle" fill="#b5b0a8" font-size="8" font-family="monospace">Business-ready</text>
+                <!-- CI/CD badge -->
+                <rect x="660" y="62" width="110" height="46" rx="2" fill="rgba(201,163,90,0.05)" stroke="rgba(201,163,90,0.2)" stroke-width="1" stroke-dasharray="3 3"/>
+                <text x="715" y="83" text-anchor="middle" fill="#6e6a65" font-size="8" font-family="monospace">GitHub Actions</text>
+                <text x="715" y="98" text-anchor="middle" fill="#6e6a65" font-size="8" font-family="monospace">CI / CD</text>
+                <!-- Top label -->
+                <text x="60" y="28" fill="#6e6a65" font-size="7" font-family="monospace" letter-spacing="2">MEDALLION ARCHITECTURE · DELTA LAKE · UNITY CATALOG</text>
+                <!-- Dot markers on flow line -->
+                <circle cx="230" cy="85" r="3" fill="#c9a35a" opacity="0.6"/>
+                <circle cx="430" cy="85" r="3" fill="#c9a35a" opacity="0.8"/>
+                <circle cx="620" cy="85" r="2" fill="#c9a35a" opacity="0.5"/>
+              </svg>
+            </figure>
+
+            <div class="proj-row">
+              <div class="proj-num" aria-hidden="true">01</div>
+              <div class="proj-body">
+                <div class="proj-head">
+                  <h3 class="proj-title">Fingrid Azure Pipeline</h3>
+                  <div class="proj-links">
+                    <a href="https://github.com/Einsuomi/Data_Engineering_Fingrid" class="proj-link" target="_blank" rel="noopener">
+                      <span set:html={icon(GithubData, 12)} /> GitHub
+                    </a>
+                  </div>
+                </div>
+                <p class="proj-desc">Metadata-driven medallion lakehouse ingesting Finland's national power grid data.</p>
+                <p class="proj-detail">Zero code changes to onboard a new dataset — add a config row and the pipeline picks it up. Incremental loading with state tracking, full CI/CD via GitHub Actions.</p>
+                <div class="proj-tags">
+                  <span class="tag">Azure</span><span class="tag">Databricks</span>
+                  <span class="tag">Delta Lake</span><span class="tag">ADF</span>
+                  <span class="tag">Unity Catalog</span><span class="tag">GitHub Actions</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="project-item">
+            <figure class="proj-visual" aria-hidden="true">
+              <!-- Terraform IaC + DLT diagram -->
+              <svg viewBox="0 0 900 170" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                <rect width="900" height="170" fill="#0f0f14"/>
+                <!-- Background grid dots -->
+                <pattern id="dots" x="0" y="0" width="30" height="30" patternUnits="userSpaceOnUse">
+                  <circle cx="15" cy="15" r="1" fill="rgba(201,163,90,0.08)"/>
+                </pattern>
+                <rect width="900" height="170" fill="url(#dots)"/>
+                <!-- Terraform box -->
+                <rect x="50" y="50" width="130" height="70" rx="2" fill="rgba(201,163,90,0.07)" stroke="rgba(201,163,90,0.4)" stroke-width="1"/>
+                <text x="115" y="80" text-anchor="middle" fill="#c9a35a" font-size="10" font-family="monospace" opacity="0.8">Terraform</text>
+                <text x="115" y="97" text-anchor="middle" fill="#6e6a65" font-size="8" font-family="monospace">IaC provisioning</text>
+                <!-- Arrows down to child services -->
+                <line x1="115" y1="120" x2="115" y2="145" stroke="rgba(201,163,90,0.25)" stroke-width="1"/>
+                <text x="115" y="160" text-anchor="middle" fill="#6e6a65" font-size="7" font-family="monospace">AWS + Databricks</text>
+                <!-- AWS S3 -->
+                <rect x="230" y="50" width="120" height="70" rx="2" fill="rgba(201,163,90,0.06)" stroke="rgba(201,163,90,0.3)" stroke-width="1"/>
+                <text x="290" y="80" text-anchor="middle" fill="#c9a35a" font-size="10" font-family="monospace" opacity="0.7">AWS S3</text>
+                <text x="290" y="97" text-anchor="middle" fill="#6e6a65" font-size="8" font-family="monospace">Data lake</text>
+                <!-- Arrow -->
+                <line x1="350" y1="85" x2="400" y2="85" stroke="rgba(201,163,90,0.3)" stroke-width="1.5" stroke-dasharray="4 4"/>
+                <!-- DLT box -->
+                <rect x="400" y="40" width="160" height="90" rx="2" fill="rgba(201,163,90,0.11)" stroke="#c9a35a" stroke-width="1.2"/>
+                <text x="480" y="75" text-anchor="middle" fill="#c9a35a" font-size="10" font-family="monospace">Delta Live</text>
+                <text x="480" y="91" text-anchor="middle" fill="#c9a35a" font-size="10" font-family="monospace">Tables</text>
+                <text x="480" y="110" text-anchor="middle" fill="#b5b0a8" font-size="8" font-family="monospace">Declarative ETL</text>
+                <!-- Arrow -->
+                <line x1="560" y1="85" x2="610" y2="85" stroke="rgba(201,163,90,0.3)" stroke-width="1.5"/>
+                <!-- Environments -->
+                <rect x="610" y="55" width="80" height="30" rx="2" fill="rgba(201,163,90,0.06)" stroke="rgba(201,163,90,0.25)" stroke-width="1"/>
+                <text x="650" y="75" text-anchor="middle" fill="#6e6a65" font-size="8" font-family="monospace">dev</text>
+                <rect x="700" y="55" width="80" height="30" rx="2" fill="rgba(201,163,90,0.1)" stroke="rgba(201,163,90,0.5)" stroke-width="1"/>
+                <text x="740" y="75" text-anchor="middle" fill="#c9a35a" font-size="8" font-family="monospace">prod</text>
+                <line x1="690" y1="70" x2="700" y2="70" stroke="rgba(201,163,90,0.25)" stroke-width="1"/>
+                <!-- Top label -->
+                <text x="50" y="28" fill="#6e6a65" font-size="7" font-family="monospace" letter-spacing="2">INFRASTRUCTURE AS CODE · ASSET BUNDLES · DEV / PROD</text>
+              </svg>
+            </figure>
+
+            <div class="proj-row">
+              <div class="proj-num" aria-hidden="true">02</div>
+              <div class="proj-body">
+                <div class="proj-head">
+                  <h3 class="proj-title">AWS DLT Pipeline</h3>
+                  <div class="proj-links">
+                    <a href="https://github.com/Einsuomi/AWS-data-engineering-demo" class="proj-link" target="_blank" rel="noopener">
+                      <span set:html={icon(GithubData, 12)} /> GitHub
+                    </a>
+                  </div>
+                </div>
+                <p class="proj-desc">Same problem, different cloud — infrastructure-as-code lakehouse on AWS.</p>
+                <p class="proj-detail">Entire AWS + Databricks workspace provisioned by Terraform — no manual console setup. Declarative ETL via Delta Live Tables, deployed with Asset Bundles across dev/prod targets.</p>
+                <div class="proj-tags">
+                  <span class="tag">AWS S3</span><span class="tag">Terraform</span>
+                  <span class="tag">Delta Live Tables</span><span class="tag">Asset Bundles</span>
+                  <span class="tag">CI/CD</span>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <!-- ── Business Intelligence ──────────────────────────────── -->
+        <div class="project-group">
+          <p class="group-label">Business Intelligence</p>
+
+          <article class="project-item">
+            <figure class="proj-visual" aria-hidden="true">
+              <!-- CI/CD deployment pipeline stages -->
+              <svg viewBox="0 0 900 170" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                <rect width="900" height="170" fill="#0f0f14"/>
+                <text x="50" y="28" fill="#6e6a65" font-size="7" font-family="monospace" letter-spacing="2">POWER BI · CI/CD PIPELINE · AZURE DEVOPS</text>
+                <!-- Stage 1: DEV -->
+                <rect x="50" y="50" width="130" height="80" rx="2" fill="rgba(201,163,90,0.06)" stroke="rgba(201,163,90,0.3)" stroke-width="1"/>
+                <text x="115" y="82" text-anchor="middle" fill="#c9a35a" font-size="11" font-family="monospace" opacity="0.7">DEV</text>
+                <text x="115" y="100" text-anchor="middle" fill="#6e6a65" font-size="7" font-family="monospace">Build + Lint</text>
+                <text x="115" y="113" text-anchor="middle" fill="#6e6a65" font-size="7" font-family="monospace">Validation gates</text>
+                <circle cx="115" cy="126" r="4" fill="none" stroke="rgba(201,163,90,0.5)" stroke-width="1"/>
+                <polyline points="112,126 115,129 120,123" stroke="#c9a35a" stroke-width="1.2" fill="none" opacity="0.7"/>
+                <!-- Arrow -->
+                <line x1="180" y1="90" x2="240" y2="90" stroke="rgba(201,163,90,0.3)" stroke-width="1.5"/>
+                <polyline points="236,86 244,90 236,94" fill="rgba(201,163,90,0.5)" stroke="none"/>
+                <!-- Stage 2: TEST -->
+                <rect x="244" y="50" width="130" height="80" rx="2" fill="rgba(201,163,90,0.09)" stroke="rgba(201,163,90,0.45)" stroke-width="1"/>
+                <text x="309" y="82" text-anchor="middle" fill="#c9a35a" font-size="11" font-family="monospace" opacity="0.85">TEST</text>
+                <text x="309" y="100" text-anchor="middle" fill="#6e6a65" font-size="7" font-family="monospace">Dataset checks</text>
+                <text x="309" y="113" text-anchor="middle" fill="#6e6a65" font-size="7" font-family="monospace">Report rules</text>
+                <circle cx="309" cy="126" r="4" fill="none" stroke="rgba(201,163,90,0.5)" stroke-width="1"/>
+                <polyline points="306,126 309,129 314,123" stroke="#c9a35a" stroke-width="1.2" fill="none" opacity="0.7"/>
+                <!-- Arrow -->
+                <line x1="374" y1="90" x2="434" y2="90" stroke="rgba(201,163,90,0.3)" stroke-width="1.5"/>
+                <polyline points="430,86 438,90 430,94" fill="rgba(201,163,90,0.5)" stroke="none"/>
+                <!-- Stage 3: PROD -->
+                <rect x="438" y="42" width="150" height="96" rx="2" fill="rgba(201,163,90,0.14)" stroke="#c9a35a" stroke-width="1.2"/>
+                <text x="513" y="80" text-anchor="middle" fill="#c9a35a" font-size="11" font-family="monospace">PROD</text>
+                <text x="513" y="97" text-anchor="middle" fill="#b5b0a8" font-size="7" font-family="monospace">Microsoft Fabric</text>
+                <text x="513" y="110" text-anchor="middle" fill="#b5b0a8" font-size="7" font-family="monospace">Live reports</text>
+                <circle cx="513" cy="124" r="4" fill="rgba(201,163,90,0.2)" stroke="#c9a35a" stroke-width="1"/>
+                <polyline points="510,124 513,127 518,121" stroke="#c9a35a" stroke-width="1.5" fill="none"/>
+                <!-- Approval badge -->
+                <rect x="630" y="68" width="120" height="44" rx="2" fill="rgba(201,163,90,0.05)" stroke="rgba(201,163,90,0.2)" stroke-width="1" stroke-dasharray="3 3"/>
+                <text x="690" y="88" text-anchor="middle" fill="#6e6a65" font-size="8" font-family="monospace">Manual approval</text>
+                <text x="690" y="103" text-anchor="middle" fill="#6e6a65" font-size="8" font-family="monospace">required</text>
+              </svg>
+            </figure>
+
+            <div class="proj-row">
+              <div class="proj-num" aria-hidden="true">03</div>
+              <div class="proj-body">
+                <div class="proj-head">
+                  <h3 class="proj-title">J&amp;D Report — Power BI CI/CD</h3>
+                  <div class="proj-links">
+                    <a href="https://github.com/Einsuomi/J-D-Power-BI-CI-CD" class="proj-link" target="_blank" rel="noopener">
+                      <span set:html={icon(GithubData, 12)} /> GitHub
+                    </a>
+                    <a href="https://app.powerbi.com/view?r=eyJrIjoiZjQwOGI3MjctNjY1Yy00Zjg1LTg3YWUtZDcyNDcyMWQ0NTQ2IiwidCI6IjA2ZDllZTNkLTQxN2EtNGMyYi04NzdmLTgxNWMyMjdiYjk0NSIsImMiOjEwfQ%3D%3D" class="proj-link" target="_blank" rel="noopener">
+                      <span set:html={icon(icons.ExternalLink, 12)} /> Live report
+                    </a>
+                  </div>
+                </div>
+                <p class="proj-desc">Enterprise BI deployment pipeline with validation gates and multi-stage release.</p>
+                <p class="proj-detail">Automated quality checks on dataset relationships and report rules run before every deploy — most BI engineers skip this step. Dev → test → prod with approval gates.</p>
+                <div class="proj-tags">
+                  <span class="tag">Power BI</span><span class="tag">Azure DevOps</span>
+                  <span class="tag">Microsoft Fabric</span><span class="tag">CI/CD</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="project-item">
+            <figure class="proj-visual" aria-hidden="true">
+              <!-- Sales growth bar chart — the 71% story -->
+              <svg viewBox="0 0 900 170" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                <rect width="900" height="170" fill="#0f0f14"/>
+                <text x="50" y="28" fill="#6e6a65" font-size="7" font-family="monospace" letter-spacing="2">HEUREKA SCIENCE CENTRE · TICKET SALES ANALYSIS · 2023 vs 2024</text>
+                <!-- Axes -->
+                <line x1="90" y1="40" x2="90" y2="135" stroke="rgba(201,163,90,0.15)" stroke-width="1"/>
+                <line x1="90" y1="135" x2="580" y2="135" stroke="rgba(201,163,90,0.15)" stroke-width="1"/>
+                <!-- Y-axis labels -->
+                <text x="80" y="44"  text-anchor="end" fill="#6e6a65" font-size="7" font-family="monospace">100%</text>
+                <text x="80" y="88"  text-anchor="end" fill="#6e6a65" font-size="7" font-family="monospace">50%</text>
+                <text x="80" y="135" text-anchor="end" fill="#6e6a65" font-size="7" font-family="monospace">0%</text>
+                <!-- Gridlines -->
+                <line x1="90" y1="88"  x2="580" y2="88"  stroke="rgba(201,163,90,0.06)" stroke-width="1" stroke-dasharray="3 4"/>
+                <!-- Bar group 1: General tickets -->
+                <rect x="110" y="68" width="35" height="67" fill="rgba(201,163,90,0.2)" stroke="rgba(201,163,90,0.3)" stroke-width="1"/>
+                <rect x="150" y="55" width="35" height="80" fill="rgba(201,163,90,0.3)" stroke="rgba(201,163,90,0.5)" stroke-width="1"/>
+                <text x="132" y="148" text-anchor="middle" fill="#6e6a65" font-size="7" font-family="monospace">General</text>
+                <!-- Bar group 2: Highlighted new product — the 71% story -->
+                <rect x="230" y="110" width="35" height="25" fill="rgba(201,163,90,0.2)" stroke="rgba(201,163,90,0.3)" stroke-width="1"/>
+                <rect x="270" y="44" width="35" height="91" fill="#c9a35a" opacity="0.85"/>
+                <rect x="270" y="44" width="35" height="91" fill="none" stroke="#c9a35a" stroke-width="1.5"/>
+                <text x="252" y="148" text-anchor="middle" fill="#c9a35a" font-size="7" font-family="monospace">New product</text>
+                <!-- Growth annotation -->
+                <line x1="287" y1="44" x2="380" y2="30" stroke="rgba(201,163,90,0.4)" stroke-width="1" stroke-dasharray="2 3"/>
+                <rect x="382" y="18" width="140" height="22" rx="2" fill="rgba(201,163,90,0.12)" stroke="rgba(201,163,90,0.5)" stroke-width="1"/>
+                <text x="452" y="33" text-anchor="middle" fill="#c9a35a" font-size="9" font-family="monospace">71% of growth = €468K</text>
+                <!-- Bar group 3: School visits -->
+                <rect x="360" y="80" width="35" height="55" fill="rgba(201,163,90,0.2)" stroke="rgba(201,163,90,0.3)" stroke-width="1"/>
+                <rect x="400" y="70" width="35" height="65" fill="rgba(201,163,90,0.28)" stroke="rgba(201,163,90,0.45)" stroke-width="1"/>
+                <text x="382" y="148" text-anchor="middle" fill="#6e6a65" font-size="7" font-family="monospace">School visits</text>
+                <!-- KPI -->
+                <rect x="620" y="50" width="130" height="70" rx="2" fill="rgba(201,163,90,0.07)" stroke="rgba(201,163,90,0.25)" stroke-width="1"/>
+                <text x="685" y="82" text-anchor="middle" fill="#c9a35a" font-size="22" font-family="monospace" font-weight="bold">+20%</text>
+                <text x="685" y="103" text-anchor="middle" fill="#6e6a65" font-size="8" font-family="monospace">total sales growth</text>
+                <!-- Legend dots -->
+                <circle cx="100" cy="155" r="4" fill="rgba(201,163,90,0.25)"/>
+                <text x="108" y="159" fill="#6e6a65" font-size="7" font-family="monospace">2023</text>
+                <circle cx="140" cy="155" r="4" fill="#c9a35a" opacity="0.7"/>
+                <text x="148" y="159" fill="#6e6a65" font-size="7" font-family="monospace">2024</text>
+              </svg>
+            </figure>
+
+            <div class="proj-row">
+              <div class="proj-num" aria-hidden="true">04</div>
+              <div class="proj-body">
+                <div class="proj-head">
+                  <h3 class="proj-title">Heureka Science Centre</h3>
+                  <div class="proj-links">
+                    <a href="https://app.powerbi.com/view?r=eyJrIjoiMWI3OWM4ZjYtMjgzZS00ZjI3LWIyNmUtYzAzNmE0N2Y0N2Q1IiwidCI6IjA2ZDllZTNkLTQxN2EtNGMyYi04NzdmLTgxNWMyMjdiYjk0NSIsImMiOjEwfQ%3D%3D" class="proj-link" target="_blank" rel="noopener">
+                      <span set:html={icon(icons.ExternalLink, 12)} /> Live report
+                    </a>
+                  </div>
+                </div>
+                <p class="proj-desc">Ticket sales analysis that found where 71% of annual growth came from.</p>
+                <p class="proj-detail">Real client, real data. 20% total sales growth (2024 vs 2023); 71% of it — €468K — traced to a single newly introduced ticket product. Decision-grade insight, not just a dashboard.</p>
+                <div class="proj-tags">
+                  <span class="tag">Power BI</span><span class="tag">DAX</span>
+                  <span class="tag">Business Analysis</span>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- WRITING ──────────────────────────────────────────────────── -->
+    <section id="writing">
+      <div class="wrap">
+        <p class="eyebrow">04 — Writing</p>
+        <h2 class="section-heading">Case Studies</h2>
+        <p class="section-sub">Engineering thinking — decisions worth writing down.</p>
+        <ul class="study-list">
+          <li class="study-item">
+            <a href="/work/deleting-a-dependency" class="study-link">
+              <div>
+                <p class="study-title">Deleting a Dependency</p>
+                <p class="study-desc">On knowing when the right move is removing something rather than building around it.</p>
+              </div>
+              <span class="study-arrow" set:html={icon(icons.ArrowRight, 16)} />
+            </a>
+          </li>
+          <li class="study-item">
+            <a href="/work/trust-boundary-before-defensive-coding" class="study-link">
+              <div>
+                <p class="study-title">Trust Boundary Before Defensive Coding</p>
+                <p class="study-desc">Why drawing the trust boundary first makes defensive code cheaper to write and easier to delete.</p>
+              </div>
+              <span class="study-arrow" set:html={icon(icons.ArrowRight, 16)} />
+            </a>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- CHAT ─────────────────────────────────────────────────────── -->
+    <section id="chat">
+      <div class="wrap">
+        <p class="eyebrow">05 — Ask</p>
+        <h2 class="section-heading">Ask me anything</h2>
+        <p class="section-sub">Grounded in my public notes — experience, projects, approach, opinions. Powered by Claude.</p>
+        <div class="chat-panel">
+          <div class="chat-bar-top">
+            <span class="chat-title">Tong's assistant</span>
+            <span class="chat-badge"><span class="badge-dot"></span>Coming soon</span>
+          </div>
+          <div class="chat-msgs">
+            <p class="msg-from">Tong's assistant</p>
+            <div class="msg-bubble">
+              Hello — I'm a chatbot that knows Tong's work in detail.
+              Ask me about his pipeline architecture, how he approaches data modeling,
+              what technologies he works with, or what he'd bring to your team.
+              I answer from his notes, not from guesswork.
+            </div>
+          </div>
+          <div class="chat-input-row">
+            <input class="chat-input" type="text" placeholder="Ask about Tong's experience…" disabled aria-label="Chat input — coming soon" />
+            <button class="chat-send" disabled>Send</button>
+          </div>
+        </div>
+        <p class="chat-note">
+          Chatbot under construction. Get in touch directly at
+          <a href="mailto:ethan.nie2020@gmail.com">ethan.nie2020@gmail.com</a>
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER ──────────────────────────────────────────────────────── -->
+  <footer>
+    <div class="footer-inner">
+      <div>
+        <p class="footer-name">Tong Nie</p>
+        <p class="footer-role">Data Engineer & BI Analyst</p>
+      </div>
+      <ul class="footer-links">
+        <li>
+          <a href="https://github.com/Einsuomi" class="footer-icon-link" target="_blank" rel="noopener" aria-label="GitHub">
+            <span set:html={icon(GithubData, 16)} />
+          </a>
+        </li>
+        <li>
+          <a href="https://www.linkedin.com/in/tong-nie/" class="footer-icon-link" target="_blank" rel="noopener" aria-label="LinkedIn">
+            <span set:html={icon(LinkedinData, 16)} />
+          </a>
+        </li>
+        <li>
+          <a href="mailto:ethan.nie2020@gmail.com" class="footer-icon-link" aria-label="Email">
+            <span set:html={icon(icons.Mail, 16)} />
+          </a>
+        </li>
+        <li>
+          <a href="/cv" class="footer-icon-link" aria-label="CV">
+            <span set:html={icon(icons.ExternalLink, 16)} />
+          </a>
+        </li>
+      </ul>
+      <div class="footer-bottom">
+        <p>Anonymous usage data only — no cookies, no cross-site tracking.</p>
+        <p>Built with Astro + Vercel</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SCRIPT — Lenis + GSAP + SplitType + Canvas
+       Bundled by Vite — only runs in browser
+  ═══════════════════════════════════════════════════════════════════ -->
+  <script>
+    import Lenis from 'lenis';
+    import { gsap } from 'gsap';
+    import { ScrollTrigger } from 'gsap/ScrollTrigger';
+    import SplitType from 'split-type';
+
+    gsap.registerPlugin(ScrollTrigger);
+
+    // ── Smooth inertia scroll ──────────────────────────────────────
+    const lenis = new Lenis({ lerp: 0.09 });
+    gsap.ticker.add((t) => lenis.raf(t * 1000));
+    gsap.ticker.lagSmoothing(0);
+    // Connect Lenis scroll to ScrollTrigger updates
+    lenis.on('scroll', ScrollTrigger.update);
+
+    // ── Theme toggle ───────────────────────────────────────────────
+    const root   = document.documentElement;
+    const btn    = document.getElementById('theme-btn')!;
+    const sunEl  = document.getElementById('icon-sun')!;
+    const moonEl = document.getElementById('icon-moon')!;
+
+    function applyTheme(t: string) {
+      root.setAttribute('data-theme', t);
+      sunEl.style.display  = t === 'dark' ? 'block' : 'none';
+      moonEl.style.display = t === 'dark' ? 'none'  : 'block';
+    }
+    applyTheme(localStorage.getItem('theme') ??
+      (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
+    btn.addEventListener('click', () => {
+      const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      localStorage.setItem('theme', next);
+    });
+
+    // ── Canvas particle network ─────────────────────────────────────
+    const canvas = document.getElementById('hero-canvas') as HTMLCanvasElement;
+    const ctx    = canvas.getContext('2d')!;
+    const hero   = document.getElementById('hero')!;
+
+    function resizeCanvas() {
+      canvas.width  = hero.offsetWidth;
+      canvas.height = hero.offsetHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    const N = 65;
+    type P = { x:number; y:number; vx:number; vy:number; r:number };
+    let pts: P[] = [];
+    const mouse = { x: -9999, y: -9999 };
+
+    function spawnParticles() {
+      pts = Array.from({ length: N }, () => ({
+        x:  Math.random() * canvas.width,
+        y:  Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.22,
+        vy: (Math.random() - 0.5) * 0.22,
+        r:  Math.random() * 1.4 + 0.5,
+      }));
+    }
+    spawnParticles();
+    window.addEventListener('resize', spawnParticles);
+
+    canvas.addEventListener('mousemove', e => {
+      const r = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - r.left;
+      mouse.y = e.clientY - r.top;
+    });
+    canvas.addEventListener('mouseleave', () => { mouse.x = mouse.y = -9999; });
+
+    function accentRgb() {
+      return root.getAttribute('data-theme') === 'light' ? '155,114,40' : '201,163,90';
+    }
+
+    let rafId: number;
+    function drawFrame() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const rgb = accentRgb();
+
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+
+        // Gentle mouse repulsion
+        const dx = p.x - mouse.x, dy = p.y - mouse.y;
+        const d2 = dx*dx + dy*dy;
+        if (d2 < 10000) {           // within 100px
+          const d = Math.sqrt(d2);
+          p.x += dx / d * 1.1;
+          p.y += dy / d * 1.1;
+        }
+
+        // Draw lines to nearby neighbours
+        for (let j = i + 1; j < pts.length; j++) {
+          const q   = pts[j];
+          const ldx = p.x - q.x, ldy = p.y - q.y;
+          const ld2 = ldx*ldx + ldy*ldy;
+          if (ld2 < 14400) {        // within 120px
+            const alpha = (1 - ld2 / 14400) * 0.18;
+            ctx.beginPath();
+            ctx.strokeStyle = `rgba(${rgb},${alpha})`;
+            ctx.lineWidth = 0.6;
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(q.x, q.y);
+            ctx.stroke();
+          }
+        }
+
+        // Draw dot
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${rgb},0.42)`;
+        ctx.fill();
+
+        // Move + wrap
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0) p.x = canvas.width;
+        if (p.x > canvas.width)  p.x = 0;
+        if (p.y < 0) p.y = canvas.height;
+        if (p.y > canvas.height) p.y = 0;
+      }
+      rafId = requestAnimationFrame(drawFrame);
+    }
+
+    // Kill canvas animation when hero scrolls out of view (saves CPU)
+    const heroObs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) {
+        if (!rafId) rafId = requestAnimationFrame(drawFrame);
+      } else {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+    }, { threshold: 0.01 });
+    heroObs.observe(hero);
+
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      rafId = requestAnimationFrame(drawFrame);
+    }
+
+    // ── Hero: SplitType + GSAP timeline ────────────────────────────
+    const split = new SplitType('.hero-name', { types: 'chars' });
+
+    const heroTl = gsap.timeline({ delay: 0.25 });
+    heroTl
+      .to('.hero-rule',     { opacity: 1, scaleX: 1, duration: 0.7, ease: 'expo.out', transformOrigin: 'left' })
+      .to('.hero-label',    { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, '-=0.3')
+      .fromTo(split.chars,
+        { opacity: 0, y: 55 },
+        { opacity: 1, y: 0, stagger: 0.028, duration: 0.7, ease: 'expo.out' },
+        '-=0.15')
+      .to('.hero-role',     { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, '-=0.4')
+      .to('.hero-tagline',  { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, '-=0.35')
+      .to('.hero-facts',    { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, '-=0.3')
+      .to('.ctas',          { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, '-=0.25');
+
+    // Set initial y offsets for hero elements
+    gsap.set(['.hero-label', '.hero-role', '.hero-tagline', '.hero-facts', '.ctas'],
+      { y: 12 });
+    gsap.set('.hero-name-wrap', { opacity: 1 }); // wrapper visible; chars start at y:55
+
+    // ── ScrollTrigger: section headings ────────────────────────────
+    gsap.utils.toArray<HTMLElement>('.eyebrow, .section-heading, .section-sub').forEach(el => {
+      gsap.from(el, {
+        scrollTrigger: { trigger: el, start: 'top 88%', once: true },
+        opacity: 0, y: 22, duration: 0.7, ease: 'power2.out',
+      });
+    });
+
+    // Tech grid: stagger in
+    gsap.from('.tech-item', {
+      scrollTrigger: { trigger: '#stack .tech-grid', start: 'top 82%', once: true },
+      opacity: 0, y: 16,
+      stagger: { amount: 0.55, from: 'start' },
+      duration: 0.5, ease: 'power2.out',
+    });
+
+    // Group labels
+    gsap.utils.toArray<HTMLElement>('.group-label').forEach(el => {
+      gsap.from(el, {
+        scrollTrigger: { trigger: el, start: 'top 90%', once: true },
+        opacity: 0, duration: 0.5, ease: 'power2.out',
+      });
+    });
+
+    // Project items: slide from left, stagger by position
+    gsap.utils.toArray<HTMLElement>('.project-item').forEach((item, i) => {
+      gsap.from(item, {
+        scrollTrigger: { trigger: item, start: 'top 88%', once: true },
+        opacity: 0, x: -28, duration: 0.75, delay: (i % 2) * 0.08, ease: 'power3.out',
+      });
+    });
+
+    // Case study rows
+    gsap.utils.toArray<HTMLElement>('.study-item').forEach((item, i) => {
+      gsap.from(item, {
+        scrollTrigger: { trigger: item, start: 'top 88%', once: true },
+        opacity: 0, y: 14, duration: 0.6, delay: i * 0.1, ease: 'power2.out',
+      });
+    });
+
+    // Chat panel
+    gsap.from('.chat-panel', {
+      scrollTrigger: { trigger: '.chat-panel', start: 'top 82%', once: true },
+      opacity: 0, y: 28, duration: 0.8, ease: 'power3.out',
+    });
+
+    // Footer
+    gsap.from('.footer-inner > *', {
+      scrollTrigger: { trigger: 'footer', start: 'top 92%', once: true },
+      opacity: 0, y: 14, stagger: 0.1, duration: 0.6, ease: 'power2.out',
+    });
+  </script>
+
+</body>
 </html>

@@ -1,0 +1,9 @@
+{
+  "tool_calls": {
+    "bash": 10,
+    "read": 13
+  },
+  "total_tool_calls": 23,
+  "files_created": ["review.md"],
+  "errors_encountered": 0
+}

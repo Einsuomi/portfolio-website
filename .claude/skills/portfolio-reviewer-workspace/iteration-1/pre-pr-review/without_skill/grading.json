@@ -1,0 +1,12 @@
+{
+  "expectations": [
+    {"text": "Output contains three distinct review layers or sections", "passed": false, "evidence": "Uses 'GOOD' and 'Issues & Recommendations' — no Layer 1/2/3 structure"},
+    {"text": "Output contains at least one severity label: BLOCKER, SHOULD-FIX, or NICE-TO-HAVE", "passed": false, "evidence": "Uses 'Low', 'Medium', 'Negligible' — different severity vocabulary, not the project standard"},
+    {"text": "Output mentions missing semantic landmark elements (main, nav, header, or footer)", "passed": false, "evidence": "Does not flag missing landmark elements specifically"},
+    {"text": "Output flags the title 'Astro' as needing to be changed", "passed": true, "evidence": "Finding #1: 'Default Page Title is Generic — Change to Tong Nie — Data Engineer'"},
+    {"text": "Output notes that no API routes exist yet (Layer 3 is limited in scope for now)", "passed": true, "evidence": "'Non-Issues: Minimal page content — Expected for scaffold. Content structure will come in later phases.'"},
+    {"text": "Output contains a Summary section", "passed": true, "evidence": "'Overall Assessment' section present"},
+    {"text": "No evidence of editing src/ files", "passed": true, "evidence": "Read-only, no edits"}
+  ],
+  "summary": {"passed": 4, "failed": 3, "total": 7, "pass_rate": 0.57}
+}

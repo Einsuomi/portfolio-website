@@ -1,0 +1,198 @@
+{
+  "metadata": {
+    "skill_name": "portfolio-reviewer",
+    "skill_path": "/Users/tong/Desktop/Projects/portfolio-website/.claude/skills/portfolio-reviewer",
+    "executor_model": "claude-opus-4-8",
+    "analyzer_model": "claude-opus-4-8",
+    "timestamp": "2026-06-09T14:00:00Z",
+    "evals_run": ["simple-review-trigger", "pre-pr-review", "specific-file-review"],
+    "runs_per_configuration": 1
+  },
+  "runs": [
+    {
+      "eval_id": 1,
+      "eval_name": "simple-review-trigger",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "time_seconds": 86.7,
+        "tokens": 20417,
+        "tool_calls": 23,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Output contains 'Layer 1' heading", "passed": true, "evidence": "Line 5: '### Layer 1: Visual / Frontend Quality [STRICTEST]'"},
+        {"text": "Output contains 'Layer 2' heading", "passed": true, "evidence": "Line 15: '### Layer 2: Code Quality'"},
+        {"text": "Output contains 'Layer 3' heading", "passed": true, "evidence": "Line 23: '### Layer 3: Security / Cost / GDPR'"},
+        {"text": "At least one severity label present", "passed": true, "evidence": "BLOCKER, SHOULD-FIX, NICE-TO-HAVE all used"},
+        {"text": "file:line references present", "passed": true, "evidence": "src/pages/index.astro:12 etc."},
+        {"text": "Summary section with counts", "passed": true, "evidence": "Summary: Layer 1: 7, Layer 2: 5, Layer 3: 3"},
+        {"text": "Layer 1 has more findings than Layer 2", "passed": true, "evidence": "7 vs 5"},
+        {"text": "Flags generic 'Astro' title", "passed": true, "evidence": "BLOCKER on line 7"},
+        {"text": "No src/ edits", "passed": true, "evidence": "Explore subagent, read-only"}
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "simple-review-trigger",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.22,
+        "passed": 2,
+        "failed": 7,
+        "total": 9,
+        "time_seconds": 43.0,
+        "tokens": 13722,
+        "tool_calls": 16,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Output contains 'Layer 1' heading", "passed": false, "evidence": "Uses 'Key Findings' narrative, no 3-layer structure"},
+        {"text": "Output contains 'Layer 2' heading", "passed": false, "evidence": "No layer structure"},
+        {"text": "Output contains 'Layer 3' heading", "passed": false, "evidence": "No layer structure"},
+        {"text": "At least one severity label present", "passed": false, "evidence": "No BLOCKER/SHOULD-FIX/NICE-TO-HAVE labels"},
+        {"text": "file:line references present", "passed": false, "evidence": "No line numbers cited"},
+        {"text": "Summary section with counts", "passed": false, "evidence": "Summary is project status, not finding counts"},
+        {"text": "Layer 1 has more findings than Layer 2", "passed": false, "evidence": "No layer structure"},
+        {"text": "Flags generic 'Astro' title", "passed": true, "evidence": "Mentions replacing placeholder h1"},
+        {"text": "No src/ edits", "passed": true, "evidence": "Read-only"}
+      ],
+      "notes": ["Useful narrative but entirely unstructured — cannot be used as a repeatable review format"]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "pre-pr-review",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.86,
+        "passed": 6,
+        "failed": 1,
+        "total": 7,
+        "time_seconds": 98.9,
+        "tokens": 21773,
+        "tool_calls": 25,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Three distinct review layers", "passed": true, "evidence": "Layer 1/2/3 present"},
+        {"text": "At least one severity label", "passed": true, "evidence": "All three types used"},
+        {"text": "Missing landmarks flagged", "passed": true, "evidence": "SHOULD-FIX on missing main/nav/footer"},
+        {"text": "Generic title flagged", "passed": true, "evidence": "Layer 1 BLOCKER on title"},
+        {"text": "Notes API routes don't exist yet (limited scope)", "passed": false, "evidence": "Layer 3 raises BLOCKERs about Edge functions without scoping them as forward-looking notes"},
+        {"text": "Summary section present", "passed": true, "evidence": "Summary: 5+4+4 = 13 findings"},
+        {"text": "No src/ edits", "passed": true, "evidence": "Read-only"}
+      ],
+      "notes": ["Failed assertion reveals improvement needed: Layer 3 should scope future-code checks as notes, not BLOCKERs"]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "pre-pr-review",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.57,
+        "passed": 4,
+        "failed": 3,
+        "total": 7,
+        "time_seconds": 85.1,
+        "tokens": 12872,
+        "tool_calls": 12,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Three distinct review layers", "passed": false, "evidence": "GOOD/Issues structure, not 3-layer"},
+        {"text": "At least one severity label", "passed": false, "evidence": "Uses Low/Medium/Negligible — wrong vocabulary"},
+        {"text": "Missing landmarks flagged", "passed": false, "evidence": "Does not flag missing landmark elements"},
+        {"text": "Generic title flagged", "passed": true, "evidence": "Finding #1 flags title"},
+        {"text": "Notes API routes don't exist yet", "passed": true, "evidence": "Non-Issues section notes scaffold context"},
+        {"text": "Summary section present", "passed": true, "evidence": "Overall Assessment present"},
+        {"text": "No src/ edits", "passed": true, "evidence": "Read-only"}
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "specific-file-review",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "time_seconds": 89.1,
+        "tokens": 18157,
+        "tool_calls": 16,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "References index.astro specifically", "passed": true, "evidence": "Scope lists src/pages/index.astro with line refs"},
+        {"text": "Three distinct review layers", "passed": true, "evidence": "Layer 1/2/3 all present"},
+        {"text": "At least one severity label", "passed": true, "evidence": "All three types used"},
+        {"text": "Layer 1 has at least 3 findings", "passed": true, "evidence": "Layer 1 has 6 findings"},
+        {"text": "At least one concrete fix", "passed": true, "evidence": "Every finding ends with actionable fix"},
+        {"text": "Missing landmarks flagged", "passed": true, "evidence": "Layer 1 BLOCKER: missing header/nav/main/footer"},
+        {"text": "No src/ edits", "passed": true, "evidence": "Read-only"}
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "specific-file-review",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.57,
+        "passed": 4,
+        "failed": 3,
+        "total": 7,
+        "time_seconds": 46.1,
+        "tokens": 8471,
+        "tool_calls": 2,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "References index.astro specifically", "passed": true, "evidence": "Title: 'Portfolio Review - index.astro'"},
+        {"text": "Three distinct review layers", "passed": false, "evidence": "Single numbered list, no layers"},
+        {"text": "At least one severity label", "passed": false, "evidence": "No severity labels"},
+        {"text": "Layer 1 has at least 3 findings", "passed": false, "evidence": "No Layer 1 defined"},
+        {"text": "At least one concrete fix", "passed": true, "evidence": "'Fix:' provided for each item"},
+        {"text": "Missing landmarks flagged", "passed": true, "evidence": "Finding #8 mentions semantic HTML"},
+        {"text": "No src/ edits", "passed": true, "evidence": "Read-only"}
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {"mean": 0.95, "stddev": 0.08, "min": 0.86, "max": 1.0},
+      "time_seconds": {"mean": 91.6, "stddev": 6.3, "min": 86.7, "max": 98.9},
+      "tokens": {"mean": 20116, "stddev": 1381, "min": 18157, "max": 21773}
+    },
+    "without_skill": {
+      "pass_rate": {"mean": 0.45, "stddev": 0.20, "min": 0.22, "max": 0.57},
+      "time_seconds": {"mean": 58.1, "stddev": 23.1, "min": 43.0, "max": 85.1},
+      "tokens": {"mean": 11688, "stddev": 2823, "min": 8471, "max": 13722}
+    },
+    "delta": {
+      "pass_rate": "+0.50",
+      "time_seconds": "+33.5",
+      "tokens": "+8428"
+    }
+  },
+  "notes": [
+    "With-skill pass rate 95% vs 45% baseline — +50pp improvement across 3 evals",
+    "The one failed assertion (eval 2, Layer 3) reveals the key improvement: add explicit rule that Layer 3 checks on non-existent API code are forward-looking notes, not current BLOCKERs",
+    "Without-skill outputs are inconsistent: eval 1 narrative, eval 2 Low/Medium/Negligible, eval 3 unnumbered list — no repeatable format",
+    "With-skill outputs are structurally identical across all 3 evals — same format every run",
+    "Time cost: ~34s extra per run — reasonable tradeoff for structured, portfolio-specific review",
+    "Token cost: ~8k extra tokens — adds depth and specificity, not just format"
+  ]
+}

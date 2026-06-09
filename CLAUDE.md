@@ -88,8 +88,8 @@ Python commands (added when uv is set up):
 - [x] Architecture: 18 decisions locked (see plan file above)
 - [x] Project folder created at this path
 - [x] Astro scaffold: `npm create astro@latest --template minimal` (Astro 6)
-- [x] `frontend-design` plugin installed (`claude-plugins-official`)
-- [ ] `git init` + initial commit
+- [x] `frontend-design` plugin installed (`claude-plugins-official`, project-scoped)
+- [x] `git init` + initial commit + public GitHub repo (`github.com/Einsuomi/portfolio-website`)
 - [ ] `.env.example` with key names (no values)
 - [ ] `src/content/` structure + sync script
 - [ ] Chatbot: `src/pages/api/chat.ts` Edge function
