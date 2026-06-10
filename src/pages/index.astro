@@ -43,7 +43,7 @@ const stack = [
 ---
 
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -57,8 +57,8 @@ const stack = [
     /* ── Reset ─────────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* ── Dark theme ─────────────────────────────────────────────────── */
-    :root, [data-theme="dark"] {
+    /* ── Theme — dark only, the cinematic frames are baked dark ─────── */
+    :root {
       --bg:        #07070a;
       --surface:   #0f0f14;
       --surface-2: #15151c;
@@ -72,23 +72,6 @@ const stack = [
       --accent-bg: rgba(201,163,90,0.07);
       --grid:      rgba(201,163,90,0.022);
       --scan:      rgba(201,163,90,0.6);
-    }
-
-    /* ── Light theme ────────────────────────────────────────────────── */
-    [data-theme="light"] {
-      --bg:        #f5f2ec;
-      --surface:   #eceae3;
-      --surface-2: #e4e1d8;
-      --border:    #cac5b8;
-      --border-dim:#d4d0c5;
-      --text:      #1a1814;
-      --text-2:    #48443c;
-      --text-3:    #6a6558;
-      --accent:    #9b7228;
-      --accent-dim:#7a5a1e;
-      --accent-bg: rgba(155,114,40,0.09);
-      --grid:      rgba(155,114,40,0.05);
-      --scan:      rgba(155,114,40,0.4);
     }
 
     :root {
@@ -173,7 +156,8 @@ const stack = [
       top: 0;
       z-index: 200;
       border-bottom: 1px solid var(--border);
-      background: color-mix(in srgb, var(--bg) 80%, transparent);
+      /* near-opaque so links stay readable over the bright frames */
+      background: color-mix(in srgb, var(--bg) 94%, transparent);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       transition: background 0.3s;
@@ -189,7 +173,8 @@ const stack = [
     .nav-logo {
       font-family: var(--mono);
       font-size: 0.76rem;
-      color: var(--text-2);
+      font-weight: 700;
+      color: var(--text);
       letter-spacing: 0.12em;
       text-decoration: none;
       transition: color 0.2s;
@@ -202,8 +187,9 @@ const stack = [
     .nav-links { display: flex; gap: 2rem; list-style: none; }
     .nav-links a {
       font-family: var(--mono);
-      font-size: 0.68rem;
-      color: var(--text-2);
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: #fff;
       text-decoration: none;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -212,30 +198,17 @@ const stack = [
     }
     .nav-links a:hover { color: var(--accent); }
 
-    .theme-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 34px; height: 34px;
-      background: none;
-      border: 1px solid var(--border);
-      color: var(--text-3);
-      cursor: pointer;
-      transition: color 0.2s, border-color 0.2s;
-    }
-    .theme-btn:hover { color: var(--accent); border-color: var(--accent); }
-
-    /* ── HERO ─────────────────────────────────────────────────────── */
+    /* ── HERO — pinned scroll-scrubbed image sequence ─────────────── */
+    /* The section pins for 3 viewport-heights while #seq-canvas plays
+       the camera flight; chapter overlays fade in along the way. */
     #hero {
       position: relative;
-      min-height: 100svh;
-      display: flex;
-      align-items: center;
+      height: 100svh;
       overflow: hidden;
     }
 
-    /* Canvas sits behind everything */
-    #hero-canvas {
+    /* Canvas sits behind everything, draws the frame sequence */
+    #seq-canvas {
       position: absolute;
       inset: 0;
       width: 100%;
@@ -244,22 +217,98 @@ const stack = [
       pointer-events: none;
     }
 
-    /* Amber spotlight from top — gives depth to canvas */
-    #hero::before {
-      content: '';
-      position: absolute;
-      top: -5%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 70%;
-      height: 60%;
-      background: radial-gradient(ellipse, rgba(201,163,90,0.08) 0%, transparent 68%);
+    /* Chapter overlays — GSAP scrub drives opacity/position */
+    .chapter {
+      position: absolute; inset: 0; z-index: 3;
+      display: flex; flex-direction: column; justify-content: flex-end;
+      padding: clamp(1.5rem, 6vw, 6rem);
       pointer-events: none;
-      z-index: 1;
+      opacity: 0;
     }
-    [data-theme="light"] #hero::before {
-      background: radial-gradient(ellipse, rgba(155,114,40,0.05) 0%, transparent 68%);
+    /* readability scrim — darkens the lower band where the text sits,
+       so type stays legible over the bright constellation frames */
+    .chapter::before {
+      content: '';
+      position: absolute; inset: 0; z-index: -1;
+      background: linear-gradient(to top,
+        rgba(7,7,10,0.85) 0%, rgba(7,7,10,0.35) 38%, transparent 62%);
     }
+    .chapter.intro::before {
+      background: linear-gradient(90deg,
+        rgba(7,7,10,0.8) 0%, rgba(7,7,10,0.35) 45%, transparent 75%);
+    }
+    .chapter .ch-num {
+      position: absolute; top: clamp(4.5rem, 12vh, 7rem); left: clamp(1.5rem, 6vw, 6rem);
+      font-weight: 200; font-size: clamp(3rem, 8vw, 7rem); line-height: 1;
+      color: var(--text);
+      text-shadow: 0 2px 30px rgba(0,0,0,0.9);
+    }
+    .chapter .ch-kicker {
+      font-family: var(--mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.4em;
+      color: var(--accent); text-transform: uppercase; margin-bottom: 1rem;
+    }
+    .chapter h2 {
+      font-weight: 700; letter-spacing: -0.03em; line-height: 0.92;
+      font-size: clamp(3.5rem, 13vw, 11rem);
+      text-transform: uppercase;
+      color: var(--text);
+    }
+    .chapter .ch-copy {
+      max-width: 34ch; margin-top: 1.2rem;
+      font-size: clamp(1rem, 1.5vw, 1.2rem); line-height: 1.6;
+      color: var(--text);
+    }
+    /* alternate chapters push text to the right */
+    .chapter.right { align-items: flex-end; text-align: right; }
+    .chapter.right .ch-num { left: auto; right: clamp(1.5rem, 6vw, 6rem); }
+
+    /* story chapters start fully hidden — GSAP autoAlpha reveals them,
+       so their links can't intercept clicks while invisible */
+    .chapter:not(.intro) { visibility: hidden; }
+
+    /* whole chapter text block is one link into its section */
+    .ch-link {
+      display: block;
+      pointer-events: auto;
+      text-decoration: none;
+      color: inherit;
+      cursor: pointer;
+    }
+    .ch-link h2 { transition: text-shadow 0.3s; }
+    .ch-link:hover h2 { text-shadow: 0 0 50px rgba(201,163,90,0.5); }
+    .ch-view {
+      display: inline-block;
+      margin-top: 1.2rem;
+      font-family: var(--mono); font-size: 0.74rem; font-weight: 700; letter-spacing: 0.3em;
+      color: var(--accent); text-transform: uppercase;
+      transition: transform 0.25s;
+    }
+    .ch-link:hover .ch-view { transform: translateX(8px); }
+
+    /* compact proof list on the opposite side of the chapter text */
+    .ch-list {
+      position: absolute;
+      bottom: clamp(2rem, 7vh, 6rem);
+      right: clamp(1.5rem, 6vw, 6rem);
+      list-style: none;
+      text-align: right;
+      font-family: var(--mono); font-size: 0.78rem; font-weight: 500; letter-spacing: 0.12em;
+      color: #fff; line-height: 2.3;
+      text-shadow: 0 1px 16px rgba(0,0,0,0.9);
+    }
+    .ch-list li::after { content: ' —'; color: var(--accent); }
+    .chapter.right .ch-list {
+      right: auto; left: clamp(1.5rem, 6vw, 6rem);
+      text-align: left;
+    }
+    .chapter.right .ch-list li::after { content: ''; }
+    .chapter.right .ch-list li::before { content: '— '; color: var(--accent); }
+
+    /* Intro chapter reuses the v4 hero content, vertically centered.
+       Visible at progress 0, fades as the camera starts moving. */
+    /* full-bleed like the story chapters — no .wrap column */
+    .chapter.intro { justify-content: center; opacity: 1; }
+    .chapter.intro .ctas, .chapter.intro .scroll-nudge { pointer-events: auto; }
 
     /* Scanline — one-shot on load */
     .hero-scan {
@@ -278,11 +327,11 @@ const stack = [
       100% { transform: translateY(100vh); opacity: 0; }
     }
 
-    /* Hero content above canvas */
+    /* Hero content above canvas — spans the full chapter width */
     .hero-content {
       position: relative;
       z-index: 3;
-      padding: clamp(5rem,10vw,8rem) 0 clamp(4rem,8vw,6rem);
+      width: 100%;
     }
 
     .hero-rule {
@@ -302,19 +351,25 @@ const stack = [
     }
 
     /* The name — overflow hidden so chars clip on entry */
-    .hero-name-wrap { overflow: hidden; margin-bottom: 0.2em; }
+    /* padding-bottom sized to the headline (not the page font) so the
+       g/y descenders fit inside the reveal clip; margin keeps the role
+       line clear below them */
+    .hero-name-wrap {
+      overflow: hidden;
+      padding-bottom: clamp(0.7rem, 2vw, 1.6rem);
+      margin-bottom: 0.5rem;
+    }
     .hero-name {
       font-family: var(--serif);
-      font-size: clamp(3.8rem, 11vw, 8rem);
+      font-size: clamp(4rem, 16vw, 15rem);
       font-weight: 400;
-      line-height: 0.93;
+      line-height: 1;
       letter-spacing: -0.03em;
       color: var(--text);
       text-shadow: 0 0 80px rgba(201,163,90,0.14);
       /* SplitType will wrap each char — perspective for depth */
       perspective: 600px;
     }
-    [data-theme="light"] .hero-name { text-shadow: none; }
 
     /* SplitType adds .char spans — keep them inline-block for 3D transforms */
     .hero-name .char { display: inline-block; }
@@ -380,7 +435,6 @@ const stack = [
       transform: translateY(-1px);
       box-shadow: 0 8px 24px rgba(201,163,90,0.25);
     }
-    [data-theme="light"] .cta-primary { color: #f5f2ec; }
 
     .cta-secondary {
       display: inline-flex;
@@ -783,6 +837,8 @@ const stack = [
 
     /* ── RESPONSIVE ──────────────────────────────────────────────── */
     @media (max-width: 640px) {
+      /* side lists clutter a phone screen — chapter title + link is enough */
+      .ch-list { display: none; }
       .proj-row { grid-template-columns: 1fr; padding: 1.5rem 0.25rem; }
       .proj-num { font-size: 1.8rem; margin-bottom: 0.6rem; }
       .proj-head { flex-direction: column; gap: 0.15rem; }
@@ -811,6 +867,8 @@ const stack = [
       /* Make sure content is visible even without GSAP animations */
       .hero-rule, .hero-label, .hero-name-wrap, .hero-name,
       .hero-role, .hero-tagline, .hero-facts, .ctas { opacity: 1 !important; }
+      /* No scrub: static intro over frame 0, story chapters hidden */
+      .chapter:not(.intro) { display: none !important; }
     }
   </style>
 </head>
@@ -828,58 +886,105 @@ const stack = [
           <li><a href="#chat">Chat</a></li>
           <li><a href="/cv">CV</a></li>
         </ul>
-        <button class="theme-btn" id="theme-btn" aria-label="Toggle light/dark mode">
-          <span id="icon-sun"  set:html={icon(icons.Sun,  15)} />
-          <span id="icon-moon" set:html={icon(icons.Moon, 15)} style="display:none" />
-        </button>
       </div>
     </div>
   </nav>
 
   <main>
 
-    <!-- HERO ─────────────────────────────────────────────────────── -->
+    <!-- HERO — pinned scroll-scrub sequence ──────────────────────── -->
     <section id="hero">
-      <!-- Canvas particle network: fills hero, mouse-reactive -->
-      <canvas id="hero-canvas" aria-hidden="true"></canvas>
+      <!-- Frame sequence canvas: scroll position = camera position -->
+      <canvas id="seq-canvas" aria-hidden="true"></canvas>
 
       <!-- Cinematic scanline (one-shot on load) -->
       <div class="hero-scan" aria-hidden="true"></div>
 
-      <div class="wrap hero-content">
-        <div class="hero-rule" aria-hidden="true"></div>
-        <p class="hero-label">Data Engineer</p>
+      <!-- 00 · intro — the v4 hero content, fades as the camera moves -->
+      <div class="chapter intro">
+        <div class="hero-content">
+          <div class="hero-rule" aria-hidden="true"></div>
+          <p class="hero-label">Data Engineer</p>
 
-        <div class="hero-name-wrap">
-          <h1 class="hero-name">Tong Nie</h1>
+          <div class="hero-name-wrap">
+            <h1 class="hero-name">Tong Nie</h1>
+          </div>
+
+          <p class="hero-role">Data Engineer & BI Analyst</p>
+
+          <p class="hero-tagline">
+            Pipelines that run while you sleep.<br>
+            Built on Azure, Databricks, and AWS — designed to stay out of your way.
+          </p>
+
+          <div class="hero-facts">
+            <span class="fact">3 years professional experience</span>
+            <span class="fact">Azure · Databricks · AWS</span>
+          </div>
+
+          <div class="ctas">
+            <a href="#chat" class="cta-primary">
+              Ask me anything
+              <span set:html={icon(icons.ArrowRight, 14)} />
+            </a>
+            <a href="/cv" class="cta-secondary">
+              View CV
+              <span set:html={icon(icons.ExternalLink, 13)} />
+            </a>
+            <a href="#stack" class="scroll-nudge">
+              scroll to run the pipeline
+              <span set:html={icon(icons.ArrowDown, 13)} />
+            </a>
+          </div>
         </div>
+      </div>
 
-        <p class="hero-role">Data Engineer & BI Analyst</p>
+      <!-- 01 · stack — gateway into #stack -->
+      <div class="chapter">
+        <div class="ch-num">01</div>
+        <ul class="ch-list">
+          <li>Python · SQL · PySpark</li>
+          <li>Azure · Databricks · AWS</li>
+          <li>Delta Lake · dbt · Terraform</li>
+        </ul>
+        <a href="#stack" class="ch-link">
+          <p class="ch-kicker">What I build with</p>
+          <h2>Stack</h2>
+          <p class="ch-copy">The daily toolkit — cloud, lakehouse, orchestration, BI.</p>
+          <span class="ch-view">View stack →</span>
+        </a>
+      </div>
 
-        <p class="hero-tagline">
-          Pipelines that run while you sleep.<br>
-          Built on Azure, Databricks, and AWS — designed to stay out of your way.
-        </p>
+      <!-- 02 · projects — gateway into #work -->
+      <div class="chapter right">
+        <div class="ch-num">02</div>
+        <ul class="ch-list">
+          <li>Fingrid Azure Pipeline</li>
+          <li>AWS DLT Pipeline</li>
+          <li>Power BI CI/CD</li>
+          <li>Heureka Sales Analysis</li>
+        </ul>
+        <a href="#work" class="ch-link">
+          <p class="ch-kicker">What I've built</p>
+          <h2>Projects</h2>
+          <p class="ch-copy">Production pipelines on Azure and AWS. Real clients, real data.</p>
+          <span class="ch-view">View projects →</span>
+        </a>
+      </div>
 
-        <div class="hero-facts">
-          <span class="fact">3 years professional experience</span>
-          <span class="fact">Azure · Databricks · AWS</span>
-        </div>
-
-        <div class="ctas">
-          <a href="#chat" class="cta-primary">
-            Ask me anything
-            <span set:html={icon(icons.ArrowRight, 14)} />
-          </a>
-          <a href="/cv" class="cta-secondary">
-            View CV
-            <span set:html={icon(icons.ExternalLink, 13)} />
-          </a>
-          <a href="#stack" class="scroll-nudge">
-            explore
-            <span set:html={icon(icons.ArrowDown, 13)} />
-          </a>
-        </div>
+      <!-- 03 · writing — gateway into #writing -->
+      <div class="chapter">
+        <div class="ch-num">03</div>
+        <ul class="ch-list">
+          <li>Deleting a Dependency</li>
+          <li>Trust Boundary Before Defensive Coding</li>
+        </ul>
+        <a href="#writing" class="ch-link">
+          <p class="ch-kicker">How I think</p>
+          <h2>Writing</h2>
+          <p class="ch-copy">Engineering decisions worth writing down.</p>
+          <span class="ch-view">View writing →</span>
+        </a>
       </div>
     </section>
 
@@ -1290,128 +1395,89 @@ const stack = [
     // Connect Lenis scroll to ScrollTrigger updates
     lenis.on('scroll', ScrollTrigger.update);
 
-    // ── Theme toggle ───────────────────────────────────────────────
-    const root   = document.documentElement;
-    const btn    = document.getElementById('theme-btn')!;
-    const sunEl  = document.getElementById('icon-sun')!;
-    const moonEl = document.getElementById('icon-moon')!;
-
-    function applyTheme(t: string) {
-      root.setAttribute('data-theme', t);
-      sunEl.style.display  = t === 'dark' ? 'block' : 'none';
-      moonEl.style.display = t === 'dark' ? 'none'  : 'block';
-    }
-    applyTheme(localStorage.getItem('theme') ??
-      (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
-    btn.addEventListener('click', () => {
-      const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-      applyTheme(next);
-      localStorage.setItem('theme', next);
-    });
-
-    // ── Canvas particle network ─────────────────────────────────────
-    const canvas = document.getElementById('hero-canvas') as HTMLCanvasElement;
+    // ── Hero: scroll-scrubbed image sequence ───────────────────────
+    // 120 pre-rendered frames in /public/seq — scroll position picks
+    // the frame, so the camera flight is fully reversible.
+    const FRAMES = 120;
+    const canvas = document.getElementById('seq-canvas') as HTMLCanvasElement;
     const ctx    = canvas.getContext('2d')!;
-    const hero   = document.getElementById('hero')!;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const seqImages: HTMLImageElement[] = [];
+    const seqLoaded: boolean[] = [];
+    let currentFrame = 0;
+
+    function loadFrame(i: number) {
+      const img = new Image();
+      img.onload = () => {
+        seqLoaded[i] = true;
+        if (i === currentFrame) drawSeq(i);   // first paint as soon as frame 0 lands
+      };
+      img.src = `/seq/frame_${String(i).padStart(3, '0')}.jpg`;
+      seqImages[i] = img;
+    }
+    // frame 0 first for instant paint, rest stream in behind it
+    loadFrame(0);
+    for (let i = 1; i < FRAMES; i++) loadFrame(i);
+
+    // If the exact frame isn't decoded yet, draw the nearest one that is
+    function nearestLoaded(i: number): number {
+      if (seqLoaded[i]) return i;
+      for (let d = 1; d < FRAMES; d++) {
+        if (seqLoaded[i - d]) return i - d;
+        if (seqLoaded[i + d]) return i + d;
+      }
+      return -1;
+    }
+
+    // Cover-crop draw so any viewport ratio (incl. portrait) stays framed
+    function drawSeq(target: number) {
+      const i = nearestLoaded(target);
+      if (i < 0) return;
+      currentFrame = target;
+      const img = seqImages[i];
+      const cw = canvas.width, ch = canvas.height;
+      const scale = Math.max(cw / img.width, ch / img.height);
+      const w = img.width * scale, h = img.height * scale;
+      ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
+    }
 
     function resizeCanvas() {
-      canvas.width  = hero.offsetWidth;
-      canvas.height = hero.offsetHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width  = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
+      drawSeq(currentFrame);
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    const N = 65;
-    type P = { x:number; y:number; vx:number; vy:number; r:number };
-    let pts: P[] = [];
-    const mouse = { x: -9999, y: -9999 };
+    // Pin the hero for 3 viewport-heights and scrub frames + chapters.
+    // Reduced motion: no pin, static intro over frame 0.
+    if (!reduceMotion) {
+      const chapters = gsap.utils.toArray<HTMLElement>('.chapter');
+      const seqTl = gsap.timeline({
+        scrollTrigger: {
+          trigger: '#hero',
+          start: 'top top',
+          end: '+=300%',
+          pin: true,
+          scrub: true,
+          onUpdate: self => drawSeq(Math.round(self.progress * (FRAMES - 1))),
+        },
+      });
 
-    function spawnParticles() {
-      pts = Array.from({ length: N }, () => ({
-        x:  Math.random() * canvas.width,
-        y:  Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.22,
-        vy: (Math.random() - 0.5) * 0.22,
-        r:  Math.random() * 1.4 + 0.5,
-      }));
-    }
-    spawnParticles();
-    window.addEventListener('resize', spawnParticles);
-
-    canvas.addEventListener('mousemove', e => {
-      const r = canvas.getBoundingClientRect();
-      mouse.x = e.clientX - r.left;
-      mouse.y = e.clientY - r.top;
-    });
-    canvas.addEventListener('mouseleave', () => { mouse.x = mouse.y = -9999; });
-
-    function accentRgb() {
-      return root.getAttribute('data-theme') === 'light' ? '155,114,40' : '201,163,90';
-    }
-
-    let rafId: number;
-    function drawFrame() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const rgb = accentRgb();
-
-      for (let i = 0; i < pts.length; i++) {
-        const p = pts[i];
-
-        // Gentle mouse repulsion
-        const dx = p.x - mouse.x, dy = p.y - mouse.y;
-        const d2 = dx*dx + dy*dy;
-        if (d2 < 10000) {           // within 100px
-          const d = Math.sqrt(d2);
-          p.x += dx / d * 1.1;
-          p.y += dy / d * 1.1;
-        }
-
-        // Draw lines to nearby neighbours
-        for (let j = i + 1; j < pts.length; j++) {
-          const q   = pts[j];
-          const ldx = p.x - q.x, ldy = p.y - q.y;
-          const ld2 = ldx*ldx + ldy*ldy;
-          if (ld2 < 14400) {        // within 120px
-            const alpha = (1 - ld2 / 14400) * 0.18;
-            ctx.beginPath();
-            ctx.strokeStyle = `rgba(${rgb},${alpha})`;
-            ctx.lineWidth = 0.6;
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(q.x, q.y);
-            ctx.stroke();
-          }
-        }
-
-        // Draw dot
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${rgb},0.42)`;
-        ctx.fill();
-
-        // Move + wrap
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.x < 0) p.x = canvas.width;
-        if (p.x > canvas.width)  p.x = 0;
-        if (p.y < 0) p.y = canvas.height;
-        if (p.y > canvas.height) p.y = 0;
+      // [chapter, fade-in at, fade-out at] as fractions of the pin
+      const windows: [HTMLElement, number, number][] = [
+        [chapters[0], 0.00, 0.12],
+        [chapters[1], 0.16, 0.40],
+        [chapters[2], 0.48, 0.70],
+        [chapters[3], 0.78, 1.01],   // gold chapter holds to the end
+      ];
+      // autoAlpha = opacity + visibility, so hidden chapters can't catch clicks
+      for (const [el, a, b] of windows) {
+        if (a > 0) seqTl.fromTo(el, { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 0.06 }, a);
+        if (b <= 1) seqTl.to(el, { autoAlpha: 0, y: -40, duration: 0.06 }, b - 0.06);
       }
-      rafId = requestAnimationFrame(drawFrame);
-    }
-
-    // Kill canvas animation when hero scrolls out of view (saves CPU)
-    const heroObs = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting) {
-        if (!rafId) rafId = requestAnimationFrame(drawFrame);
-      } else {
-        cancelAnimationFrame(rafId);
-        rafId = 0;
-      }
-    }, { threshold: 0.01 });
-    heroObs.observe(hero);
-
-    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      rafId = requestAnimationFrame(drawFrame);
     }
 
     // ── Hero: SplitType + GSAP timeline ────────────────────────────
@@ -1433,7 +1499,8 @@ const stack = [
     // Set initial y offsets for hero elements
     gsap.set(['.hero-label', '.hero-role', '.hero-tagline', '.hero-facts', '.ctas'],
       { y: 12 });
-    gsap.set('.hero-name-wrap', { opacity: 1 }); // wrapper visible; chars start at y:55
+    // wrapper AND h1 visible — the reveal is carried by the chars alone
+    gsap.set(['.hero-name-wrap', '.hero-name'], { opacity: 1 });
 
     // ── ScrollTrigger: section headings ────────────────────────────
     gsap.utils.toArray<HTMLElement>('.eyebrow, .section-heading, .section-sub').forEach(el => {
