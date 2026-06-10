@@ -34,6 +34,11 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response('Bad JSON', { status: 400 });
   }
 
+  // JSON.parse can return null or a primitive — reject anything that isn't an object.
+  if (typeof body !== 'object' || body === null) {
+    return new Response('Invalid body', { status: 400 });
+  }
+
   // Validate path: required, must start with '/', length within bounds.
   const path = body.path;
   if (
