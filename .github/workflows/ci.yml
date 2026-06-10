@@ -1,0 +1,45 @@
+# Mechanical merge gate: nothing reaches main unless this is green.
+# Branch protection requires the "checks" job; "lighthouse" is informational
+# until it proves stable on the heavy scrollytelling pages.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Type and syntax check
+        run: npx astro check
+      - name: Production build
+        run: npm run build
+      - name: Confidential leak scan
+        run: npm run check-leaks
+      - name: Track API contract (rejection paths; happy path needs secrets, skipped here)
+        run: node scripts/verify-track-api.mjs
+        env:
+          CI: 'true'
+      - name: UI anti-pattern report (informational, never fails the build)
+        run: node .claude/skills/impeccable/scripts/detect.mjs src/ || true
+
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Lighthouse with performance budgets (LCP < 2.5s, JS < 300 KB)
+        run: npx --yes @lhci/cli@0.14.x autorun

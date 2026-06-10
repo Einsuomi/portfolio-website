@@ -51,6 +51,18 @@ the active work spec is the relevant `specs/phase-*.md`.
 - Text always readable over any background. Hero communicates name + role + value within
   ~5 seconds, before any animation finishes.
 
+## Review loop (architect duty)
+
+- A PR may be opened only after the reviewer issues a clean APPROVE on the FINAL
+  commit. Every fix — coder- or architect-applied — goes back for re-review,
+  however small. "APPROVE WITH NITS" plus an unreviewed fix is not a clean APPROVE.
+- Reviewer dispatches are blind: spec reference + diff scope only. Never tell the
+  reviewer what the architect already verified, believes is fine, or expects —
+  pre-anchoring defeats the independent check.
+- CI (`.github/workflows/ci.yml`) is the mechanical gate: branch protection on
+  `main` requires the `checks` job, admins included. Tong merges only green PRs;
+  no agent ever bypasses or weakens the workflow or the protection rules.
+
 ## Dispatch logging (architect duty)
 
 One file per task: `logs/YYYY-MM-DD-<task>.md` (dated from the task's first dispatch;
