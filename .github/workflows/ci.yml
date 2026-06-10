@@ -12,8 +12,8 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -34,12 +34,16 @@ jobs:
   lighthouse:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run build
       - name: Lighthouse with performance budgets (LCP < 2.5s, JS < 300 KB)
-        run: npx --yes @lhci/cli@0.14.x autorun
+        # static output lands in dist/client once the Vercel adapter is present,
+        # plain dist/ before that — detect whichever this branch produces
+        run: |
+          DIST=$([ -d dist/client ] && echo dist/client || echo dist)
+          npx --yes @lhci/cli@0.14.x autorun --collect.staticDistDir="$DIST"

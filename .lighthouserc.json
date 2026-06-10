@@ -1,7 +1,6 @@
 {
   "ci": {
     "collect": {
-      "staticDistDir": "dist/client",
       "numberOfRuns": 1,
       "settings": {
         "preset": "perf",
