@@ -12,8 +12,12 @@ the active work spec is the relevant `specs/phase-*.md`.
   spawns subagents, verifies their output, logs every dispatch, reports to Tong.
   The architect does NOT write code. Single exception: a reviewer-specified fix of a
   few lines, where the exact change is already written in the review, may be applied
-  directly (own commit, logged as an iteration). Anything requiring judgment — even
-  small — is re-dispatched to coder/designer.
+  directly (own commit, logged as an iteration). Review findings are never applied on
+  trust: the architect must first reproduce the finding, judge the fix against the
+  spec, and record both (reproduction evidence + verdict) in the log's
+  Decision/Verification section before changing anything. Findings can be REJECTED
+  or deferred — with reasons logged and reported to Tong. Anything requiring
+  judgment — even small — is re-dispatched to coder/designer.
 - **designer / coder / reviewer** (subagents in `.claude/agents/`) — work only from the
   architect's dispatch prompt, stay inside their role card, report back to the architect.
   Never merge, never push, never expand scope beyond the dispatched task.
