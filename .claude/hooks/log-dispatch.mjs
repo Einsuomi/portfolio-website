@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-// PostToolUse hook: auto-logs every subagent dispatch (prompt + report)
-// to logs/YYYY-MM-DD-dispatches.md so no dispatch is ever missed.
-import { appendFileSync, mkdirSync } from 'node:fs';
+// PostToolUse hook: auto-logs every subagent dispatch (prompt + report) to a
+// per-task file logs/YYYY-MM-DD-<task>.md, one "## Iteration N" section per dispatch.
+// The task slug comes from a "TASK: <kebab-slug>" line at the top of the dispatch
+// prompt; dispatches without one land in -misc.md (architect should fix the prompt).
+import { appendFileSync, mkdirSync, readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 let raw = '';
@@ -15,10 +17,28 @@ process.stdin.on('end', () => {
   const dir = join(root, 'logs');
   mkdirSync(dir, { recursive: true });
 
-  const now = new Date();
-  const file = join(dir, `${now.toISOString().slice(0, 10)}-dispatches.md`);
-
   const input = data.tool_input || {};
+
+  // task slug from the dispatch prompt's "TASK: <slug>" line
+  const m = (input.prompt || '').match(/^TASK:\s*([a-z0-9][a-z0-9-]*)/im);
+  const task = m ? m[1].toLowerCase() : 'misc';
+
+  // a task may span days: append to its existing file if one exists,
+  // otherwise start a new file dated today
+  const now = new Date();
+  const existing = readdirSync(dir)
+    .filter((f) => f.endsWith(`-${task}.md`))
+    .sort();
+  const file = existing.length
+    ? join(dir, existing[existing.length - 1])
+    : join(dir, `${now.toISOString().slice(0, 10)}-${task}.md`);
+
+  // iteration number = existing iteration headers + 1
+  let iter = 1;
+  if (existsSync(file)) {
+    iter += (readFileSync(file, 'utf8').match(/^## Iteration \d+ /gm) || []).length;
+  }
+
   // the agent's final report comes back as message-style content blocks;
   // pull out the text and fall back to raw JSON for anything unexpected
   const resp = data.tool_response;
@@ -33,8 +53,9 @@ process.stdin.on('end', () => {
   }
   if (!report) report = JSON.stringify(resp, null, 2);
 
+  const agent = `${input.subagent_type || 'agent'}${input.model ? ` (${input.model})` : ''}`;
   const entry = [
-    `\n---\n## ${now.toISOString()} — ${input.subagent_type || 'agent'}${input.model ? ` (${input.model})` : ''} — ${input.description || ''}`,
+    `\n---\n## Iteration ${iter} — ${now.toISOString()} — ${agent} — ${input.description || ''}`,
     `\n### Dispatch prompt\n\n${input.prompt || '(none)'}`,
     `\n### Report\n\n${report}`,
     // empty section the architect fills in by hand — stays visibly blank if forgotten
