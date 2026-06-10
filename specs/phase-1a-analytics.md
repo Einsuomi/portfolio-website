@@ -1,6 +1,6 @@
 # Phase 1a — Analytics Day 1
 
-**Status: DRAFT — awaiting Tong's approval before dispatch.**
+**Status: APPROVED 2026-06-10 — implemented on `feature/phase-1a-analytics`.**
 
 ## Why
 
