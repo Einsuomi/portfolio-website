@@ -10,6 +10,10 @@ the active work spec is the relevant `specs/phase-*.md`.
 - **Architect** (main session, Fable) — the only role that talks to Tong and the only
   role with network access (WebSearch/WebFetch). Drafts specs, writes dispatch prompts,
   spawns subagents, verifies their output, logs every dispatch, reports to Tong.
+  The architect does NOT write code. Single exception: a reviewer-specified fix of a
+  few lines, where the exact change is already written in the review, may be applied
+  directly (own commit, logged as an iteration). Anything requiring judgment — even
+  small — is re-dispatched to coder/designer.
 - **designer / coder / reviewer** (subagents in `.claude/agents/`) — work only from the
   architect's dispatch prompt, stay inside their role card, report back to the architect.
   Never merge, never push, never expand scope beyond the dispatched task.
@@ -45,9 +49,21 @@ the active work spec is the relevant `specs/phase-*.md`.
 
 ## Dispatch logging (architect duty)
 
-Every subagent dispatch is logged to `logs/YYYY-MM-DD-<task>.md`: the dispatch prompt
-verbatim, the agent's report verbatim, the architect's decision, and the verification
-result. One file per task, append iterations. Local only — never committed.
+One file per task: `logs/YYYY-MM-DD-<task>.md` (dated from the task's first dispatch;
+later iterations append to the same file even across days). Local only — never committed.
+
+Mechanics: every dispatch prompt MUST start with a `TASK: <kebab-slug>` line — the
+`log-dispatch.mjs` hook reads it to route the entry to the right file and auto-appends
+a section per dispatch:
+
+    ## Iteration N — <ISO time> — <agent> — <description>
+    ### Dispatch prompt   (verbatim)
+    ### Report            (verbatim)
+    ### Decision / Verification   (left as "(pending)")
+
+The architect then fills Decision / Verification by hand: verdict (ACCEPTED /
+REJECTED / FIXED-BY-ARCHITECT), what was independently verified, and what was
+deferred. A dispatch without a TASK line lands in `-misc.md` — treat that as a bug.
 
 ## npm scripts
 
