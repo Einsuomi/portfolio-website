@@ -9,6 +9,7 @@
  * If this direction wins, it gets ported into index.astro.
  */
 import '@fontsource/anton/index.css';
+import TrackBeacon from '../components/TrackBeacon.astro';
 
 const FRAMES = 120;
 ---
@@ -217,6 +218,7 @@ const FRAMES = 120;
       .chapter:not(.intro) { display: none !important; }
     }
   </style>
+  <TrackBeacon />
 </head>
 
 <body>
