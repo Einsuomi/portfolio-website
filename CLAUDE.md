@@ -1,63 +1,64 @@
 # Portfolio Website — Project Instructions
 
-Recruiter-facing portfolio for Tong Nie, Data Engineer.
-The centerpiece is a chatbot grounded in the public subset of the Super Brain wiki.
-Replaces the old Wix site (`ethannie2020.wixsite.com/data-analytics`).
+Recruiter-facing and builder-showcase portfolio for Tong Nie, Data Engineer & Builder.
+The bet: a distinctive, obviously hand-crafted frontend combined with a real production
+data backend (Supabase, Databricks, LLM chatbot) — proof of both infrastructure depth
+and product taste. The goal is job-hunt competitiveness, not design awards: clearly
+above template grade, with the backend doing real work behind it.
 
-Full architecture rationale (18 locked decisions) lives outside this repo:
-- `~/.claude/plans/ok-i-need-to-buzzing-meerkat.md` — the primary reference
-- `~/Desktop/AI Memory/Super Brain/wiki/ideas/portfolio-website-rebuild.md` — summary
+Whole picture lives outside this repo:
+- `~/Desktop/AI Memory/Super Brain/ `
 
-Consult those for the WHY. This file is the HOW for working in this repo.
+## 1. Stack (Polyglot)
 
-## Stack (polyglot)
+- **Creative Frontend:** Astro 6 + Vercel Hobby. 
+  - **Visual Engine:** Three.js (WebGL), GSAP (ScrollTrigger), and Lenis (Smooth Scroll). 
+  - **Architecture:** A fixed full-screen 3D canvas rendering an abstract "Data Pipeline", with clean HTML content scrolling fluidly over it.
+  - **Interactivity:** The Chatbot is an isolated, highly interactive Astro Island (glassmorphism UI) floating above the canvas.
+- **Python Tooling:** `rendercv` (CV generation) and `dbt`/Databricks. Managed by **uv**. `uv init` is deferred.
+- **Chatbot Backend:** Claude Haiku 4.5 via a Vercel Edge function (`POST /api/chat`). Streamed response, rate-limited via Vercel KV.
+- **Analytics Hot Path:** Supabase Postgres (free tier).
+- **Analytics Cold Path:** Databricks Free Edition + dbt (Bronze → Silver → Gold).
 
-- **Frontend/site:** Astro 6 + Vercel Hobby. Managed by **npm**. Static-first;
-  the chatbot is the one interactive JS island. Dev server at `localhost:4321`.
-- **Python tooling:** `rendercv` (CV generation, §17) and `dbt`/Databricks
-  (analytics pipeline, §16). Managed by **uv** (never pip). `uv init` is
-  **deferred** — only set up when the first `.py` file is needed.
-- **Chatbot backend:** Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) via a
-  Vercel Edge function at `POST /api/chat`. Streamed response, rate-limited via
-  Vercel KV (4-layer cost protection).
-- **Analytics hot path:** Supabase Postgres (free tier, 90-day hot window).
-- **Analytics cold path:** Databricks Free Edition + dbt (Bronze → Silver → Gold).
+## 2. Design & Frontend Philosophy
 
-## Hard rules — confidential boundary
+- **Creative freedom:** No locked palette, typography, or technique — aesthetics are fully
+  open, guided by the `frontend-design` and `ui-ux-pro-max` skills. Aim: distinctive, senior
+  taste, EU polish — never a developer-portfolio template, never the generic AI/tech look.
+- **Hard constraint — performance (the silent killer):**
+  - Lazy-load any 3D/WebGL after first paint; capped pixel ratio (`Math.min(devicePixelRatio, 2)`).
+  - No `backdrop-filter` blur over a live-animating WebGL canvas on mobile — cheap glass
+    (translucent bg, no blur) instead.
+  - `prefers-reduced-motion` and WebGL-fail fallbacks: static poster, fully usable site.
+  - Budget: LCP < 2.5s on mid-range mobile, initial JS < ~300 KB gz, smooth scroll on a phone.
+- **Hard constraint — legibility:** text always readable over any background. The hero must
+  communicate name + role + value within ~5 seconds, before any animation finishes.
+- **Mobile first reality:** recruiters open links from LinkedIn/email on phones. Every visual
+  idea must degrade gracefully there or not ship.
+
+## 3. Hard Rules — Confidential Boundary
 
 This is a **public** GitHub repo. Confidential content must NEVER enter it.
 
-- Site content flows in only via `npm run sync` — the sync script reads
-  `~/Desktop/AI Memory/Super Brain/wiki/**/*.md`, **filters out every path
-  containing `/confidential/`**, and copies the rest into `src/content/`.
-  Never copy wiki files by hand.
+- Site content flows in only via `npm run sync` — reads `~/Desktop/AI Memory/Super Brain/wiki/**/*.md`, **filters out EVERY path containing `/confidential/`**, and copies the rest into `src/content/`.
 - Always run `git diff` after a sync and inspect what changed before committing.
-- Run `npm run check-leaks` (once built) before any push — greps `dist/` for
-  known confidential markers from a denylist file.
-- Never hardcode secrets. These variables must live only in `.env.local`
-  (gitignored) and in Vercel project env vars:
-  - `ANTHROPIC_API_KEY`
-  - `SUPABASE_URL`, `SUPABASE_ANON_KEY`
-  - `VERCEL_KV_REST_API_URL`, `VERCEL_KV_REST_API_TOKEN`
-  - `IP_HASH_SALT`
+- Run `npm run check-leaks` before any push.
+- **NEVER hardcode secrets.** Use `.env.local` (gitignored) and Vercel env vars:
+  - `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `VERCEL_KV_REST_API_URL`, `VERCEL_KV_REST_API_TOKEN`, `IP_HASH_SALT`
 
-## Chatbot grounding (enforced in the system prompt)
+## 4. Chatbot Grounding (Enforced via System Prompt)
 
-- The wiki is the **only** source of truth for anything personal about Tong —
-  experience, projects, skills, education, opinions, certifications, language level.
-- Model general knowledge is fine for explaining generic technical concepts
-  (what Spark is, what GDPR means, what Delta Lake does).
-- If asked something personal not in the wiki: respond "I don't have that detail —
-  you're welcome to ask Tong directly." Never guess or infer.
+- The wiki is the **ONLY** source of truth for anything personal about Tong (experience, projects, skills).
+- Model general knowledge is used ONLY to explain generic technical concepts (e.g., Spark, dbt, GDPR).
+- If asked personal details not in the wiki, the bot must respond: "I don't have that detail — you're welcome to ask Tong directly." Never hallucinate.
 
-## Git discipline
+## 5. Git Discipline
 
-- Never push to `main` directly. Always feature branch → PR, even when working solo.
+- Never push to `main` directly. Feature branch → PR.
 - Never stage or commit unless Tong explicitly asks. Tong runs `git add`/`git commit`.
-- Never force-push or `reset --hard` without explicit confirmation.
-- Branch naming: `feature/X` for code, `content/X` for wiki sync changes.
+- Branch naming: `feature/X` for code, `content/X` for wiki sync.
 
-## npm scripts (add here as they're built)
+## 6. npm Scripts
 
 | Command              | What it does |
 |----------------------|--------------|
@@ -65,35 +66,38 @@ This is a **public** GitHub repo. Confidential content must NEVER enter it.
 | `npm run build`      | Production build to `./dist/` |
 | `npm run preview`    | Preview the production build locally |
 | `npm run sync`       | Pull filtered public wiki into `src/content/` |
-| `npm run check-leaks`| Grep `dist/` for confidential markers (phase 2 CI gate) |
+| `npm run check-leaks`| Grep `dist/` for confidential markers |
 | `astro check`        | Type/syntax check |
 
-Python commands (added when uv is set up):
-- `uv run rendercv render src/content/cv.yaml` — regenerate `public/cv.pdf`
-- `uv run dbt ...` — run analytics dbt models
+## 7. Execution Roadmap (Strict Order)
 
-## Design
+- [x] Architecture & Astro scaffold created.
+- [x] `frontend-design` plugin installed.
+- [x] Initial GitHub repo synced.
+- **[CURRENT] Phase 1a: Analytics Day 1.** `/api/track` Edge function + Supabase `events`
+  table + page-view beacon. Ship with the very first deploy — every week of delay is a week
+  of traffic history lost. (`/stats` page comes later; collection starts now.)
+- **[CURRENT] Phase 1b: Visual Base.** UI iteration on `ui-v3` (Three.js/GSAP/Lenis as the
+  design demands). Cinematic scroll + hero reveal. Keep v4/v5 as fallback — 3D ships only
+  if it clearly beats them.
+- **[ ] Phase 2: Data Flow.** Pipeline visual driven by scroll; later, wire it to *real*
+  events from Supabase so the visual IS the production pipeline.
+- **[ ] Phase 3: Content Handoff.** Content sections + Chatbot UI shell.
+- **[ ] Phase 4: Chatbot Brain.** Edge function API + Vercel KV rate limit + wiki grounding.
+- **[ ] Phase 5: Stats & Pipeline Story.** `/stats` page reading live Supabase counts.
+- **[ ] Phase 6: Batch Pipeline.** Databricks + dbt + CV generation via `rendercv`.
 
-- Use the `frontend-design` skill for all UI/component work. It produces
-  distinctive, production-grade interfaces that avoid generic AI aesthetics.
-- The site aesthetic should signal: senior DE + architectural taste + EU/Lux polish.
-  Not a "developer portfolio template" look.
-- Add short, plain-language comments explaining what code does and why.
-- Match comment density and naming style of surrounding code.
-- Minimal changes — no unsolicited refactors, no speculative future-proofing.
-- No error handling for scenarios that can't happen.
+## 8. Content TODO (feeds the chatbot + /experience pages)
 
-## What's been done / build order
-
-- [x] Architecture: 18 decisions locked (see plan file above)
-- [x] Project folder created at this path
-- [x] Astro scaffold: `npm create astro@latest --template minimal` (Astro 6)
-- [x] `frontend-design` plugin installed (`claude-plugins-official`, project-scoped)
-- [x] `git init` + initial commit + public GitHub repo (`github.com/Einsuomi/portfolio-website`)
-- [ ] `.env.example` with key names (no values)
-- [ ] `src/content/` structure + sync script
-- [ ] Chatbot: `src/pages/api/chat.ts` Edge function
-- [ ] Analytics: `src/pages/api/track.ts` + Supabase schema
-- [ ] `/stats` page (live counts from Supabase, then Databricks pipeline in weeks 2–6)
-- [ ] CV pipeline: `rendercv` + `public/cv.pdf` + `/cv` route
-- [ ] Conversation brief: `src/pages/api/summarize.ts` + download UX
+- [ ] **Per-employer deep-dive sessions with Tong** (Neste, PostNord, Basware) → write wiki
+      work-history pages. The wiki currently has NO employer history — the chatbot cannot
+      answer "where has Tong worked?" until this lands. Tong's CV PDF (private, in
+      `~/Documents/2026 Job Hunting/`, never copied into this repo) is the interim drafting
+      reference only.
+- [ ] **cv.yaml redactions for the public site:** strip phone number (spam) and the
+      "willing to relocate to Luxembourg" line (employer-visibility rule) from the public
+      `cv.pdf`/`/cv` route — the full version stays for direct recruiter sends.
+- [ ] **Homepage chapter copy:** structure approved 2026-06-10 (hero manifesto → Neste →
+      PostNord → Basware → projects-as-posters → case-study essays → chatbot finale, with
+      footer colophon). No education chapter — degree + certifications live on /experience,
+      the CV, and in chatbot grounding. Two lines per chapter; iterate drafts with Tong.
