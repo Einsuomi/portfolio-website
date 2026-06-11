@@ -13,6 +13,9 @@ logs/
 # design reference material — local only, third-party copyrighted content (public repo)
 reference/
 
+# impeccable live-mode tool state
+.impeccable/
+
 # logs
 npm-debug.log*
 yarn-debug.log*
