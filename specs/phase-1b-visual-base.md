@@ -1,6 +1,7 @@
 # Phase 1b — Visual Base: Dark & Light Versions
 
-**Status: DRAFT — awaiting Tong's approval.**
+**Status: APPROVED 2026-06-11** (Tong; amendments: comparison routes are `/dark` +
+`/light`, LCP hard gate scoped to the final merged homepage — see below).
 
 ## Why
 
@@ -39,9 +40,11 @@ essays → chatbot finale → footer):
 
 ### Routes during comparison
 
-- Dark: `/` (iterate v3 in place on the feature branch).
-- Light: `/light` (temporary comparison route; whichever direction wins — or the
-  combination — becomes `/`, and the loser route is removed before merge to main).
+- Dark: `/dark` (starts from the current v3 `index.astro`; `/` stays untouched
+  during the comparison).
+- Light: `/light`.
+- Whichever direction wins — or the combination — becomes `/`; both comparison
+  routes are removed before merge to main.
 
 ### Effect vocabulary
 
@@ -59,9 +62,13 @@ The light version should not depend on the frame sequence at all.
 
 ## Hard constraints (CLAUDE.md design law applies in full)
 
-- **LCP < 2.5s on mid-range mobile for BOTH versions.** Current homepage LCP is 4.38s —
-  this phase must clear the debt, not add to it. First paint must not wait on the frame
-  sequence (lazy-load after first paint; poster frame inline).
+- **LCP < 2.5s on mid-range mobile is a hard gate for the final winning version at `/`
+  before the PR merges.** During iteration, `/dark` and `/light` are measured and
+  reported (informational) but don't block work. Current homepage LCP is 4.38s — debt
+  from the prototype eagerly loading the frame sequence; first paint must not wait on
+  frames (inline poster frame, lazy-load the sequence after first paint). If the winner
+  still misses 2.5s after these standard fixes, the architect reports numbers + options
+  to Tong for an explicit decision — the threshold is never silently relaxed.
 - Initial JS < ~300 KB gz. No new runtime dependencies without architect approval.
 - `prefers-reduced-motion`: chapters render as static stacked sections, site fully usable.
 - Mobile (portrait) works on a real phone for both versions, no horizontal overflow,
@@ -76,7 +83,8 @@ The light version should not depend on the frame sequence at all.
       alternating chrome, poster project cards — all present and smooth on desktop + phone.
 - [ ] Light version: distinct light grammar (not inverted dark), numbered sections,
       card-carried motion — reads clearly above template grade.
-- [ ] Lighthouse mobile on both routes: LCP < 2.5s, initial JS < 300 KB gz (CI lighthouse
+- [ ] Lighthouse mobile measured + reported for `/dark` and `/light` during iteration;
+      the final winning `/` passes LCP < 2.5s and initial JS < 300 KB gz (CI lighthouse
       job green, not just informational pass).
 - [ ] Reduced-motion and JS-disabled fallbacks verified on both versions.
 - [ ] `astro check`, `npm run build`, `npm run check-leaks` pass.
