@@ -15,6 +15,7 @@
  */
 import '@fontsource/anton/index.css';
 import { icons } from '../lib/lucide-icons.js';
+import TrackBeacon from '../components/TrackBeacon.astro';
 
 function icon(data: any[], size = 16, cls = ''): string {
   if (!data) return '';
@@ -522,6 +523,7 @@ const FRAMES = 120;
       .intro-kicker, .intro-name-wrap, .manifesto, .intro-ctas { opacity: 1 !important; }
     }
   </style>
+  <TrackBeacon />
 </head>
 
 <body>
