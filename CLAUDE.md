@@ -53,6 +53,14 @@ the active work spec is the relevant `specs/phase-*.md`.
 
 ## Review loop (architect duty)
 
+- **Presentation gate:** work is presented to Tong for judgment only after the full
+  loop has closed — designer/coder → architect verification → blind review → fixes →
+  re-review → clean APPROVE. Tong is the final gate and receives taste decisions,
+  not defect-hunting. Exception: WIP previews Tong explicitly requests, labeled WIP.
+- Mechanical failures (text overlap/clipping, overflow, console errors, contrast,
+  perf budgets) are gated by automated checks, not by human review or Tong's eyes.
+  New defect classes become new assertions in the existing verification harness —
+  never a new one-off script per bug.
 - A PR may be opened only after the reviewer issues a clean APPROVE on the FINAL
   commit. Every fix — coder- or architect-applied — goes back for re-review,
   however small. "APPROVE WITH NITS" plus an unreviewed fix is not a clean APPROVE.
