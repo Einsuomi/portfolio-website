@@ -60,6 +60,11 @@ const LinkedinData: [string, Record<string,string>][] = [
   <meta name="generator" content={Astro.generator} />
   <title>Tong Nie — Data Engineer</title>
 
+  <!-- Mark the document as JS-capable BEFORE first paint, so every
+       pre-reveal hidden state (.reveal / .reveal-word at opacity:0) can be
+       scoped under html.js — with JS off the whole page renders fully. -->
+  <script is:inline>document.documentElement.classList.add('js');</script>
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -205,7 +210,13 @@ const LinkedinData: [string, Record<string,string>][] = [
     /* ── career chapters (001–003) — display word + meta block ─────── */
     .career { border-top: 1px solid var(--line); }
     .career.paper2 { background: var(--paper-2); }
-    .career .display { font-size: clamp(3.4rem, 13vw, 11rem); }
+    /* Display word is sized to its OWN column, not the viewport, so the
+       longest word ("LOGISTICS", 9 glyphs) can't overrun its grid track and
+       clip at the edge on the flipped chapter. 12cqw of the container width
+       keeps it commanding while guaranteeing it fits; clamp bounds it on
+       very narrow / very wide columns. */
+    .career-word { container-type: inline-size; }
+    .career .display { font-size: clamp(3rem, 22cqw, 9rem); }
     .career-grid {
       display: grid; grid-template-columns: 1fr; gap: clamp(1.6rem, 4vh, 2.8rem);
       align-items: end;
@@ -375,9 +386,10 @@ const LinkedinData: [string, Record<string,string>][] = [
     .footer-bottom p { font-family: var(--mono); font-size: 0.6rem; color: var(--ink-3); letter-spacing: 0.03em; }
 
     /* ── reveal primitives (GSAP sets the final state; these are the
-          resting / pre-reveal states, neutralised under reduced-motion) ── */
-    .reveal { opacity: 0; transform: translateY(28px); }
-    .reveal-word { opacity: 0; transform: translateY(8%); }
+          resting / pre-reveal states). Gated on html.js so a no-JS load
+          shows every block; also neutralised under reduced-motion below. ── */
+    html.js .reveal { opacity: 0; transform: translateY(28px); }
+    html.js .reveal-word { opacity: 0; transform: translateY(8%); }
 
     /* ── responsive ────────────────────────────────────────────────── */
     @media (max-width: 760px) {
@@ -390,6 +402,16 @@ const LinkedinData: [string, Record<string,string>][] = [
       .hero-ctas { gap: 0.7rem; }
     }
 
+    /* the fixed mono chrome carries the wordmark over the hero; once the
+       reader scrolls into the chapters it must not sit over their text.
+       In the live (JS, motion-on) page a scroll fade hides it past the hero
+       (see script: html.chrome-tuck). In reduced-motion / no-JS — where no
+       scroll JS runs — it is unpinned to the document top instead, so it
+       greets at the hero and scrolls away cleanly. */
+    .chrome { transition: opacity 0.4s var(--ease); }
+    html.chrome-tuck .chrome { opacity: 0; pointer-events: none; }
+    html.chrome-tuck .chrome a { pointer-events: none; }
+
     /* reduced motion: no transforms, everything present; cards lose lift */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
@@ -400,7 +422,13 @@ const LinkedinData: [string, Record<string,string>][] = [
       .reveal, .reveal-word { opacity: 1 !important; transform: none !important; }
       .hero h1 .ln > span { transform: none !important; }
       .poster:hover, .essay:hover, .btn-solid:hover { transform: none; }
+      /* unpin chrome + index so a static document never scrolls under them */
+      .chrome { position: absolute; }
+      .index { position: absolute; top: auto; }
     }
+    /* same unpin for the no-JS document (keys off the class, not a media feature) */
+    html:not(.js) .chrome { position: absolute; }
+    html:not(.js) .index { position: absolute; top: auto; }
   </style>
   <TrackBeacon />
 </head>
@@ -767,6 +795,19 @@ const LinkedinData: [string, Record<string,string>][] = [
           trigger: section, start: 'top 55%', end: 'bottom 55%',
           onToggle: self => { if (self.isActive) indexCur.textContent = section.dataset.idx!; },
         });
+      });
+
+      // ── fixed-chrome legibility: the wordmark greets over the hero, then
+      //    fades out the moment the reader scrolls into the chapters so the
+      //    fixed bar never sits illegibly over chapter text. Reappears when
+      //    you return to the hero. (CSS handles the static/no-JS fallback.)
+      const hero = document.getElementById('hero')!;
+      const root = document.documentElement;
+      ScrollTrigger.create({
+        trigger: hero,
+        start: 'bottom top+=72',     // hero bottom reaches ~chrome height from top
+        onEnter:     () => root.classList.add('chrome-tuck'),    // into chapters
+        onLeaveBack: () => root.classList.remove('chrome-tuck'), // back at hero
       });
     }
     // reduced motion: CSS neutralises .reveal/.reveal-word; nothing to run.

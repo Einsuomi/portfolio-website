@@ -61,6 +61,12 @@ const FRAMES = 120;
   <meta name="generator" content={Astro.generator} />
   <title>Tong Nie — Data Engineer</title>
 
+  <!-- Mark the document as JS-capable BEFORE first paint. Every pre-reveal
+       hidden state (opacity:0 / visibility:hidden awaiting GSAP) is scoped
+       under html.js, so with JS disabled the whole film renders as a
+       readable static stack — same un-hiding the reduced-motion stack does. -->
+  <script is:inline>document.documentElement.classList.add('js');</script>
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -72,7 +78,7 @@ const FRAMES = 120;
       --border-dim:#1a1a24;
       --text:      #edeae2;
       --text-2:    #b5b0a8;
-      --text-3:    #6e6a65;
+      --text-3:    #8a857d;   /* muted mono chrome — 5.49:1 on --bg, 5.22:1 on --surface (≥4.5 law) */
       --accent:    #c9a35a;
       --accent-dim:#a08040;
       --accent-bg: rgba(201,163,90,0.07);
@@ -171,9 +177,10 @@ const FRAMES = 120;
       top: 38%;
       display: flex; flex-direction: column;
       padding: 0 clamp(2.5rem, 7vw, 7rem);
-      opacity: 0;
       will-change: transform, opacity;
     }
+    /* pre-reveal hidden — only when JS will animate it in (see html.js gate) */
+    html.js .word { opacity: 0; }
     .word .word-display {
       font-family: var(--display);
       font-weight: 400;
@@ -191,8 +198,9 @@ const FRAMES = 120;
       font-weight: 700; letter-spacing: 0.42em;
       color: var(--accent); text-transform: uppercase;
       margin-bottom: 0.9rem;
-      opacity: 0; will-change: transform, opacity;
+      will-change: transform, opacity;
     }
+    html.js .word .word-mark { opacity: 0; }
     /* alternating horizontal anchor per chapter */
     .word.anchor-left  { align-items: flex-start; text-align: left; }
     .word.anchor-right { align-items: flex-end;  text-align: right; }
@@ -204,8 +212,11 @@ const FRAMES = 120;
       display: flex; flex-direction: column; justify-content: flex-end;
       padding: clamp(2.5rem, 7vw, 7rem);
       pointer-events: none;
-      opacity: 0;
     }
+    /* pre-reveal hidden states — gated on JS so a no-JS load shows every
+       chapter; with JS the GSAP timeline fades them in/out per beat */
+    html.js .chapter { opacity: 0; }
+    html.js .chapter:not(.intro) { visibility: hidden; }
     /* readability scrim — type must stay legible over any frame */
     .chapter::before {
       content: '';
@@ -213,8 +224,6 @@ const FRAMES = 120;
       background: linear-gradient(to top,
         rgba(7,7,10,0.9) 0%, rgba(7,7,10,0.4) 38%, transparent 66%);
     }
-    .chapter:not(.intro) { visibility: hidden; }
-
     /* career-chapter meta block (kicker + body), corner-anchored ───── */
     .ch-kicker {
       font-family: var(--mono);
@@ -310,9 +319,10 @@ const FRAMES = 120;
       font-family: var(--mono);
       font-size: 0.66rem; line-height: 2.1; letter-spacing: 0.22em;
       color: var(--text-2); text-transform: uppercase; text-align: right;
-      opacity: 0; will-change: transform, opacity;
+      will-change: transform, opacity;
       text-shadow: 0 1px 14px rgba(0,0,0,0.9);
     }
+    html.js .hero-chip { opacity: 0; }
     .hero-chip b { color: var(--accent); font-weight: 700; }
 
     .intro-ctas { display: flex; gap: 1rem; margin-top: 2.2rem; flex-wrap: wrap; align-items: center; }
@@ -345,8 +355,9 @@ const FRAMES = 120;
     .scroll-nudge:hover { color: var(--text); }
     @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
 
-    /* GSAP owns the intro entrance — start hidden to avoid the flash */
-    .intro-kicker, .intro-ctas, .hero-chip { opacity: 0; }
+    /* GSAP owns the intro entrance — start hidden to avoid the flash, but
+       only when JS is present (no-JS keeps kicker / CTAs / chip visible) */
+    html.js .intro-kicker, html.js .intro-ctas, html.js .hero-chip { opacity: 0; }
 
     /* ── 04 BUILDS — compact poster row inside the chapter ─────────── */
     .poster-row {
@@ -449,10 +460,13 @@ const FRAMES = 120;
       padding: 0;
       font-size: clamp(3rem, 9vw, 8rem);
       line-height: 1.02;
+      /* clear the tall display line-box so the sub below never tucks under
+         the descenders of "Interview it." */
+      margin-bottom: clamp(2rem, 4vh, 3rem);
     }
     .talk-line em { font-style: normal; color: var(--accent); }
     .chapter.finale .ch-sub {
-      margin: 1.3rem auto 2.4rem;
+      margin: 0 auto 2.4rem;
       max-width: 52ch;
     }
     .ask-bar {
@@ -491,8 +505,9 @@ const FRAMES = 120;
       letter-spacing: 0.04em; pointer-events: auto;
       text-shadow: 0 1px 14px rgba(0,0,0,0.9);
     }
-    .chat-note a { color: var(--accent); text-decoration: none; }
-    .chat-note a:hover { text-decoration: underline; }
+    /* in-prose link: underlined so it's distinguishable beyond colour (a11y law) */
+    .chat-note a { color: var(--accent); text-decoration: underline; text-underline-offset: 0.18em; }
+    .chat-note a:hover { text-decoration-thickness: 2px; }
 
     /* ── FOOTER — the only thing after the film ────────────────────── */
     footer { border-top: 1px solid var(--border); padding: 2.75rem 0; position: relative; z-index: 9; background: var(--bg); }
@@ -550,14 +565,22 @@ const FRAMES = 120;
       .word { top: 42%; }
     }
 
-    /* reduced motion: no pin, no canvas — chapters stack as readable
-       static sections; the word layer is folded back INTO each chapter */
+    /* ── STATIC STACK fallback ──────────────────────────────────────────
+       Used in TWO cases that share the exact same layout:
+         (a) prefers-reduced-motion — the user opted out of motion;
+         (b) no JS (html:not(.js)) — GSAP never runs, so the pinned film
+             can't play; the chapters must stack as a readable document.
+       In both, the pinned stage unpins, the canvas/word-layer drop out,
+       and every chapter becomes a normal-flow section with its static
+       word + all copy simply present. */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
       }
+    }
+    @media (prefers-reduced-motion: reduce) {
       .grain, .rail, .bar, .wordstage, .caret { display: none; }
       .stage { height: auto; overflow: visible; }
       .stage canvas { display: none; }
@@ -570,15 +593,46 @@ const FRAMES = 120;
         border-top: 1px solid var(--border);
       }
       .chapter::before { display: none; }
-      /* static fallback word printed inside each chapter (hidden when the
-         word layer animates; shown here) */
       .ch-staticword { display: block !important; }
       .ch-credits { position: static; text-align: left; margin-top: 1.2rem; }
       .hero-chip { position: static; display: block; text-align: left; margin-top: 1.4rem; opacity: 1 !important; }
       .intro-kicker, .manifesto, .intro-ctas { opacity: 1 !important; }
       .chapter.career.right { align-items: flex-start; text-align: left; }
       .chapter.career.right .par, .chapter.career.right .ch-copy { text-align: left; margin-left: 0; }
+      /* unpin the HUD so the static document never scrolls under it */
+      .hud-bar { position: absolute; }
     }
+    /* no-JS branch of the same static stack (cannot live in the media query
+       above because it keys off the .js class, not a media feature) */
+    html:not(.js) .grain,
+    html:not(.js) .rail,
+    html:not(.js) .bar,
+    html:not(.js) .wordstage,
+    html:not(.js) .caret { display: none; }
+    html:not(.js) .stage { height: auto; overflow: visible; }
+    html:not(.js) .stage canvas { display: none; }
+    html:not(.js) .chapter,
+    html:not(.js) .chapter:not(.intro) {
+      position: relative; inset: auto;
+      opacity: 1 !important; visibility: visible !important;
+      display: flex !important;
+      min-height: 0;
+      padding: 4rem var(--px) 4rem;
+      border-top: 1px solid var(--border);
+    }
+    html:not(.js) .chapter::before { display: none; }
+    html:not(.js) .ch-staticword { display: block !important; }
+    html:not(.js) .ch-credits { position: static; text-align: left; margin-top: 1.2rem; }
+    html:not(.js) .hero-chip { position: static; display: block; text-align: left; margin-top: 1.4rem; opacity: 1 !important; }
+    html:not(.js) .intro-kicker,
+    html:not(.js) .manifesto,
+    html:not(.js) .intro-ctas { opacity: 1 !important; }
+    html:not(.js) .chapter.career.right { align-items: flex-start; text-align: left; }
+    html:not(.js) .chapter.career.right .par,
+    html:not(.js) .chapter.career.right .ch-copy { text-align: left; margin-left: 0; }
+    /* the fixed HUD over a static document would overlap content — pin it
+       to the top of the flow instead so nothing scrolls illegibly under it */
+    html:not(.js) .hud-bar { position: absolute; }
 
     /* the in-chapter static word is hidden by default (the animated word
        layer carries it); reduced-motion turns it back on above */
@@ -634,7 +688,7 @@ const FRAMES = 120;
       <!-- WORD LAYER — travelling giant display words (one per beat).
            Hidden from a11y tree: the same words live inside each chapter
            as real headings / static-word fallbacks below. -->
-      <div class="wordstage" id="wordstage" aria-hidden="true">
+      <div class="wordstage" id="wordstage" data-overlap-ok aria-hidden="true">
         <div class="word anchor-left"  data-word="0"><span class="word-mark">Chapter 01 · 2023</span><span class="word-display">Energy</span></div>
         <div class="word anchor-right" data-word="1"><span class="word-mark">Chapter 02 · 2023–26</span><span class="word-display">Logistics</span></div>
         <div class="word anchor-left"  data-word="2"><span class="word-mark">Chapter 03 · Now</span><span class="word-display">Scale</span></div>
