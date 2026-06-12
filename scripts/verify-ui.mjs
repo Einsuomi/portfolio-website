@@ -424,6 +424,14 @@ async function runPass({ browser, baseUrl, axeJs, route, vp, mode }) {
   });
   const page = await ctx.newPage();
 
+  // Stub out the analytics endpoint so a missing/broken Supabase connection
+  // in dev doesn't cascade into console errors, failed-request findings, or
+  // Vite's error overlay poisoning the axe run. /api/track has its own
+  // contract tests in scripts/verify-track-api.mjs — not our job here.
+  await page.route('**/api/track', route =>
+    route.fulfill({ status: 204, body: '' })
+  );
+
   // Capture console errors and failed/non-2xx requests for this visit.
   // Filter out Vite dev-server internal URLs — these only exist in dev
   // mode and will not appear in production builds.
