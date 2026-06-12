@@ -11,7 +11,8 @@
     "preview": "astro preview",
     "astro": "astro",
     "sync": "node scripts/sync-from-super-brain.mjs",
-    "check-leaks": "grep -r --include='*.html' --include='*.js' -l -f scripts/leak-denylist.txt dist/ && echo 'LEAK FOUND — review above' && exit 1 || echo 'No leaks found.'"
+    "check-leaks": "grep -r --include='*.html' --include='*.js' -l -f scripts/leak-denylist.txt dist/ && echo 'LEAK FOUND — review above' && exit 1 || echo 'No leaks found.'",
+    "verify-ui": "node scripts/verify-ui.mjs"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.9",
@@ -25,6 +26,8 @@
     "typescript": "^6.0.3"
   },
   "devDependencies": {
-    "canvas": "^3.2.3"
+    "axe-core": "^4.12.1",
+    "canvas": "^3.2.3",
+    "playwright": "^1.60.0"
   }
 }
