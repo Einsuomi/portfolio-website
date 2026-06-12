@@ -1,0 +1,777 @@
+---
+/**
+ * Home page — LIGHT treatment (Phase 1b).
+ *
+ * The light projection of the SAME story as dark.astro — identical chapter
+ * structure and copy — but its OWN grammar, distilled from the Anton
+ * Skvortsov reference (antonskvor.webflow.io): near-white surfaces, oversized
+ * black display type, generous whitespace, numbered sections (001/002…) as
+ * quiet mono chrome, and motion carried by media / poster cards rather than a
+ * full-bleed background scene.
+ *
+ *  - The page scrolls NORMALLY (Lenis inertia only). No pinned stage, no
+ *    canvas, no frame sequence — each chapter is a real <section> with its
+ *    own scroll rhythm.
+ *  - Numbered sections are a single deliberate narrative sequence (001→007),
+ *    not per-section eyebrow scaffolding: consistent placement, mono type.
+ *  - Two full-BLACK contrast bands act as film cuts where the story earns
+ *    them: THE PROOF (the work) and the TALK finale. At most these two.
+ *  - Motion attention goes to the poster / chapter visuals: scroll reveals,
+ *    hover lift, and a restrained parallax drift on the giant display words.
+ *    Section entrances are varied, not a uniform fade-up reflex.
+ *
+ * Legibility is law: body text sits on white/near-white at ≥4.5:1; on the
+ * black cut bands the type inverts. With reduced motion or JS off, every line
+ * is simply present and the whole document is readable as a static stack.
+ */
+import '@fontsource/anton/index.css';
+import { icons } from '../lib/lucide-icons.js';
+import TrackBeacon from '../components/TrackBeacon.astro';
+
+function icon(data: any[], size = 16, cls = ''): string {
+  if (!data) return '';
+  const inner = (data as [string, Record<string,string>][])
+    .map(([tag, attrs]) =>
+      `<${tag} ${Object.entries(attrs).map(([k,v]) => `${k}="${v}"`).join(' ')}/>`
+    ).join('');
+  const c = cls ? ` class="${cls}"` : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${c} aria-hidden="true">${inner}</svg>`;
+}
+
+const GithubData: [string, Record<string,string>][] = [
+  ["path",{"d":"M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"}],
+  ["path",{"d":"M9 18c-4.51 2-5-2-7-2"}],
+];
+const LinkedinData: [string, Record<string,string>][] = [
+  ["path",{"d":"M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"}],
+  ["rect",{"width":"4","height":"12","x":"2","y":"9"}],
+  ["circle",{"cx":"4","cy":"4","r":"2"}],
+];
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" href="/favicon.ico" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Tong Nie — Data Engineer. Three industries, one craft. An engineer who moves data by day; a builder who teaches it to speak by night." />
+  <meta name="generator" content={Astro.generator} />
+  <title>Tong Nie — Data Engineer</title>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* near-white surfaces, true off-white — no cream / sand / beige */
+      --paper:     #ffffff;
+      --paper-2:   #fafafa;
+      --paper-3:   #f4f4f4;
+      --ink:       #0a0a0a;   /* display + body on light: ~20:1 */
+      --ink-2:     #3a3a3a;   /* secondary body on light: ~11:1 */
+      --ink-3:     #555555;   /* muted meta on light: ~7.4:1 (>4.5 law) */
+      --line:      #e4e4e4;
+      --line-2:    #d2d2d2;
+      /* inverted scale for the black cut bands */
+      --void:      #0a0a0a;
+      --void-paper:#f6f6f4;   /* type on black */
+      --void-2:    #b3b3b3;   /* muted on black: ~6.6:1 */
+      --void-line: #2a2a2a;
+      --accent:    #0a0a0a;   /* the "accent" in this grammar IS pure contrast */
+      --display:   'Anton','Arial Narrow',sans-serif;
+      --mono:      ui-monospace,'Cascadia Code','JetBrains Mono','Fira Code',monospace;
+      --sans:      'Helvetica Neue',Helvetica,'Arial Nova',Arial,sans-serif;
+      --px:        clamp(1.5rem, 6vw, 7rem);
+      --ease:      cubic-bezier(0.22,1,0.36,1);
+    }
+
+    html { background: var(--paper); }
+    body {
+      background: var(--paper); color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    :focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+    a { color: inherit; }
+
+    /* ── fixed mono chrome: wordmark + section index, top corners ──── */
+    .chrome {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.15rem var(--px);
+      font-family: var(--mono);
+      font-size: 0.66rem; font-weight: 600; letter-spacing: 0.2em;
+      color: var(--ink); text-transform: uppercase;
+      mix-blend-mode: difference;            /* legible over white AND black cuts */
+      pointer-events: none;
+    }
+    .chrome a { pointer-events: auto; text-decoration: none; }
+    .chrome .dim { opacity: 0.55; }
+    /* mix-blend-difference inverts paper→black text; force light glyphs */
+    .chrome, .chrome a { color: #ffffff; }
+    .chrome-nav { display: flex; gap: 1.5rem; }
+    .chrome-nav a { position: relative; }
+    .chrome-nav a::after {
+      content: ''; position: absolute; left: 0; right: 100%; bottom: -3px;
+      height: 1px; background: currentColor; transition: right 0.3s var(--ease);
+    }
+    .chrome-nav a:hover::after { right: 0; }
+
+    /* running section index, fixed bottom-right (mono chrome) */
+    .index {
+      position: fixed; right: var(--px); bottom: 1.1rem; z-index: 50;
+      font-family: var(--mono);
+      font-size: 0.62rem; font-weight: 600; letter-spacing: 0.18em;
+      color: var(--ink); text-transform: uppercase;
+      mix-blend-mode: difference; color: #ffffff;
+      pointer-events: none;
+      display: flex; align-items: baseline; gap: 0.5ch;
+    }
+    .index .cur { font-size: 0.82rem; }
+    .index .dim { opacity: 0.55; }
+
+    /* ── shared section frame ──────────────────────────────────────── */
+    section { position: relative; padding: clamp(4.5rem, 11vh, 8.5rem) var(--px); }
+    /* the small mono number that opens each chapter (001/002…) */
+    .seq-mark {
+      font-family: var(--mono);
+      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.32em;
+      text-transform: uppercase; color: var(--ink-3);
+      display: flex; align-items: center; gap: 0.9rem;
+      margin-bottom: clamp(1.4rem, 4vh, 2.6rem);
+    }
+    .seq-mark .num { color: var(--ink); font-weight: 700; }
+    .seq-mark .bar { flex: 0 0 clamp(28px, 4vw, 54px); height: 1px; background: var(--line-2); }
+
+    /* the giant display word — the heavy lifter */
+    .display {
+      font-family: var(--display); font-weight: 400;
+      text-transform: uppercase; color: var(--ink);
+      line-height: 0.82; letter-spacing: 0.005em;
+      text-wrap: balance;
+      will-change: transform;
+    }
+
+    /* ── 000 · HERO ────────────────────────────────────────────────── */
+    .hero {
+      min-height: 100svh;
+      display: flex; flex-direction: column; justify-content: center;
+      padding-top: clamp(7rem, 17vh, 10rem); padding-bottom: clamp(3rem, 8vh, 5rem);
+    }
+    .hero-kicker {
+      font-family: var(--mono);
+      font-size: 0.72rem; font-weight: 600; letter-spacing: 0.34em;
+      text-transform: uppercase; color: var(--ink-3); margin-bottom: clamp(1.4rem, 4vh, 2.4rem);
+    }
+    .hero h1 {
+      font-family: var(--display); font-weight: 400;
+      font-size: clamp(2.5rem, 6.6vw, 6.8rem);
+      line-height: 0.94; letter-spacing: 0.003em;
+      text-transform: uppercase; color: var(--ink);
+      text-wrap: balance; max-width: 18ch;
+    }
+    .hero h1 .ln { display: block; overflow: hidden; }
+    .hero h1 .ln > span { display: inline-block; will-change: transform; }
+    .hero h1 .quiet { color: var(--ink-3); }   /* the third manifesto line, lighter */
+    .hero-sub {
+      margin-top: clamp(1.8rem, 5vh, 3rem);
+      max-width: 60ch;
+      font-size: clamp(1rem, 1.5vw, 1.2rem); line-height: 1.65; color: var(--ink-2);
+    }
+    .hero-ctas { display: flex; gap: 0.9rem; margin-top: clamp(2rem, 5vh, 2.8rem); flex-wrap: wrap; align-items: center; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.9rem 1.7rem;
+      font-family: var(--mono); font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none;
+      transition: background 0.25s, color 0.25s, transform 0.18s, border-color 0.25s;
+    }
+    .btn-solid { background: var(--ink); color: var(--paper); }
+    .btn-solid:hover { transform: translateY(-2px); background: #222; }
+    .btn-ghost { border: 1px solid var(--line-2); color: var(--ink); }
+    .btn-ghost:hover { border-color: var(--ink); }
+    .scroll-cue {
+      margin-top: clamp(2.4rem, 7vh, 4rem);
+      font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.2em;
+      text-transform: uppercase; color: var(--ink-3);
+      display: inline-flex; align-items: center; gap: 0.45rem;
+    }
+    .scroll-cue svg { animation: bob 2.6s ease-in-out infinite; }
+    @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+
+    /* ── career chapters (001–003) — display word + meta block ─────── */
+    .career { border-top: 1px solid var(--line); }
+    .career.paper2 { background: var(--paper-2); }
+    .career .display { font-size: clamp(3.4rem, 13vw, 11rem); }
+    .career-grid {
+      display: grid; grid-template-columns: 1fr; gap: clamp(1.6rem, 4vh, 2.8rem);
+      align-items: end;
+    }
+    @media (min-width: 880px) {
+      .career-grid { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 3.5rem; }
+      /* alternating placement: even chapters flip the meta to the left */
+      .career.flip .career-word { order: 2; }
+      .career.flip .career-meta { order: 1; }
+      .career.flip .seq-mark { justify-content: flex-end; }
+    }
+    .career-meta { max-width: 46ch; }
+    .career-dek {
+      font-family: var(--sans);
+      font-size: clamp(1.25rem, 2.4vw, 1.75rem); font-weight: 600;
+      line-height: 1.2; color: var(--ink); margin-bottom: 1rem; text-wrap: balance;
+    }
+    .career-role {
+      font-family: var(--mono); font-size: 0.7rem; font-weight: 600;
+      letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3);
+      margin-bottom: 1.2rem;
+    }
+    .career-copy { font-size: clamp(0.98rem, 1.3vw, 1.1rem); line-height: 1.7; color: var(--ink-2); max-width: 52ch; }
+    .career-tools {
+      margin-top: 1.6rem; padding-top: 1.1rem; border-top: 1px solid var(--line);
+      font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--ink-3); line-height: 1.9;
+    }
+    .career-tools b { display: block; color: var(--ink); font-weight: 700; font-size: 0.58rem; margin-bottom: 0.2rem; }
+
+    /* ════════ BLACK CONTRAST CUT — wraps THE PROOF ══════════════════ */
+    .cut { background: var(--void); color: var(--void-paper); }
+    .cut .seq-mark { color: var(--void-2); }
+    .cut .seq-mark .num { color: var(--void-paper); }
+    .cut .seq-mark .bar { background: var(--void-line); }
+    .cut .display { color: var(--void-paper); }
+
+    .proof-head { max-width: 60ch; margin-bottom: clamp(2.6rem, 6vh, 4rem); }
+    .proof-head .display { font-size: clamp(3rem, 11vw, 8rem); margin-bottom: 1.4rem; }
+    .proof-head p { font-size: clamp(1rem, 1.4vw, 1.18rem); line-height: 1.65; color: var(--void-2); max-width: 56ch; }
+
+    /* poster cards — the motion carriers */
+    .poster-grid {
+      display: grid; grid-template-columns: 1fr; gap: 1.4rem;
+    }
+    @media (min-width: 760px) { .poster-grid { grid-template-columns: repeat(3, 1fr); } }
+    .poster {
+      display: flex; flex-direction: column;
+      background: #111114; border: 1px solid var(--void-line);
+      text-decoration: none; color: var(--void-paper);
+      transition: transform 0.45s var(--ease), border-color 0.35s, box-shadow 0.45s;
+      will-change: transform;
+    }
+    .poster:hover {
+      transform: translateY(-8px);
+      border-color: #4a4a4a;
+      box-shadow: 0 26px 60px rgba(0,0,0,0.6);
+    }
+    .poster-art { aspect-ratio: 16 / 10; overflow: hidden; border-bottom: 1px solid var(--void-line); }
+    .poster-art svg { width: 100%; height: 100%; display: block; transition: transform 0.6s var(--ease); }
+    .poster:hover .poster-art svg { transform: scale(1.04); }
+    .poster-body { padding: 1.3rem 1.4rem 1.5rem; }
+    .poster-title {
+      font-family: var(--display); font-weight: 400; font-size: 1.4rem;
+      letter-spacing: 0.015em; text-transform: uppercase; line-height: 1.05;
+      margin-bottom: 0.5rem; color: var(--void-paper);
+    }
+    .poster-line { font-size: 0.85rem; line-height: 1.55; color: var(--void-2); margin-bottom: 0.9rem; }
+    .poster-credits {
+      font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.12em;
+      text-transform: uppercase; color: #a6a6a6;   /* ~5.7:1 on #111 — body-grade */
+    }
+    .proof-more {
+      margin-top: 2rem;
+      font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.06em; color: var(--void-2);
+    }
+    .proof-more a { color: var(--void-paper); text-decoration: none; border-bottom: 1px solid #4a4a4a; transition: border-color 0.2s; }
+    .proof-more a:hover { border-color: var(--void-paper); }
+
+    /* ── 005 · DECISIONS — essays on paper ─────────────────────────── */
+    .decisions { border-top: 1px solid var(--line); background: var(--paper-2); }
+    .decisions-head { max-width: 60ch; margin-bottom: clamp(2.4rem, 6vh, 3.6rem); }
+    .decisions-head .display { font-size: clamp(2.6rem, 8vw, 6rem); margin-bottom: 1.2rem; }
+    .decisions-head p { font-size: clamp(1rem, 1.4vw, 1.15rem); line-height: 1.65; color: var(--ink-2); max-width: 56ch; }
+    .essay-grid { display: grid; grid-template-columns: 1fr; gap: 1.2rem; }
+    @media (min-width: 760px) { .essay-grid { grid-template-columns: 1fr 1fr; } }
+    .essay {
+      display: flex; flex-direction: column; justify-content: space-between;
+      padding: clamp(1.6rem, 3vw, 2.4rem);
+      background: var(--paper); border: 1px solid var(--line);
+      text-decoration: none; color: var(--ink);
+      transition: transform 0.4s var(--ease), border-color 0.3s, box-shadow 0.4s;
+    }
+    .essay:hover { transform: translateY(-6px); border-color: var(--ink); box-shadow: 0 22px 48px rgba(0,0,0,0.1); }
+    .essay-idx { font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.2em; color: var(--ink-3); margin-bottom: 1.4rem; }
+    .essay-title {
+      font-family: var(--sans); font-weight: 700; font-size: clamp(1.3rem, 2.2vw, 1.75rem);
+      line-height: 1.18; letter-spacing: -0.01em; margin-bottom: 0.8rem; text-wrap: balance;
+    }
+    .essay-desc { font-size: 0.92rem; line-height: 1.6; color: var(--ink-2); max-width: 48ch; }
+    .essay-read {
+      margin-top: 1.6rem; font-family: var(--mono); font-size: 0.66rem; font-weight: 600;
+      letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink);
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      transition: gap 0.25s;
+    }
+    .essay:hover .essay-read { gap: 0.9rem; }
+
+    /* ════════ BLACK CONTRAST CUT — the TALK finale ═════════════════ */
+    .talk { background: var(--void); color: var(--void-paper); text-align: center; }
+    .talk-inner { max-width: 72ch; margin: 0 auto; }
+    .talk .seq-mark { justify-content: center; color: var(--void-2); }
+    .talk .seq-mark .num { color: var(--void-paper); }
+    .talk .seq-mark .bar { background: var(--void-line); }
+    .talk h2 {
+      font-family: var(--display); font-weight: 400;
+      font-size: clamp(2.8rem, 10vw, 8.5rem); line-height: 0.95;
+      text-transform: uppercase; color: var(--void-paper); text-wrap: balance;
+    }
+    .talk h2 .em { color: #8a8a8a; }
+    .talk-sub { margin: clamp(1.4rem, 4vh, 2.2rem) auto 0; max-width: 56ch; font-size: clamp(1rem, 1.4vw, 1.15rem); line-height: 1.65; color: var(--void-2); }
+    .ask-bar {
+      display: flex; align-items: center; gap: 1rem;
+      width: min(620px, 100%); margin: clamp(2rem, 5vh, 3rem) auto 0;
+      padding: 1.05rem 1.4rem;
+      border: 1px solid var(--void-line); background: #111114;
+      transition: border-color 0.3s;
+    }
+    .ask-bar:focus-within, .ask-bar:hover { border-color: #4a4a4a; }
+    .ask-input {
+      flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+      color: var(--void-2); font-family: var(--mono); font-size: 0.85rem; cursor: not-allowed;
+    }
+    .ask-input::placeholder { color: #6a6a6a; }
+    .ask-status {
+      display: flex; align-items: center; gap: 0.45rem;
+      font-family: var(--mono); font-size: 0.58rem; font-weight: 600; letter-spacing: 0.18em;
+      color: var(--void-paper); text-transform: uppercase; white-space: nowrap;
+    }
+    .badge-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--void-paper); animation: pulse 2.5s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity: 0.35; } 50% { opacity: 1; } }
+    .talk-note { margin-top: 1.4rem; font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.04em; color: var(--void-2); }
+    .talk-note a { color: var(--void-paper); text-decoration: none; border-bottom: 1px solid #4a4a4a; }
+    .talk-note a:hover { border-color: var(--void-paper); }
+
+    /* ── FOOTER ────────────────────────────────────────────────────── */
+    footer { background: var(--paper); border-top: 1px solid var(--line); padding: 3rem var(--px); }
+    .footer-inner {
+      max-width: 1280px; margin: 0 auto;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      flex-wrap: wrap; gap: 1.6rem;
+    }
+    .footer-name { font-family: var(--display); font-weight: 400; font-size: 1.1rem; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ink); margin-bottom: 0.2rem; }
+    .footer-role { font-family: var(--mono); font-size: 0.65rem; color: var(--ink-3); letter-spacing: 0.06em; }
+    .footer-links { display: flex; gap: 0.6rem; list-style: none; }
+    .footer-icon-link {
+      display: flex; align-items: center; justify-content: center;
+      width: 38px; height: 38px; color: var(--ink-3);
+      border: 1px solid var(--line-2); text-decoration: none;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .footer-icon-link:hover { color: var(--ink); border-color: var(--ink); }
+    .footer-bottom {
+      width: 100%; padding-top: 1.4rem; margin-top: 0.4rem; border-top: 1px solid var(--line);
+      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem;
+    }
+    .footer-bottom p { font-family: var(--mono); font-size: 0.6rem; color: var(--ink-3); letter-spacing: 0.03em; }
+
+    /* ── reveal primitives (GSAP sets the final state; these are the
+          resting / pre-reveal states, neutralised under reduced-motion) ── */
+    .reveal { opacity: 0; transform: translateY(28px); }
+    .reveal-word { opacity: 0; transform: translateY(8%); }
+
+    /* ── responsive ────────────────────────────────────────────────── */
+    @media (max-width: 760px) {
+      .chrome-nav { display: none; }
+      .career-tools { display: none; }       /* keep career chapters tight on phones */
+      .poster-art { aspect-ratio: 16 / 9; }
+    }
+    @media (max-width: 480px) {
+      .index { display: none; }
+      .hero-ctas { gap: 0.7rem; }
+    }
+
+    /* reduced motion: no transforms, everything present; cards lose lift */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      .reveal, .reveal-word { opacity: 1 !important; transform: none !important; }
+      .hero h1 .ln > span { transform: none !important; }
+      .poster:hover, .essay:hover, .btn-solid:hover { transform: none; }
+    }
+  </style>
+  <TrackBeacon />
+</head>
+
+<body>
+  <!-- fixed mono chrome — wordmark + nav, blends over white and black cuts -->
+  <header class="chrome">
+    <a href="/light"><span>Tong.Nie</span> <span class="dim">/ data engineer</span></a>
+    <nav class="chrome-nav">
+      <a href="#proof">Proof</a>
+      <a href="#decisions">Decisions</a>
+      <a href="#talk">Talk</a>
+      <a href="/cv">CV</a>
+    </nav>
+  </header>
+
+  <!-- running section index, bottom-right -->
+  <div class="index" id="index" aria-hidden="true">
+    <span class="cur">000</span><span class="dim">/ 007</span>
+  </div>
+
+  <main>
+
+    <!-- ═══ 000 · HERO ════════════════════════════════════════════════ -->
+    <section class="hero" id="hero" data-idx="000">
+      <p class="hero-kicker reveal">Tong Nie — Data Engineer &amp; Builder</p>
+      <h1>
+        <span class="ln"><span data-line>An engineer who</span></span>
+        <span class="ln"><span data-line>moves data by day.</span></span>
+        <span class="ln"><span data-line>A builder who teaches</span></span>
+        <span class="ln quiet"><span data-line>it to speak by night.</span></span>
+      </h1>
+      <p class="hero-sub reveal">
+        Three industries, one craft. Production pipelines on two clouds, BI that ships
+        through CI/CD — and a backend that turns this site into its own proof.
+      </p>
+      <div class="hero-ctas reveal">
+        <a class="btn btn-solid" href="#talk">Interview my CV <span set:html={icon(icons.ArrowRight, 13)} /></a>
+        <a class="btn btn-ghost" href="/cv">View CV</a>
+      </div>
+      <a class="scroll-cue reveal" href="#energy">scroll the story <span set:html={icon(icons.ArrowDown, 12)} /></a>
+    </section>
+
+    <!-- ═══ 001 · ENERGY — Neste ══════════════════════════════════════ -->
+    <section class="career" id="energy" data-idx="001">
+      <div class="career-grid">
+        <div class="career-word">
+          <p class="seq-mark reveal"><span class="num">001</span><span class="bar"></span>Energy · 2023</p>
+          <h2 class="display reveal-word">Energy</h2>
+        </div>
+        <div class="career-meta reveal">
+          <p class="career-dek">A city that runs on energy data.</p>
+          <p class="career-role">Neste · Data Analyst · 2023</p>
+          <p class="career-copy">
+            APIs into Snowflake, dashboards into decisions. The place that taught me what
+            “downstream” really means.
+          </p>
+          <p class="career-tools">
+            <b>Tools</b>
+            Azure · Snowflake · Agile Data Engine · Power BI
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 002 · LOGISTICS — PostNord (flipped placement) ════════════ -->
+    <section class="career flip paper2" id="logistics" data-idx="002">
+      <div class="career-grid">
+        <div class="career-word">
+          <p class="seq-mark reveal"><span class="num">002</span><span class="bar"></span>Logistics · 2023–26</p>
+          <h2 class="display reveal-word">Logistics</h2>
+        </div>
+        <div class="career-meta reveal">
+          <p class="career-dek">Where a decade of Excel became a platform.</p>
+          <p class="career-role">PostNord · Analytics Engineer · 2023–2026</p>
+          <p class="career-copy">
+            Built the enterprise reporting platform from zero. Replaced a decade of weekly
+            Excel with a three-hour latency.
+          </p>
+          <p class="career-tools">
+            <b>Tools</b>
+            Databricks · ADF · Power BI · Streaming
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 003 · SCALE — Basware ═════════════════════════════════════ -->
+    <section class="career" id="scale" data-idx="003">
+      <div class="career-grid">
+        <div class="career-word">
+          <p class="seq-mark reveal"><span class="num">003</span><span class="bar"></span>Scale · Now</p>
+          <h2 class="display reveal-word">Scale</h2>
+        </div>
+        <div class="career-meta reveal">
+          <p class="career-dek">One thousand pipelines, one standard.</p>
+          <p class="career-role">Basware · Data Engineer · Now</p>
+          <p class="career-copy">
+            One thousand pipelines, one standard. Building the templates other engineers
+            build with.
+          </p>
+          <p class="career-tools">
+            <b>Tools</b>
+            Python libraries · DAB templates · GitHub Actions · AWS
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 004 · THE PROOF — black contrast cut, poster cards ════════ -->
+    <section class="cut" id="proof" data-idx="004">
+      <div class="proof-head">
+        <p class="seq-mark reveal"><span class="num">004</span><span class="bar"></span>The Proof — real clients, real data</p>
+        <h2 class="display reveal-word">The Proof</h2>
+        <p class="reveal">Production pipelines on two clouds, and BI that ships through CI/CD. Public code, not slideware.</p>
+      </div>
+
+      <div class="poster-grid">
+        <!-- Fingrid — medallion poster -->
+        <a class="poster reveal" href="https://github.com/Einsuomi/Data_Engineering_Fingrid" target="_blank" rel="noopener">
+          <figure class="poster-art" aria-hidden="true">
+            <svg viewBox="0 0 600 375" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+              <rect width="600" height="375" fill="#0e0e11"/>
+              <rect x="50"  y="240" width="140" height="70" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.25)"/>
+              <text x="120" y="282" text-anchor="middle" fill="#9a9a9a" font-size="13" font-family="monospace">BRONZE</text>
+              <rect x="230" y="170" width="140" height="140" fill="rgba(255,255,255,0.09)" stroke="rgba(255,255,255,0.4)"/>
+              <text x="300" y="245" text-anchor="middle" fill="#cfcfcf" font-size="13" font-family="monospace">SILVER</text>
+              <rect x="410" y="95" width="140" height="215" fill="rgba(255,255,255,0.15)" stroke="#f0f0f0" stroke-width="1.4"/>
+              <text x="480" y="208" text-anchor="middle" fill="#f4f4f4" font-size="13" font-family="monospace">GOLD</text>
+              <text x="50" y="60" fill="#7a7a7a" font-size="11" font-family="monospace" letter-spacing="3">MEDALLION · DELTA LAKE</text>
+            </svg>
+          </figure>
+          <div class="poster-body">
+            <h3 class="poster-title">Fingrid Pipeline</h3>
+            <p class="poster-line">Metadata-driven lakehouse for Finland's power grid — onboard a dataset with a config row.</p>
+            <p class="poster-credits">Azure · Databricks · Delta Lake · Unity Catalog</p>
+          </div>
+        </a>
+
+        <!-- AWS DLT — IaC poster -->
+        <a class="poster reveal" href="https://github.com/Einsuomi/AWS-data-engineering-demo" target="_blank" rel="noopener">
+          <figure class="poster-art" aria-hidden="true">
+            <svg viewBox="0 0 600 375" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+              <rect width="600" height="375" fill="#0e0e11"/>
+              <g stroke="rgba(255,255,255,0.1)">
+                <line x1="50" y1="190" x2="550" y2="190"/><line x1="50" y1="250" x2="550" y2="250"/>
+                <line x1="200" y1="120" x2="200" y2="320"/><line x1="340" y1="120" x2="340" y2="320"/><line x1="460" y1="120" x2="460" y2="320"/>
+              </g>
+              <rect x="70"  y="205" width="110" height="36" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.3)"/>
+              <rect x="220" y="205" width="110" height="36" fill="rgba(255,255,255,0.11)" stroke="rgba(255,255,255,0.45)"/>
+              <rect x="370" y="205" width="110" height="36" fill="rgba(255,255,255,0.17)" stroke="#f0f0f0"/>
+              <text x="125" y="228" text-anchor="middle" fill="#9a9a9a" font-size="11" font-family="monospace">S3</text>
+              <text x="275" y="228" text-anchor="middle" fill="#cfcfcf" font-size="11" font-family="monospace">DLT</text>
+              <text x="425" y="228" text-anchor="middle" fill="#f4f4f4" font-size="11" font-family="monospace">PROD</text>
+              <text x="50" y="60" fill="#7a7a7a" font-size="11" font-family="monospace" letter-spacing="3">INFRASTRUCTURE AS CODE</text>
+            </svg>
+          </figure>
+          <div class="poster-body">
+            <h3 class="poster-title">AWS DLT Pipeline</h3>
+            <p class="poster-line">Same problem, different cloud — workspace provisioned by Terraform, ETL declared, not scripted.</p>
+            <p class="poster-credits">AWS S3 · Terraform · Delta Live Tables · DABs</p>
+          </div>
+        </a>
+
+        <!-- J&D — BI CI/CD poster -->
+        <a class="poster reveal" href="https://github.com/Einsuomi/J-D-Power-BI-CI-CD" target="_blank" rel="noopener">
+          <figure class="poster-art" aria-hidden="true">
+            <svg viewBox="0 0 600 375" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+              <rect width="600" height="375" fill="#0e0e11"/>
+              <rect x="50"  y="190" width="130" height="110" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.25)"/>
+              <text x="115" y="250" text-anchor="middle" fill="#9a9a9a" font-size="12" font-family="monospace">DEV</text>
+              <rect x="235" y="190" width="130" height="110" fill="rgba(255,255,255,0.09)" stroke="rgba(255,255,255,0.4)"/>
+              <text x="300" y="250" text-anchor="middle" fill="#cfcfcf" font-size="12" font-family="monospace">TEST</text>
+              <rect x="420" y="170" width="140" height="150" fill="rgba(255,255,255,0.15)" stroke="#f0f0f0" stroke-width="1.4"/>
+              <text x="490" y="250" text-anchor="middle" fill="#f4f4f4" font-size="12" font-family="monospace">PROD</text>
+              <line x1="180" y1="245" x2="235" y2="245" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+              <line x1="365" y1="245" x2="420" y2="245" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+              <text x="50" y="60" fill="#7a7a7a" font-size="11" font-family="monospace" letter-spacing="3">BI THROUGH CI/CD</text>
+            </svg>
+          </figure>
+          <div class="poster-body">
+            <h3 class="poster-title">Power BI CI/CD</h3>
+            <p class="poster-line">Enterprise BI with validation gates and multi-stage release — dashboards deployed like software.</p>
+            <p class="poster-credits">Power BI · Azure DevOps · Microsoft Fabric</p>
+          </div>
+        </a>
+      </div>
+
+      <p class="proof-more reveal">
+        + twelve Python data analysis &amp; ML notebooks on
+        <a href="https://github.com/Einsuomi" target="_blank" rel="noopener">GitHub</a>
+      </p>
+    </section>
+
+    <!-- ═══ 005 · DECISIONS — essays on paper ═════════════════════════ -->
+    <section class="decisions" id="decisions" data-idx="005">
+      <div class="decisions-head">
+        <p class="seq-mark reveal"><span class="num">005</span><span class="bar"></span>Decisions — how I decide</p>
+        <h2 class="display reveal-word">Written down</h2>
+        <p class="reveal">Engineering judgment is the part of the job that doesn't show up in a stack list.</p>
+      </div>
+      <div class="essay-grid">
+        <a href="/work/deleting-a-dependency" class="essay reveal">
+          <div>
+            <p class="essay-idx">D-01</p>
+            <p class="essay-title">Deleting a Dependency</p>
+            <p class="essay-desc">On knowing when the right move is removing something rather than building around it.</p>
+          </div>
+          <span class="essay-read">Read the case <span set:html={icon(icons.ArrowRight, 12)} /></span>
+        </a>
+        <a href="/work/trust-boundary-before-defensive-coding" class="essay reveal">
+          <div>
+            <p class="essay-idx">D-02</p>
+            <p class="essay-title">Trust Boundary Before Defensive Coding</p>
+            <p class="essay-desc">Why drawing the trust boundary first makes defensive code cheaper to write and easier to delete.</p>
+          </div>
+          <span class="essay-read">Read the case <span set:html={icon(icons.ArrowRight, 12)} /></span>
+        </a>
+      </div>
+    </section>
+
+    <!-- ═══ 006 · TALK — black contrast cut, the finale ═══════════════ -->
+    <section class="talk" id="talk" data-idx="006">
+      <div class="talk-inner">
+        <p class="seq-mark reveal"><span class="num">006</span><span class="bar"></span>Talk — the part that speaks</p>
+        <h2 class="reveal-word">Don't read my CV.<br><span class="em">Interview it.</span></h2>
+        <p class="talk-sub reveal">
+          A chatbot grounded in my public notes — experience, projects, approach, opinions.
+          It answers from what I've written, never from guesswork.
+        </p>
+        <div class="ask-bar reveal">
+          <input class="ask-input" type="text" placeholder="Ask about my pipelines, my stack, my decisions…" disabled aria-label="Chat input — coming soon" />
+          <span class="ask-status"><span class="badge-dot"></span>Soon</span>
+        </div>
+        <p class="talk-note reveal">
+          Opening soon — until then:
+          <a href="mailto:ethan.nie2020@gmail.com">ethan.nie2020@gmail.com</a>
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═══ FOOTER ════════════════════════════════════════════════════ -->
+  <footer>
+    <div class="footer-inner">
+      <div>
+        <p class="footer-name">Tong Nie</p>
+        <p class="footer-role">Data Engineer</p>
+      </div>
+      <ul class="footer-links">
+        <li>
+          <a href="https://github.com/Einsuomi" class="footer-icon-link" target="_blank" rel="noopener" aria-label="GitHub">
+            <span set:html={icon(GithubData, 16)} />
+          </a>
+        </li>
+        <li>
+          <a href="https://www.linkedin.com/in/tong-nie/" class="footer-icon-link" target="_blank" rel="noopener" aria-label="LinkedIn">
+            <span set:html={icon(LinkedinData, 16)} />
+          </a>
+        </li>
+        <li>
+          <a href="mailto:ethan.nie2020@gmail.com" class="footer-icon-link" aria-label="Email">
+            <span set:html={icon(icons.Mail, 16)} />
+          </a>
+        </li>
+        <li>
+          <a href="/cv" class="footer-icon-link" aria-label="CV">
+            <span set:html={icon(icons.ExternalLink, 16)} />
+          </a>
+        </li>
+      </ul>
+      <div class="footer-bottom">
+        <p>Anonymous usage data only — no cookies, no cross-site tracking.</p>
+        <p>Colophon: Astro · GSAP · Lenis — analytics pipeline (Supabase → Databricks → dbt) coming online.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SCRIPT — Lenis inertia scroll + GSAP scroll reveals. No canvas,
+       no pinned stage. Motion is carried by card reveals, the display-
+       word lift, and a restrained parallax drift; everything degrades
+       to a static, fully-readable document under reduced-motion / no-JS.
+  ═══════════════════════════════════════════════════════════════════ -->
+  <script>
+    import Lenis from 'lenis';
+    import { gsap } from 'gsap';
+    import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+    gsap.registerPlugin(ScrollTrigger);
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (!reduceMotion) {
+      // smooth inertia scroll (the page scrolls normally — no pin)
+      const lenis = new Lenis({ lerp: 0.1 });
+      (window as any).__lenis = lenis;
+      lenis.on('scroll', ScrollTrigger.update);
+      gsap.ticker.add(t => lenis.raf(t * 1000));
+      gsap.ticker.lagSmoothing(0);
+
+      // anchor links route through Lenis so the inertia stays consistent
+      document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', e => {
+          const id = a.getAttribute('href')!;
+          const el = document.querySelector(id);
+          if (!el) return;
+          e.preventDefault();
+          lenis.scrollTo(el as HTMLElement, { offset: 0, duration: 1.3 });
+        });
+      });
+
+      // ── HERO: the manifesto lines rise from their clipped masks.
+      //    Real text is already in the DOM — this only moves it, never gates it.
+      gsap.set('.hero h1 .ln > span', { yPercent: 110 });
+      gsap.to('.hero h1 .ln > span', {
+        yPercent: 0, duration: 1, stagger: 0.09, ease: 'power3.out', delay: 0.15,
+      });
+      gsap.set(['.hero-kicker', '.hero-sub', '.hero-ctas', '.scroll-cue'], { opacity: 0, y: 22 });
+      gsap.timeline({ delay: 0.1 })
+        .to('.hero-kicker', { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' })
+        .to('.hero-sub',   { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }, 0.8)
+        .to('.hero-ctas',  { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }, 0.95)
+        .to('.scroll-cue', { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }, 1.1);
+
+      // ── per-section reveals — VARIED, not a uniform fade-up reflex.
+      //    .reveal blocks rise + fade; .reveal-word (display words) lift on a
+      //    slightly longer, slower curve so the type leads each chapter.
+      gsap.utils.toArray<HTMLElement>('section:not(.hero)').forEach(section => {
+        const words = section.querySelectorAll<HTMLElement>('.reveal-word');
+        const blocks = section.querySelectorAll<HTMLElement>('.reveal');
+
+        if (words.length) {
+          gsap.fromTo(words,
+            { opacity: 0, yPercent: 14 },
+            { opacity: 1, yPercent: 0, duration: 1.1, ease: 'power3.out',
+              stagger: 0.08,
+              scrollTrigger: { trigger: section, start: 'top 78%', once: true } });
+        }
+        if (blocks.length) {
+          // poster / essay cards stagger as a group; meta blocks just settle in
+          gsap.fromTo(blocks,
+            { opacity: 0, y: 30 },
+            { opacity: 1, y: 0, duration: 0.85, ease: 'power2.out',
+              stagger: 0.1,
+              scrollTrigger: { trigger: section, start: 'top 72%', once: true } });
+        }
+      });
+
+      // ── restrained parallax: each giant display word drifts a little
+      //    slower than the scroll, so the type feels anchored a layer back.
+      gsap.utils.toArray<HTMLElement>('.career .display').forEach(word => {
+        gsap.fromTo(word, { yPercent: 6 }, {
+          yPercent: -6, ease: 'none',
+          scrollTrigger: { trigger: word.closest('section'), start: 'top bottom', end: 'bottom top', scrub: true },
+        });
+      });
+
+      // ── running section index, bottom-right — updates as chapters pass
+      const indexCur = document.querySelector<HTMLElement>('.index .cur')!;
+      gsap.utils.toArray<HTMLElement>('section[data-idx]').forEach(section => {
+        ScrollTrigger.create({
+          trigger: section, start: 'top 55%', end: 'bottom 55%',
+          onToggle: self => { if (self.isActive) indexCur.textContent = section.dataset.idx!; },
+        });
+      });
+    }
+    // reduced motion: CSS neutralises .reveal/.reveal-word; nothing to run.
+  </script>
+</body>
+</html>
+</content>
+</invoke>
