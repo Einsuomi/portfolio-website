@@ -51,6 +51,20 @@ the active work spec is the relevant `specs/phase-*.md`.
 - Text always readable over any background. Hero communicates name + role + value within
   ~5 seconds, before any animation finishes.
 
+## Design quality loop (architect duty — added after 2026-06-12 post-mortem)
+
+- **Reference artifacts, not reference prose.** Before any taste-driven dispatch, the
+  architect captures the actual reference into `reference/` (screenshots, frame
+  extractions, recordings) and the dispatch names the files. Designers must view them
+  and report a side-by-side self-comparison. Briefs carry NUMBERS (type ceilings,
+  spacing, visibility timings), never bare adjectives like "premium" or "oversized".
+- **Direction gate before full builds.** New visual directions ship as a hero-only
+  deliverable first; Tong judges the direction early (explicitly labeled taste preview —
+  the one exception to the presentation gate). Only an approved direction gets a full
+  build, which then runs the normal defect loop.
+- Verification must cover the LIVE page (animations on) and the cold-load first 5
+  seconds, not only settled/reduced-motion states.
+
 ## Review loop (architect duty)
 
 - **Presentation gate:** work is presented to Tong for judgment only after the full
