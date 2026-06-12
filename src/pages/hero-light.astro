@@ -161,14 +161,14 @@ function icon(data: any[], size = 16, cls = ''): string {
     .head {
       position: relative; z-index: 2;
       padding: clamp(1.6rem, 4vw, 3rem) clamp(1.5rem, 5vw, 4rem) 0;
-      max-width: 38ch;
+      max-width: 46rem;   /* widened so the manifesto sits one line/sentence */
     }
     .name {
       font-family: var(--grotesk);
       font-weight: 800;
-      font-size: clamp(2.5rem, 9vw, 5rem);   /* ≤ 5rem desktop / ≤ 2.75rem @390 */
-      line-height: 0.92;
-      letter-spacing: -0.03em;               /* tight, like the reference */
+      font-size: clamp(2.5rem, 9.5vw, 6rem);  /* ≤ 6rem desktop / ≤ 2.75rem @390 */
+      line-height: 0.9;
+      letter-spacing: -0.035em;               /* tight, like the reference */
       text-transform: uppercase;
       color: var(--ink);
     }
@@ -192,10 +192,10 @@ function icon(data: any[], size = 16, cls = ''): string {
       margin-top: clamp(1.3rem, 3vh, 2rem);
       font-family: var(--grotesk);
       font-weight: 400;
-      font-size: clamp(1rem, 1.3vw, 1.125rem);   /* body 16–18px */
-      line-height: 1.65;
+      font-size: clamp(1rem, 1.45vw, 1.25rem);   /* body 16–20px */
+      line-height: 1.6;
       color: var(--ink-soft);
-      max-width: 42ch;
+      max-width: 42rem;   /* each sentence sits on one line @1440 */
     }
     .manifesto .ln { display: block; }
     .manifesto .accent { color: var(--ink); font-weight: 600; }
