@@ -2,11 +2,12 @@
 /**
  * verify-ui.mjs — Generic UI quality harness for the portfolio site.
  *
- * Checks each route × viewport × scroll position for:
+ * Checks each route × viewport × mode (reduced-motion + live) for:
  *   - Text element bounding-box collisions (ignoring intentional overlaps)
  *   - Horizontal overflow
  *   - Console errors and failed network requests
  *   - axe-core accessibility violations (serious/critical only to stdout)
+ *   - Hero readability at t≈1s and t≈5s after navigation (live mode only)
  *
  * Usage:
  *   node scripts/verify-ui.mjs              # checks /, /dark, /light
@@ -25,6 +26,14 @@
  *   console errors) this is equivalent — the same DOM is produced either
  *   way. A build check is still required before opening a PR; this harness
  *   is complementary, not a substitute.
+ *
+ * Overlap exemption semantics (data-overlap-ok):
+ *   A collision between element A and element B is exempt ONLY when both A
+ *   and B share the SAME closest [data-overlap-ok] ancestor. An element
+ *   inside a [data-overlap-ok] subtree that collides with content OUTSIDE
+ *   that subtree is a real finding — the exemption is pair-scoped, not
+ *   element-scoped. This is stricter than v1, which exempted any element
+ *   that had any [data-overlap-ok] ancestor regardless of the other party.
  */
 
 import { chromium } from 'playwright';
@@ -48,13 +57,21 @@ const VIEWPORTS = [
 // Number of evenly-spaced scroll steps across the full page height
 const SCROLL_STEPS = 12;
 
-// Wait after page load before starting scroll walk — lets time-based
-// intro animations (the typed manifesto, intro fade-ins) finish so they
-// don't produce spurious collision hits
+// Wait after page load in reduced-motion mode before starting scroll walk.
+// Lets time-based intro animations (typed manifesto, intro fade-ins) finish
+// so they don't produce spurious collision hits.
 const POST_LOAD_WAIT_MS = 3000;
+
+// Wait after page load in live mode — long enough for intro animations to
+// run and begin settling before we start the collision walk.
+const POST_LOAD_WAIT_LIVE_MS = 4000;
 
 // Settle time after each scroll step (one rAF + buffer for GSAP ticks)
 const SCROLL_SETTLE_MS = 120;
+
+// Extra settle for GSAP scrub after each scroll step in live mode —
+// scroll-triggered animations may still be tweening after the rAF pair.
+const SCROLL_SETTLE_LIVE_MS = 300;
 
 // Collision threshold: two text boxes must overlap by MORE than this in
 // BOTH axes before it counts as a collision
@@ -62,6 +79,9 @@ const OVERLAP_THRESHOLD_PX = 8;
 
 // axe impact levels reported as findings (still all written to JSON)
 const AXE_CRITICAL_IMPACTS = new Set(['critical', 'serious']);
+
+// Hero check: minimum font-size (px) for a "visible headline" at t=1s / t=5s
+const HERO_MIN_FONT_SIZE_PX = 24;
 
 // ── helpers ──────────────────────────────────────────────────────────────
 
@@ -142,9 +162,12 @@ async function startServer() {
 /**
  * Walk all visible text-bearing elements and return pairs whose bounding
  * boxes intersect by more than the threshold in both axes.
- * Elements inside a [data-overlap-ok] ancestor are exempt — use that
- * attribute to mark intentional design overlaps (e.g. the dark route's
- * word-transition coexistence).
+ *
+ * Overlap exemption (pair-scoped): a collision between A and B is exempt
+ * ONLY when both elements share the SAME [data-overlap-ok] ancestor — i.e.
+ * their closest such ancestor is the exact same DOM node. An element inside
+ * a [data-overlap-ok] subtree that collides with content outside that subtree
+ * is a real finding. This is stricter than a subtree-wide exemption.
  */
 const findCollisions = ({ threshold }) => {
   // Gather all leaf-ish elements that carry visible text
@@ -172,14 +195,17 @@ const findCollisions = ({ threshold }) => {
   // Returns true if a is an ancestor or descendant of b
   const related = (a, b) => a.contains(b) || b.contains(a);
 
-  // Returns true if el or any ancestor carries data-overlap-ok
-  const overlapOk = (el) => {
+  /**
+   * Returns the closest [data-overlap-ok] ancestor of el (or null).
+   * Used to check if two elements share the SAME exemption container.
+   */
+  const overlapContainer = (el) => {
     let cur = el;
     while (cur && cur !== document.body) {
-      if (cur.hasAttribute && cur.hasAttribute('data-overlap-ok')) return true;
+      if (cur.hasAttribute && cur.hasAttribute('data-overlap-ok')) return cur;
       cur = cur.parentElement;
     }
-    return false;
+    return null;
   };
 
   // Short selector for readable reporting
@@ -207,11 +233,11 @@ const findCollisions = ({ threshold }) => {
     // Skip zero-size or fully off-screen elements
     if (!a.width || !a.height) continue;
     if (a.bottom < 0 || a.top > vh || a.right < 0 || a.left > vw) continue;
-    if (overlapOk(els[i])) continue;
+
+    const containerA = overlapContainer(els[i]);
 
     for (let j = i + 1; j < els.length; j++) {
       if (related(els[i], els[j])) continue;
-      if (overlapOk(els[j])) continue;
 
       const b = rects[j];
       if (!b.width || !b.height) continue;
@@ -221,6 +247,12 @@ const findCollisions = ({ threshold }) => {
       const oy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
 
       if (ox > threshold && oy > threshold) {
+        // Exempt only when both elements are inside the SAME data-overlap-ok
+        // container. If either has no container, or they have different ones,
+        // the collision is a real finding.
+        const containerB = overlapContainer(els[j]);
+        if (containerA && containerB && containerA === containerB) continue;
+
         results.push({
           a: shortSel(els[i]),
           b: shortSel(els[j]),
@@ -239,6 +271,266 @@ const findCollisions = ({ threshold }) => {
 const hasHorizOverflow = () =>
   document.documentElement.scrollWidth > document.documentElement.clientWidth + 1;
 
+/**
+ * Hero readability check — runs at scroll position 0 in live mode.
+ * Returns an object describing what was found at this snapshot moment.
+ * minFontSize: minimum px font-size to count as a "headline".
+ */
+const checkHeroReadability = ({ minFontSize }) => {
+  const vh = window.innerHeight;
+  const vw = window.innerWidth;
+
+  // Collect all visible text elements in the first viewport
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const largeTextEls = [];
+  const seen = new Set();
+  let node;
+
+  while ((node = walker.nextNode())) {
+    if (!node.textContent.trim()) continue;
+    const el = node.parentElement;
+    if (!el || seen.has(el)) continue;
+    if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE') continue;
+    seen.add(el);
+
+    const st = getComputedStyle(el);
+    if (st.display === 'none' || st.visibility === 'hidden') continue;
+    const opacity = parseFloat(st.opacity);
+    if (opacity <= 0.15) continue;
+
+    const rect = el.getBoundingClientRect();
+    // Must be within the first viewport
+    if (rect.bottom < 0 || rect.top > vh || rect.right < 0 || rect.left > vw) continue;
+    if (!rect.width || !rect.height) continue;
+
+    const fontSize = parseFloat(st.fontSize);
+    if (fontSize >= minFontSize) {
+      largeTextEls.push({
+        selector: (() => {
+          // Build a short selector for the element
+          const parts = [];
+          let cur = el;
+          while (cur && cur !== document.body) {
+            if (cur.id) { parts.unshift('#' + cur.id); break; }
+            let s = cur.tagName.toLowerCase();
+            if (cur.className) {
+              const cls = String(cur.className).trim().split(/\s+/).slice(0, 2).join('.');
+              if (cls) s += '.' + cls;
+            }
+            parts.unshift(s);
+            cur = cur.parentElement;
+          }
+          return parts.join(' > ');
+        })(),
+        text: el.textContent.trim().slice(0, 60),
+        fontSize,
+        opacity,
+      });
+    }
+  }
+
+  // Check data-hero-critical elements — must be visible and within viewport
+  const criticalEls = Array.from(document.querySelectorAll('[data-hero-critical]'));
+  const criticalResults = criticalEls.map(el => {
+    const st = getComputedStyle(el);
+    const opacity = parseFloat(st.opacity);
+    const rect = el.getBoundingClientRect();
+    const inViewport = rect.top < vh && rect.bottom > 0 && rect.left < vw && rect.right > 0;
+    return {
+      selector: el.id ? '#' + el.id : el.tagName.toLowerCase(),
+      opacity,
+      inViewport,
+      visible: opacity > 0.5 && inViewport,
+    };
+  });
+
+  return {
+    hasLargeText: largeTextEls.length > 0,
+    largeTextCount: largeTextEls.length,
+    firstLargeText: largeTextEls[0] || null,
+    criticalElements: criticalResults,
+    allCriticalVisible: criticalResults.length === 0 || criticalResults.every(e => e.visible),
+  };
+};
+
+// ── scroll walk (shared by both modes) ───────────────────────────────────
+
+/**
+ * Drive a scroll walk across the full page height, collecting collisions and
+ * overflow findings. Returns { collisions, horizOverflow }.
+ * settleLiveMs: extra settle time per step for GSAP scrub (0 in reduced mode).
+ */
+async function scrollWalk(page, vp, settleLiveMs) {
+  const scrollHeight = await page.evaluate(
+    () => document.documentElement.scrollHeight
+  );
+  const maxScroll = Math.max(0, scrollHeight - vp.height);
+
+  let horizOverflow = false;
+  const rawCollisions = [];
+
+  for (let step = 0; step <= SCROLL_STEPS; step++) {
+    const y = step === 0 ? 0 : Math.round((step / SCROLL_STEPS) * maxScroll);
+
+    // Drive Lenis virtual scroll when available (dark.astro exposes
+    // window.__lenis), else use native window.scrollTo
+    await page.evaluate(async (scrollY) => {
+      if (window.__lenis) {
+        window.__lenis.scrollTo(scrollY, { immediate: true });
+      } else {
+        window.scrollTo(0, scrollY);
+      }
+      // Wait two rAF ticks so GSAP/ScrollTrigger can process the update
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    }, y);
+
+    // Base settle + optional extra time for GSAP scrub in live mode
+    await page.waitForTimeout(SCROLL_SETTLE_MS + settleLiveMs);
+
+    if (await page.evaluate(hasHorizOverflow)) horizOverflow = true;
+
+    const cols = await page.evaluate(findCollisions, { threshold: OVERLAP_THRESHOLD_PX });
+    for (const c of cols) rawCollisions.push({ scrollY: y, ...c });
+  }
+
+  // Deduplicate: same element pair at multiple scroll positions counts once
+  const seenPairs = new Set();
+  const collisions = rawCollisions.filter(c => {
+    const key = `${c.a}|||${c.b}`;
+    if (seenPairs.has(key)) return false;
+    seenPairs.add(key);
+    return true;
+  });
+
+  return { collisions, horizOverflow };
+}
+
+// ── one route × viewport × mode pass ─────────────────────────────────────
+
+/**
+ * Run checks for a single combination of route, viewport, and animation mode.
+ * mode: 'reduced' | 'live'
+ * Returns a findings entry object.
+ */
+async function runPass({ browser, baseUrl, axeJs, route, vp, mode }) {
+  const isLive = mode === 'live';
+
+  // Each pass gets a fresh browser context (clean state)
+  const ctx = await browser.newContext({
+    viewport: { width: vp.width, height: vp.height },
+    // reduced: force prefers-reduced-motion to suppress time-based animations
+    // live:    no emulation — let animations run as a real user would see them
+    reducedMotion: isLive ? 'no-preference' : 'reduce',
+  });
+  const page = await ctx.newPage();
+
+  // Capture console errors and failed/non-2xx requests for this visit.
+  // Filter out Vite dev-server internal URLs — these only exist in dev
+  // mode and will not appear in production builds.
+  const isViteInternal = (url) =>
+    url.includes('/@vite/') ||
+    url.includes('/@id/') ||
+    url.includes('/@fs/') ||
+    url.includes('/.vite/') ||
+    url.includes('/node_modules/.vite/') ||
+    url.includes('__vite') ||
+    url.includes('dev-toolbar');
+
+  // Filter "Outdated Optimize Dep" console messages — Vite dev-only noise
+  const isViteConsoleNoise = (text) =>
+    text.includes('Outdated Optimize Dep') ||
+    text.includes('504') ||
+    text.includes('hmr') ||
+    text.includes('[vite]');
+
+  const consoleErrors  = [];
+  const failedRequests = [];
+  page.on('console', msg => {
+    if (msg.type() === 'error' && !isViteConsoleNoise(msg.text())) {
+      consoleErrors.push(msg.text());
+    }
+  });
+  page.on('requestfailed', req => {
+    if (!isViteInternal(req.url())) {
+      failedRequests.push(`FAILED  ${req.failure()?.errorText}  ${req.url()}`);
+    }
+  });
+  page.on('response', resp => {
+    if (resp.status() >= 400 && !isViteInternal(resp.url())) {
+      failedRequests.push(`HTTP ${resp.status()}  ${resp.url()}`);
+    }
+  });
+
+  await page.goto(baseUrl + route, { waitUntil: 'networkidle' });
+
+  // ── hero check (live mode only, at t≈1s and t≈5s, scroll = 0) ──────────
+  // We check before the long post-load wait so we catch both "loading" states.
+  let heroCheck = null;
+  if (isLive) {
+    // t≈1s snapshot — hero should have started rendering
+    await page.waitForTimeout(1000);
+    const snap1 = await page.evaluate(checkHeroReadability, { minFontSize: HERO_MIN_FONT_SIZE_PX });
+
+    // t≈5s snapshot — hero should be fully readable per the design law
+    await page.waitForTimeout(4000); // total ~5s from navigation
+    const snap5 = await page.evaluate(checkHeroReadability, { minFontSize: HERO_MIN_FONT_SIZE_PX });
+
+    heroCheck = {
+      t1s:  { ...snap1,  pass: snap1.hasLargeText  && snap1.allCriticalVisible  },
+      t5s:  { ...snap5,  pass: snap5.hasLargeText  && snap5.allCriticalVisible  },
+    };
+
+    // After the t=5s snapshot we've already waited ~5s; wait remaining time
+    // to reach the full post-load settle (4s live wait was already consumed
+    // by the 1s + 4s above — nothing extra needed)
+  } else {
+    // Reduced-motion mode: wait the full post-load period before walking
+    await page.waitForTimeout(POST_LOAD_WAIT_MS);
+  }
+
+  // If live and we already waited 5s for hero check, the 4s post-load is
+  // covered; if reduced, we waited POST_LOAD_WAIT_MS above. Either way
+  // we proceed to axe + scroll walk here.
+
+  // ── axe-core run at top-of-page (consistent, pre-scroll state) ──────────
+  await page.addScriptTag({ content: axeJs });
+  const axeRaw = await page.evaluate(() =>
+    window.axe.run(document, { resultTypes: ['violations'] })
+  );
+  const axeAll      = axeRaw.violations || [];
+  const axeCritical = axeAll.filter(v =>
+    v.impact === 'critical' || v.impact === 'serious'
+  );
+
+  // ── scroll walk ──────────────────────────────────────────────────────────
+  // Extra settle per step for GSAP scrub: needed in live mode because
+  // scroll-triggered tweens may still be running after the two rAFs.
+  const extraSettle = isLive ? SCROLL_SETTLE_LIVE_MS : 0;
+  const { collisions, horizOverflow } = await scrollWalk(page, vp, extraSettle);
+
+  await ctx.close();
+
+  return {
+    route,
+    viewport: vp.label,
+    mode,
+    collisions,
+    horizOverflow,
+    consoleErrors,
+    failedRequests,
+    heroCheck,
+    axe: {
+      critical: axeCritical.map(v => ({
+        id:          v.id,
+        impact:      v.impact,
+        description: v.description,
+        nodes:       v.nodes.slice(0, 3).map(n => n.target.join(', ')),
+      })),
+      allViolations: axeAll.map(v => ({ id: v.id, impact: v.impact })),
+    },
+  };
+}
+
 // ── main ──────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -246,9 +538,13 @@ async function main() {
   const cliRoutes = process.argv.slice(2).filter(a => a.startsWith('/'));
   const ROUTES = cliRoutes.length ? cliRoutes : ['/', '/dark', '/light'];
 
+  // Run both animation modes for every route × viewport
+  const MODES = ['reduced', 'live'];
+
   console.log(`\nUI Verification Harness`);
   console.log(`Routes:    ${ROUTES.join(', ')}`);
   console.log(`Viewports: desktop 1440×900, mobile 390×844`);
+  console.log(`Modes:     reduced-motion, live (animations enabled)`);
   console.log(`─────────────────────────────────────────────────────`);
 
   let serverInfo;
@@ -270,170 +566,75 @@ async function main() {
   try {
     for (const route of ROUTES) {
       for (const vp of VIEWPORTS) {
-        // Each route×viewport gets a fresh browser context (clean state)
-        const ctx = await browser.newContext({
-          viewport: { width: vp.width, height: vp.height },
-          // Force reduced-motion: prevents time-based GSAP animations from
-          // running during the scroll walk, making scroll-position checks
-          // deterministic (scroll-scrubbed animations ARE still exercised
-          // because we drive them by scrolling)
-          reducedMotion: 'reduce',
-        });
-        const page = await ctx.newPage();
+        for (const mode of MODES) {
+          const entry = await runPass({
+            browser,
+            baseUrl: BASE_URL,
+            axeJs: AXE_JS,
+            route,
+            vp,
+            mode,
+          });
+          allFindings.push(entry);
 
-        // Capture console errors and failed/non-2xx requests for this visit.
-        // Filter out Vite dev-server internal URLs — these only exist in dev
-        // mode and will not appear in production builds.
-        const isViteInternal = (url) =>
-          url.includes('/@vite/') ||
-          url.includes('/@id/') ||
-          url.includes('/@fs/') ||
-          url.includes('/.vite/') ||
-          url.includes('/node_modules/.vite/') ||
-          url.includes('__vite') ||
-          url.includes('dev-toolbar');
+          // Hero check failure only applies to live mode (it's null in reduced)
+          const heroFail = entry.heroCheck
+            ? (!entry.heroCheck.t1s.pass ? 1 : 0) + (!entry.heroCheck.t5s.pass ? 1 : 0)
+            : 0;
 
-        // Filter "Outdated Optimize Dep" console messages — Vite dev-only noise
-        const isViteConsoleNoise = (text) =>
-          text.includes('Outdated Optimize Dep') ||
-          text.includes('504') ||
-          text.includes('hmr') ||
-          text.includes('[vite]');
+          const failCount =
+            entry.collisions.length +
+            (entry.horizOverflow ? 1 : 0) +
+            entry.consoleErrors.length +
+            entry.failedRequests.length +
+            entry.axe.critical.length +
+            heroFail;
 
-        const consoleErrors   = [];
-        const failedRequests  = [];
-        page.on('console', msg => {
-          if (msg.type() === 'error' && !isViteConsoleNoise(msg.text())) {
-            consoleErrors.push(msg.text());
+          if (failCount > 0) anyFail = true;
+
+          // ── stdout summary ─────────────────────────────────────────────
+          const badge = failCount === 0 ? 'PASS' : 'FAIL';
+          console.log(`${badge}  ${route}  [${vp.label}]  [${mode}]`);
+
+          if (entry.collisions.length) {
+            console.log(`  text collisions: ${entry.collisions.length}`);
+            entry.collisions.slice(0, 3).forEach(c =>
+              console.log(`    scrollY=${c.scrollY}  "${c.aText}" ↔ "${c.bText}"  (ox=${c.overlapX} oy=${c.overlapY})`)
+            );
+            if (entry.collisions.length > 3) console.log(`    … and ${entry.collisions.length - 3} more`);
           }
-        });
-        page.on('requestfailed', req => {
-          if (!isViteInternal(req.url())) {
-            failedRequests.push(`FAILED  ${req.failure()?.errorText}  ${req.url()}`);
+          if (entry.horizOverflow) console.log(`  horizontal overflow: YES`);
+          if (entry.consoleErrors.length) {
+            console.log(`  console errors: ${entry.consoleErrors.length}`);
+            entry.consoleErrors.slice(0, 3).forEach(e => console.log(`    ${e.slice(0, 120)}`));
           }
-        });
-        page.on('response', resp => {
-          if (resp.status() >= 400 && !isViteInternal(resp.url())) {
-            failedRequests.push(`HTTP ${resp.status()}  ${resp.url()}`);
+          if (entry.failedRequests.length) {
+            console.log(`  failed requests: ${entry.failedRequests.length}`);
+            entry.failedRequests.slice(0, 3).forEach(r => console.log(`    ${r.slice(0, 120)}`));
           }
-        });
-
-        await page.goto(BASE_URL + route, { waitUntil: 'networkidle' });
-
-        // Let time-based intro animations finish before walking
-        await page.waitForTimeout(POST_LOAD_WAIT_MS);
-
-        // ── axe-core run at top-of-page (consistent, pre-scroll state) ──
-        await page.addScriptTag({ content: AXE_JS });
-        const axeRaw = await page.evaluate(() =>
-          window.axe.run(document, { resultTypes: ['violations'] })
-        );
-        const axeAll      = axeRaw.violations || [];
-        const axeCritical = axeAll.filter(v => {
-          // AXE_CRITICAL_IMPACTS is not accessible inside page.evaluate, so
-          // we filter in Node after receiving the result
-          return v.impact === 'critical' || v.impact === 'serious';
-        });
-
-        // ── scroll walk ──────────────────────────────────────────────────
-        const scrollHeight = await page.evaluate(
-          () => document.documentElement.scrollHeight
-        );
-        const maxScroll = Math.max(0, scrollHeight - vp.height);
-
-        let horizOverflow = false;
-        const rawCollisions = [];
-
-        for (let step = 0; step <= SCROLL_STEPS; step++) {
-          const y = step === 0 ? 0 : Math.round((step / SCROLL_STEPS) * maxScroll);
-
-          // Drive Lenis virtual scroll when available (dark.astro exposes
-          // window.__lenis), else use native window.scrollTo
-          await page.evaluate(async (scrollY) => {
-            if (window.__lenis) {
-              window.__lenis.scrollTo(scrollY, { immediate: true });
-            } else {
-              window.scrollTo(0, scrollY);
+          if (entry.axe.critical.length) {
+            console.log(`  axe critical/serious: ${entry.axe.critical.length}`);
+            entry.axe.critical.slice(0, 3).forEach(v =>
+              console.log(`    [${v.impact}] ${v.id}: ${v.description.slice(0, 90)}`)
+            );
+          }
+          if (entry.heroCheck) {
+            const hc = entry.heroCheck;
+            const t1Badge = hc.t1s.pass ? 'ok' : 'FAIL';
+            const t5Badge = hc.t5s.pass ? 'ok' : 'FAIL';
+            console.log(`  hero t=1s: ${t1Badge}  (largeText=${hc.t1s.hasLargeText}, criticalOk=${hc.t1s.allCriticalVisible})`);
+            console.log(`  hero t=5s: ${t5Badge}  (largeText=${hc.t5s.hasLargeText}, criticalOk=${hc.t5s.allCriticalVisible})`);
+            if (!hc.t5s.hasLargeText) {
+              console.log(`    no visible text ≥${HERO_MIN_FONT_SIZE_PX}px in viewport at t=5s`);
             }
-            // Wait two rAF ticks so GSAP/ScrollTrigger can process the update
-            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-          }, y);
-
-          await page.waitForTimeout(SCROLL_SETTLE_MS);
-
-          if (await page.evaluate(hasHorizOverflow)) horizOverflow = true;
-
-          const cols = await page.evaluate(findCollisions, { threshold: OVERLAP_THRESHOLD_PX });
-          for (const c of cols) rawCollisions.push({ scrollY: y, ...c });
+            if (!hc.t5s.allCriticalVisible && hc.t5s.criticalElements.length) {
+              hc.t5s.criticalElements.filter(e => !e.visible).forEach(e =>
+                console.log(`    [data-hero-critical] ${e.selector} not visible (opacity=${e.opacity}, inViewport=${e.inViewport})`)
+              );
+            }
+          }
+          if (failCount === 0) console.log(`  (no findings)`);
         }
-
-        // Deduplicate collisions: same element pair at multiple scroll Ys counts once
-        const seenPairs = new Set();
-        const collisions = rawCollisions.filter(c => {
-          const key = `${c.a}|||${c.b}`;
-          if (seenPairs.has(key)) return false;
-          seenPairs.add(key);
-          return true;
-        });
-
-        // ── record findings ──────────────────────────────────────────────
-        const entry = {
-          route,
-          viewport: vp.label,
-          collisions,
-          horizOverflow,
-          consoleErrors,
-          failedRequests,
-          axe: {
-            critical: axeCritical.map(v => ({
-              id:          v.id,
-              impact:      v.impact,
-              description: v.description,
-              nodes:       v.nodes.slice(0, 3).map(n => n.target.join(', ')),
-            })),
-            allViolations: axeAll.map(v => ({ id: v.id, impact: v.impact })),
-          },
-        };
-        allFindings.push(entry);
-
-        const failCount =
-          collisions.length +
-          (horizOverflow ? 1 : 0) +
-          consoleErrors.length +
-          failedRequests.length +
-          axeCritical.length;
-
-        if (failCount > 0) anyFail = true;
-
-        // ── stdout summary ───────────────────────────────────────────────
-        const badge = failCount === 0 ? 'PASS' : 'FAIL';
-        console.log(`${badge}  ${route}  [${vp.label}]`);
-
-        if (collisions.length) {
-          console.log(`  text collisions: ${collisions.length}`);
-          collisions.slice(0, 3).forEach(c =>
-            console.log(`    scrollY=${c.scrollY}  "${c.aText}" ↔ "${c.bText}"  (ox=${c.overlapX} oy=${c.overlapY})`)
-          );
-          if (collisions.length > 3) console.log(`    … and ${collisions.length - 3} more`);
-        }
-        if (horizOverflow) console.log(`  horizontal overflow: YES`);
-        if (consoleErrors.length) {
-          console.log(`  console errors: ${consoleErrors.length}`);
-          consoleErrors.slice(0, 3).forEach(e => console.log(`    ${e.slice(0, 120)}`));
-        }
-        if (failedRequests.length) {
-          console.log(`  failed requests: ${failedRequests.length}`);
-          failedRequests.slice(0, 3).forEach(r => console.log(`    ${r.slice(0, 120)}`));
-        }
-        if (axeCritical.length) {
-          console.log(`  axe critical/serious: ${axeCritical.length}`);
-          axeCritical.slice(0, 3).forEach(v =>
-            console.log(`    [${v.impact}] ${v.id}: ${v.description.slice(0, 90)}`)
-          );
-        }
-        if (failCount === 0) console.log(`  (no findings)`);
-
-        await ctx.close();
       }
     }
   } finally {
@@ -445,7 +646,7 @@ async function main() {
   mkdirSync(LOGS_DIR, { recursive: true });
   const outFile = join(LOGS_DIR, `verify-ui-${todayStr()}.json`);
   writeFileSync(outFile, JSON.stringify(
-    { generatedAt: new Date().toISOString(), routes: ROUTES, findings: allFindings },
+    { generatedAt: new Date().toISOString(), routes: ROUTES, modes: MODES, findings: allFindings },
     null, 2
   ));
 
