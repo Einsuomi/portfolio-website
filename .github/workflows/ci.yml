@@ -31,6 +31,25 @@ jobs:
       - name: UI anti-pattern report (informational, never fails the build)
         run: node .claude/skills/impeccable/scripts/detect.mjs src/ || true
 
+  # Informational only — not a required gate yet while we prove out flakiness.
+  # Once stable, add verify-ui to the branch protection required jobs.
+  verify-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright Chromium browser
+        run: npx playwright install --with-deps chromium
+      # Note: verify-ui uses `astro dev` (not `astro preview`) because the
+      # @astrojs/vercel adapter does not support `astro preview`. No prior
+      # build needed — astro dev serves source files directly.
+      - name: UI quality harness (collision, overflow, a11y, console errors)
+        run: npm run verify-ui
+
   lighthouse:
     runs-on: ubuntu-latest
     steps:
