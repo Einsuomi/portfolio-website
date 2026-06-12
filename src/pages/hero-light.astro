@@ -1,0 +1,445 @@
+---
+/**
+ * Hero-light — DIRECTION GATE deliverable (hero only).
+ *
+ * A light-skin treatment of v3's intro beat, re-grammared in the Anton
+ * Skvortsov reference (antonskvor.webflow.io / reference/skvortsov/step-00.png):
+ * near-white surface, big black neutral-grotesk name stacked top-LEFT in two
+ * lines, small heavy role/kicker beneath it, numbered nav items with thin
+ * rules, one solid-black pill CTA top-right, a "(001)" page marker, and a
+ * sparse field of drifting black dots (crisp small + a few large soft ones).
+ *
+ * Greenfield skin on v3's bones — NOT an inversion of the dark theme and NOT
+ * the rejected /light page. Copy is kept VERBATIM from v3's intro: name, the
+ * EU kicker, the three manifesto lines, and the CTA labels.
+ *
+ * Visibility law: NAME and ROLE are server-rendered and visible immediately
+ * (data-hero-critical); the manifesto types in as embellishment but never
+ * gates the first read. Reduced motion → dots static, manifesto fully shown.
+ *
+ * Font judgment: Anton (the project display face) is a condensed poster
+ * grotesk; at this scale it reads narrow, not like the reference's wide,
+ * heavy neutral grotesk. So the NAME uses a heavy weight (800) of a neutral
+ * system grotesk (Helvetica Neue / Arial) with tight tracking — closer to
+ * the reference and adds no new dependency.
+ */
+import { icons } from '../lib/lucide-icons.js';
+import TrackBeacon from '../components/TrackBeacon.astro';
+
+function icon(data: any[], size = 16, cls = ''): string {
+  if (!data) return '';
+  const inner = (data as [string, Record<string, string>][])
+    .map(([tag, attrs]) =>
+      `<${tag} ${Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ')}/>`
+    ).join('');
+  const c = cls ? ` class="${cls}"` : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${c} aria-hidden="true">${inner}</svg>`;
+}
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" href="/favicon.ico" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Tong Nie — Data Engineer. An engineer who moves data by day; a builder who teaches it to speak by night." />
+  <meta name="generator" content={Astro.generator} />
+  <title>Tong Nie — Data Engineer</title>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* surfaces only from the verified Skvortsov palette */
+      --bg:        #ffffff;
+      --surface:   #fafafa;
+      --surface-2: #f4f4f4;
+      /* type: pure-black primary, mid-grey secondary (AA on #fafafa) */
+      --ink:       #0a0a0a;
+      --ink-2:     #1a1a1a;
+      --ink-soft:  #595959;   /* secondary — no lighter than this (AA) */
+      --rule:      #e4e4e4;
+      --rule-2:    #d4d4d4;
+      /* one accent maximum: the solid-black pill */
+      --pill:      #000000;
+      --grotesk:   'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+      --mono:      ui-monospace, 'Cascadia Code', 'JetBrains Mono', 'Fira Code', monospace;
+      --ease:      cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    html { background: var(--bg); }
+    body {
+      background: var(--bg); color: var(--ink);
+      font-family: var(--grotesk);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      overflow-x: hidden;
+    }
+    :focus-visible { outline: 2px solid #000; outline-offset: 3px; }
+
+    /* ── the one viewport ──────────────────────────────────────────── */
+    .stage {
+      position: relative;
+      min-height: 100svh;
+      overflow: hidden;
+      background: var(--bg);
+    }
+    /* drifting-dot field sits under everything; text never relies on it */
+    .dots {
+      position: absolute; inset: 0; z-index: 0;
+      width: 100%; height: 100%;
+      display: block;
+      pointer-events: none;
+    }
+
+    /* ── top chrome: numbered nav (left) + pill CTA (right) ─────────── */
+    .chrome {
+      position: relative; z-index: 3;
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 1.5rem;
+      padding: clamp(1.4rem, 3vw, 2.4rem) clamp(1.5rem, 5vw, 4rem) 0;
+    }
+
+    /* numbered nav — HOME/WORK/FAQ grammar, re-skinned to our sections.
+       each item: label + number with a thin rule above, like the anchor */
+    .nav {
+      display: flex; gap: clamp(1.4rem, 4vw, 3.2rem);
+      list-style: none; flex-wrap: wrap;
+    }
+    .nav a {
+      display: grid; gap: 0.5rem;
+      min-width: clamp(7rem, 14vw, 11rem);
+      padding-top: 0.55rem;
+      border-top: 1px solid var(--ink);
+      text-decoration: none;
+      color: var(--ink);
+    }
+    .nav .row {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 0.8rem;
+    }
+    .nav .label {
+      font-family: var(--grotesk);
+      font-weight: 700; font-size: 0.78rem; letter-spacing: 0.04em;
+      text-transform: uppercase;
+      transition: opacity 0.2s;
+    }
+    .nav .num {
+      font-family: var(--mono);
+      font-size: 0.68rem; font-weight: 500; letter-spacing: 0.08em;
+      color: var(--ink-soft);
+    }
+    .nav a:hover .label { opacity: 0.55; }
+
+    /* right cluster: black pill + page marker stacked beneath it */
+    .chrome-right {
+      display: flex; flex-direction: column; align-items: flex-end;
+      gap: clamp(2.2rem, 6vh, 4rem);
+    }
+    .pill {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.85rem 1.5rem;
+      background: var(--pill); color: #fff;
+      border-radius: 999px;
+      font-family: var(--grotesk);
+      font-weight: 700; font-size: 0.76rem; letter-spacing: 0.04em;
+      text-transform: uppercase; text-decoration: none;
+      white-space: nowrap;
+      transition: transform 0.18s var(--ease), opacity 0.18s;
+    }
+    .pill:hover { transform: translateY(-1px); opacity: 0.9; }
+    .page-marker {
+      font-family: var(--mono);
+      font-size: 0.74rem; font-weight: 600; letter-spacing: 0.06em;
+      color: var(--ink);
+    }
+
+    /* ── the headline block, top-left, stacked ─────────────────────── */
+    .head {
+      position: relative; z-index: 2;
+      padding: clamp(1.6rem, 4vw, 3rem) clamp(1.5rem, 5vw, 4rem) 0;
+      max-width: 38ch;
+    }
+    .name {
+      font-family: var(--grotesk);
+      font-weight: 800;
+      font-size: clamp(2.5rem, 9vw, 5rem);   /* ≤ 5rem desktop / ≤ 2.75rem @390 */
+      line-height: 0.92;
+      letter-spacing: -0.03em;               /* tight, like the reference */
+      text-transform: uppercase;
+      color: var(--ink);
+    }
+    .name .ln { display: block; }
+
+    /* heavy role lines under the name (the SENIOR / WEB & MOTION analog) */
+    .role {
+      margin-top: clamp(1.1rem, 2.6vh, 1.7rem);
+      font-family: var(--grotesk);
+      font-weight: 700;
+      font-size: clamp(1.05rem, 1.5vw, 1.25rem);  /* role 18–22px band */
+      line-height: 1.25;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+      color: var(--ink-2);
+    }
+    .role .ln { display: block; }
+
+    /* the manifesto — types in below, never gates the first read */
+    .manifesto {
+      margin-top: clamp(1.3rem, 3vh, 2rem);
+      font-family: var(--grotesk);
+      font-weight: 400;
+      font-size: clamp(1rem, 1.3vw, 1.125rem);   /* body 16–18px */
+      line-height: 1.65;
+      color: var(--ink-soft);
+      max-width: 42ch;
+    }
+    .manifesto .ln { display: block; }
+    .manifesto .accent { color: var(--ink); font-weight: 600; }
+
+    /* secondary CTA + scroll hint, beneath the manifesto */
+    .actions {
+      display: flex; align-items: center; gap: 1.5rem;
+      margin-top: clamp(1.6rem, 3.5vh, 2.4rem);
+      flex-wrap: wrap;
+    }
+    .link-cta {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      font-family: var(--grotesk);
+      font-weight: 700; font-size: 0.82rem; letter-spacing: 0.02em;
+      text-transform: uppercase; text-decoration: none;
+      color: var(--ink);
+      padding-bottom: 0.25rem;
+      border-bottom: 1.5px solid var(--ink);
+      transition: gap 0.2s var(--ease);
+    }
+    .link-cta:hover { gap: 0.75rem; }
+
+    /* scroll hint pinned bottom-left of the viewport */
+    .scroll-hint {
+      position: absolute; left: clamp(1.5rem, 5vw, 4rem);
+      bottom: clamp(1.4rem, 4vh, 2.4rem); z-index: 2;
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      font-family: var(--mono);
+      font-size: 0.66rem; font-weight: 500; letter-spacing: 0.18em;
+      text-transform: uppercase; text-decoration: none;
+      color: var(--ink-soft);
+    }
+    .scroll-hint svg { animation: bob 2.6s ease-in-out infinite; }
+    @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+
+    /* small section marker bottom-right — quiet mono chrome, balances the page */
+    .stage-meta {
+      position: absolute; right: clamp(1.5rem, 5vw, 4rem);
+      bottom: clamp(1.4rem, 4vh, 2.4rem); z-index: 2;
+      font-family: var(--mono);
+      font-size: 0.66rem; font-weight: 500; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--ink-soft);
+      text-align: right;
+    }
+
+    /* ── motion gating: manifesto + actions start hidden for the type-in,
+         but NAME/ROLE/CHROME are always visible (server-rendered) ──────── */
+    .manifesto .ln, .actions { opacity: 0; }
+
+    /* ── responsive ─────────────────────────────────────────────────── */
+    @media (max-width: 720px) {
+      .chrome { flex-direction: column-reverse; align-items: stretch; gap: 1.4rem; }
+      .chrome-right { flex-direction: row; align-items: center; justify-content: space-between; gap: 1rem; }
+      .nav { gap: 0; flex-direction: column; }
+      .nav a { min-width: 0; }
+      .head { max-width: none; padding-top: clamp(1.4rem, 4vw, 2rem); }
+      .stage-meta { display: none; }   /* avoid colliding with scroll hint on a phone */
+    }
+
+    /* reduced motion: dots static (drawn once), manifesto + actions shown */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      .manifesto .ln, .actions { opacity: 1 !important; }
+    }
+  </style>
+  <TrackBeacon />
+</head>
+
+<body>
+  <section class="stage" id="stage">
+    <!-- drifting dots: black on white, no connecting lines -->
+    <canvas class="dots" id="dots" aria-hidden="true"></canvas>
+
+    <!-- top chrome: numbered nav (left) + black pill (right) -->
+    <div class="chrome">
+      <nav aria-label="Sections">
+        <ul class="nav">
+          <li>
+            <a href="#builds">
+              <span class="row"><span class="label">Builds</span><span class="num">001</span></span>
+            </a>
+          </li>
+          <li>
+            <a href="#thinking">
+              <span class="row"><span class="label">Thinking</span><span class="num">002</span></span>
+            </a>
+          </li>
+          <li>
+            <a href="#talk">
+              <span class="row"><span class="label">Talk</span><span class="num">003</span></span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+      <div class="chrome-right">
+        <a class="pill" href="#talk">Interview my CV <span set:html={icon(icons.ArrowRight, 13)} /></a>
+        <span class="page-marker">(001)</span>
+      </div>
+    </div>
+
+    <!-- headline block, top-left, stacked two lines -->
+    <header class="head">
+      <h1 class="name" data-hero-critical>
+        <span class="ln">Tong</span>
+        <span class="ln">Nie</span>
+      </h1>
+      <p class="role" data-hero-critical>
+        <span class="ln">Data Engineer</span>
+        <span class="ln">— EU.</span>
+      </p>
+      <p class="manifesto">
+        <span class="ln">An engineer who moves data by day.</span>
+        <span class="ln">A builder who teaches it to speak by night.</span>
+        <span class="ln accent">Same craft. Different rules.</span>
+      </p>
+      <div class="actions">
+        <a class="link-cta" href="/cv">View CV <span set:html={icon(icons.ArrowRight, 13)} /></a>
+      </div>
+    </header>
+
+    <!-- scroll hint (bottom-left) + section marker (bottom-right) -->
+    <a class="scroll-hint" href="#builds">scroll to play <span set:html={icon(icons.ArrowDown, 12)} /></a>
+    <span class="stage-meta">Tong Nie © 2026 — Data, by day &amp; night</span>
+  </section>
+
+  <script>
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // ── drifting black-dot field ──────────────────────────────────────
+    // 40–80 particles: crisp 2–4px at full black + a few large 6–12px
+    // soft-blurred at low opacity for depth. Slow drift (a particle takes
+    // >20s to cross the viewport). Subtle mouse parallax. No connecting lines.
+    const canvas = document.getElementById('dots') as HTMLCanvasElement;
+    const ctx = canvas.getContext('2d')!;
+
+    let W = 0, H = 0, dpr = 1;
+    const COUNT = 50;                 // within the 40–80 band
+    type Dot = { x: number; y: number; vx: number; vy: number; r: number; big: boolean; alpha: number; depth: number; };
+    let dots: Dot[] = [];
+
+    function rand(a: number, b: number) { return a + Math.random() * (b - a); }
+
+    function build() {
+      dots = [];
+      const bigCount = 8;             // ~6–10 large soft dots
+      for (let i = 0; i < COUNT; i++) {
+        const big = i < bigCount;
+        // slow drift: speed so the slowest crossing is well over 20s.
+        // max |v| ≈ 0.16 px/frame → ~60s to cross 1440px at 60fps.
+        const speed = big ? rand(0.02, 0.06) : rand(0.04, 0.12);
+        const ang = rand(0, Math.PI * 2);
+        dots.push({
+          x: rand(0, W), y: rand(0, H),
+          vx: Math.cos(ang) * speed,
+          vy: Math.sin(ang) * speed,
+          r: big ? rand(6, 12) : rand(2, 4),
+          big,
+          alpha: big ? rand(0.07, 0.16) : rand(0.7, 1.0),
+          depth: big ? rand(0.6, 1.0) : rand(0.15, 0.5),  // parallax strength
+        });
+      }
+    }
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);   // capped per CLAUDE.md
+      W = canvas.offsetWidth;
+      H = canvas.offsetHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      build();
+    }
+
+    // mouse parallax offset (eased toward target)
+    let mx = 0, my = 0, tmx = 0, tmy = 0;
+    if (!reduceMotion) {
+      window.addEventListener('mousemove', e => {
+        tmx = (e.clientX / window.innerWidth - 0.5) * 24;
+        tmy = (e.clientY / window.innerHeight - 0.5) * 18;
+      });
+    }
+
+    function drawDot(d: Dot, ox: number, oy: number) {
+      const x = d.x + ox * d.depth;
+      const y = d.y + oy * d.depth;
+      ctx.beginPath();
+      if (d.big) {
+        // soft-blurred large dot: radial gradient for the low-opacity halo
+        const g = ctx.createRadialGradient(x, y, 0, x, y, d.r);
+        g.addColorStop(0, `rgba(0,0,0,${d.alpha})`);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.arc(x, y, d.r, 0, Math.PI * 2);
+      } else {
+        ctx.fillStyle = `rgba(0,0,0,${d.alpha})`;
+        ctx.arc(x, y, d.r, 0, Math.PI * 2);
+      }
+      ctx.fill();
+    }
+
+    function frame() {
+      ctx.clearRect(0, 0, W, H);
+      mx += (tmx - mx) * 0.05;
+      my += (tmy - my) * 0.05;
+      for (const d of dots) {
+        d.x += d.vx; d.y += d.vy;
+        // wrap around the edges with a small margin so dots reappear smoothly
+        const m = d.r + 2;
+        if (d.x < -m) d.x = W + m; else if (d.x > W + m) d.x = -m;
+        if (d.y < -m) d.y = H + m; else if (d.y > H + m) d.y = -m;
+        drawDot(d, mx, my);
+      }
+      raf = requestAnimationFrame(frame);
+    }
+
+    let raf = 0;
+    window.addEventListener('resize', resize);
+    resize();
+
+    if (reduceMotion) {
+      // static field, drawn once
+      for (const d of dots) drawDot(d, 0, 0);
+    } else {
+      raf = requestAnimationFrame(frame);
+
+      // ── manifesto type-in (embellishment only) ──────────────────────
+      // Lazy-load GSAP after first paint so the hero (name + role) is never
+      // gated on JS. Name/role are already painted by the server.
+      import('gsap').then(({ gsap }) => {
+        const tl = gsap.timeline({ delay: 0.25 });  // ≤ 300ms before motion
+        tl.fromTo('.manifesto .ln',
+            { opacity: 0, y: 14 },
+            { opacity: 1, y: 0, stagger: 0.22, duration: 0.6, ease: 'power2.out' })
+          .to('.actions',
+            { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, '-=0.2');
+        gsap.set('.actions', { y: 10 });
+      });
+    }
+  </script>
+</body>
+</html>
+</content>
+</invoke>

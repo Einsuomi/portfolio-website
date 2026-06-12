@@ -16,6 +16,9 @@ reference/
 # impeccable live-mode tool state
 .impeccable/
 
+# designer self-screenshot scratch output — local only
+.shots/
+
 # logs
 npm-debug.log*
 yarn-debug.log*
