@@ -1,1161 +1,307 @@
 ---
 /**
- * Light version — FULL BUILD.
+ * Light version — route (/light).
  *
- * v3's complete choreography (index.astro) re-skinned in the APPROVED light
- * grammar from hero-light.astro (the direction gate). The whole page is ONE
- * pinned cinematic stage; scroll scrubs seven beats that crossfade in place:
- *   00 INTRO    — the approved hero, carried in essentially verbatim
- *   01 ENERGY   — Neste
- *   02 LOGISTICS— PostNord
- *   03 SCALE    — Basware
- *   04 THE PROOF— three premium light media cards
- *   05 DECISIONS WRITTEN DOWN — two essay cards
- *   06 TALK     — the finale + disabled chat shell
- * Only the footer scrolls after the film ends.
+ * This page is a thin shell: it renders all 7 beats as real, semantic HTML
+ * inside <main> so crawlers, ATS systems, and no-JS visitors get full content.
+ * The designer's Three.js pipeline scene will attach to the canvas mount point
+ * below and animate behind this HTML.
  *
- * BACKGROUND across the whole pin is the dot-field canvas from the approved
- * hero (no image sequence, no corridor frames). The field evolves per beat —
- * density, drift direction, parallax depth shift slowly so the background
- * never hard-cuts, the same continuity law v3 had with its frame sequence,
- * just a different medium.
- *
- * SKIN: light, not inverted dark. Surfaces #fff/#fafafa/#f4f4f4, ink
- * #0a0a0a–#1a1a1a, secondary #595959 floor (AA on #fafafa), one accent —
- * solid #000 blocks/pills. Chapter display words in heavy neutral grotesk,
- * hard ceiling 6rem desktop / 2.75rem mobile. Numbered-section chrome
- * (001/002/…) alternating placement per beat.
- *
- * Visibility law: NAME + ROLE are server-rendered and visible immediately
- * (data-hero-critical). The manifesto types in as embellishment. Reduced
- * motion AND no-JS → chapters stack as readable static sections, canvas
- * hidden. GSAP lazy-loaded after first paint.
+ * Design tokens: fog #eaf0f7, ink #0b1220, cyan #1ea7ff.
+ * Fonts: Space Grotesk 600/700 (display), Inter (body), JetBrains Mono (HUD/tags).
  */
-import { icons } from '../lib/lucide-icons.js';
-import TrackBeacon from '../components/TrackBeacon.astro';
-
-// Lucide icon data is [tag, attrs] tuples, but the auto-extracted .js widens
-// each element to (string | object)[]; accept that shape, then narrow to the
-// tuple form for rendering.
-function icon(data: (string | Record<string, string>)[][], size = 16, cls = ''): string {
-  if (!data) return '';
-  const inner = (data as [string, Record<string, string>][])
-    .map(([tag, attrs]) =>
-      `<${tag} ${Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ')}/>`
-    ).join('');
-  const c = cls ? ` class="${cls}"` : '';
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${c} aria-hidden="true">${inner}</svg>`;
-}
-
-const GithubData: [string, Record<string, string>][] = [
-  ["path",{"d":"M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"}],
-  ["path",{"d":"M9 18c-4.51 2-5-2-7-2"}],
-];
-const LinkedinData: [string, Record<string, string>][] = [
-  ["path",{"d":"M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"}],
-  ["rect",{"width":"4","height":"12","x":"2","y":"9"}],
-  ["circle",{"cx":"4","cy":"4","r":"2"}],
-];
+import Base from '../layouts/Base.astro';
+import { TIMELINE, CONTACT } from '../lib/timeline.ts';
 ---
 
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <link rel="icon" href="/favicon.ico" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Tong Nie — Data Engineer. Three industries, one craft. An engineer who moves data by day; a builder who teaches it to speak by night." />
-  <meta name="generator" content={Astro.generator} />
-  <title>Tong Nie — Data Engineer</title>
+<Base version="light">
+  <!--
+    SCENE MOUNT: light
+    The pipeline 3D canvas goes here — positioned fixed/absolute by the
+    scene script so it sits behind this HTML without affecting document flow.
+  -->
+  <canvas id="scene" aria-hidden="true" style="display:none"></canvas>
 
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+    /*
+     * Light version tokens — v4 (vectrfl.com) feel.
+     * These are the design-canonical values; designers will extend them.
+     */
     :root {
-      /* surfaces only from the verified Skvortsov palette */
-      --bg:        #ffffff;
-      --surface:   #fafafa;
-      --surface-2: #f4f4f4;
-      /* type: pure-black primary, mid-grey secondary (AA on #fafafa) */
-      --ink:       #0a0a0a;
-      --ink-2:     #1a1a1a;
-      --ink-soft:  #595959;   /* secondary — no lighter than this (AA) */
-      --rule:      #e4e4e4;
-      --rule-2:    #d4d4d4;
-      /* one accent maximum: the solid-black pill/blocks */
-      --pill:      #000000;
-      --grotesk:   'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
-      --mono:      ui-monospace, 'Cascadia Code', 'JetBrains Mono', 'Fira Code', monospace;
-      --px:        clamp(1.5rem, 5vw, 4rem);
-      --ease:      cubic-bezier(0.22, 1, 0.36, 1);
+      --bg:      #eaf0f7;
+      --bg-deep: #dde6f1;
+      --ink:     #0b1220;
+      --ink-2:   #4a5468;
+      --ink-3:   #8a93a6;
+      --border:  rgba(11,18,32,0.10);
+      --cyan:    #1ea7ff;
+      --glow:    #36b6ff;
+
+      --font-display: 'Space Grotesk', 'Inter', sans-serif;
+      --font-body:    'Inter', sans-serif;
+      --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+
+      --px: clamp(1.5rem, 5vw, 4rem);
     }
 
-    html { background: var(--bg); }
-    body {
-      background: var(--bg); color: var(--ink);
-      font-family: var(--grotesk);
-      line-height: 1.6;
+    html[data-version="light"] body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-body);
+      line-height: 1.65;
       -webkit-font-smoothing: antialiased;
-      text-rendering: optimizeLegibility;
       overflow-x: hidden;
     }
-    :focus-visible { outline: 2px solid #000; outline-offset: 3px; }
 
-    /* ── pinned stage ──────────────────────────────────────────────── */
-    .stage {
-      position: relative;
-      height: 100svh;
-      overflow: hidden;
-      background: var(--bg);
-    }
-    /* drifting-dot field sits under every beat; text never relies on it */
-    .dots {
-      position: absolute; inset: 0; z-index: 0;
-      width: 100%; height: 100%;
-      display: block;
-      pointer-events: none;
+    /* ── No-JS / reduced-motion fallback: plain stacked sections ──── */
+    main { padding: 0; }
+
+    .beat {
+      padding: clamp(3rem, 8vw, 6rem) var(--px);
+      border-bottom: 1px solid var(--border);
     }
 
-    /* ── top chrome: numbered nav (left) + pill CTA (right) ─────────── */
-    .chrome {
-      position: absolute; top: 0; left: 0; right: 0; z-index: 30;
-      display: flex; align-items: flex-start; justify-content: space-between;
-      gap: 1.5rem;
-      padding: clamp(1.4rem, 3vw, 2.4rem) var(--px) 0;
-      pointer-events: none;
-    }
-    .chrome > * { pointer-events: auto; }
-
-    /* numbered nav — sections, thin rule above each like the reference */
-    .nav {
-      display: flex; gap: clamp(1.4rem, 4vw, 3.2rem);
-      list-style: none; flex-wrap: wrap;
-    }
-    .nav a {
-      display: grid; gap: 0.5rem;
-      min-width: clamp(7rem, 13vw, 10rem);
-      padding-top: 0.55rem;
-      border-top: 1px solid var(--ink);
-      text-decoration: none;
-      color: var(--ink);
-    }
-    .nav .row {
-      display: flex; align-items: baseline; justify-content: space-between;
-      gap: 0.8rem;
-    }
-    .nav .label {
-      font-family: var(--grotesk);
-      font-weight: 700; font-size: 0.78rem; letter-spacing: 0.04em;
-      text-transform: uppercase;
-      transition: opacity 0.2s;
-    }
-    .nav .num {
-      font-family: var(--mono);
-      font-size: 0.68rem; font-weight: 500; letter-spacing: 0.08em;
-      color: var(--ink-soft);
-    }
-    .nav a:hover .label { opacity: 0.55; }
-
-    /* right cluster: black pill + live page marker stacked beneath it.
-       gap kept tight so the marker stays inside the chrome band and never
-       reaches down into chapter content */
-    .chrome-right {
-      display: flex; flex-direction: column; align-items: flex-end;
-      gap: clamp(0.9rem, 2vh, 1.4rem);
-    }
-    .pill {
-      display: inline-flex; align-items: center; gap: 0.5rem;
-      padding: 0.85rem 1.5rem;
-      background: var(--pill); color: #fff;
-      border-radius: 999px;
-      font-family: var(--grotesk);
-      font-weight: 700; font-size: 0.76rem; letter-spacing: 0.04em;
-      text-transform: uppercase; text-decoration: none;
-      white-space: nowrap;
-      transition: transform 0.18s var(--ease), opacity 0.18s;
-    }
-    .pill:hover { transform: translateY(-1px); opacity: 0.9; }
-    .page-marker {
-      font-family: var(--mono);
-      font-size: 0.74rem; font-weight: 600; letter-spacing: 0.06em;
-      color: var(--ink);
-    }
-
-    /* ── chapters — every beat shares this one mechanism ───────────── */
-    .chapter {
-      position: absolute; inset: 0; z-index: 6;
-      display: flex; flex-direction: column; justify-content: center;
-      padding: clamp(5rem, 11vh, 8rem) var(--px) clamp(4rem, 9vh, 6rem);
-      pointer-events: none;
-      opacity: 0;
-    }
-    .chapter:not(.intro) { visibility: hidden; }
-    .chapter .par { width: 100%; max-width: 60rem; }
-
-    /* ghost watermark word behind a chapter — the reference's faded
-       "SELECTED WORKS". Barely-there on white, vertically centred behind the
-       display word so it never enters the top chrome band or sits over body
-       copy in any frame. Decorative only (aria-hidden, no text the harness
-       can collide with that matters — it's behind everything at z-index -1). */
-    .ghost {
-      position: absolute; z-index: -1;
-      top: 50%; transform: translateY(-50%);
-      font-family: var(--grotesk);
-      font-weight: 800; line-height: 0.9;
-      font-size: clamp(9rem, 30vw, 26rem);
-      letter-spacing: -0.04em; text-transform: uppercase;
-      color: #f3f3f3;
-      user-select: none; pointer-events: none; white-space: nowrap;
-    }
-    /* ghost sits on the OPPOSITE edge from the content so the big faint
-       numeral never overlaps the live copy in any frame */
-    .chapter.left  .ghost { right: -2%; }
-    .chapter.right .ghost { left: -2%; }
-
-    /* the chapter numeral marker — pinned to the BOTTOM corner, clear of the
-       fixed top chrome (nav + pill + page-marker live up there) */
-    .ch-num {
-      position: absolute;
-      bottom: clamp(1.6rem, 4.5vh, 2.8rem);
-      font-family: var(--mono);
-      font-size: clamp(0.74rem, 1.1vw, 0.9rem); font-weight: 600;
-      letter-spacing: 0.14em; color: var(--ink-soft);
-    }
-    /* film-credit kicker: company · role · years */
-    .ch-kicker {
-      font-family: var(--mono);
-      font-size: 0.72rem; font-weight: 600; letter-spacing: 0.22em;
-      color: var(--ink-soft); text-transform: uppercase; margin-bottom: 1.2rem;
-    }
-    /* the heavy display word — hard ceiling 6rem / 2.75rem mobile */
-    .chapter h2 {
-      font-family: var(--grotesk);
-      font-weight: 800;
-      font-size: clamp(2.75rem, 9vw, 6rem);
-      line-height: 0.92;
-      letter-spacing: -0.035em;
-      text-transform: uppercase;
-      color: var(--ink);
-    }
-    /* exactly two lines of copy per career chapter */
-    .ch-copy {
-      max-width: 42rem; margin-top: 1.5rem;
-      font-size: clamp(1rem, 1.45vw, 1.2rem); line-height: 1.65;
-      color: var(--ink-soft);
-    }
-    .ch-copy .accent { color: var(--ink); font-weight: 600; }
-    /* tools as end-credits, opposite corner */
-    .ch-credits {
-      position: absolute; bottom: clamp(2.4rem, 7vh, 5rem);
-      font-family: var(--mono);
-      font-size: 0.66rem; font-weight: 500; letter-spacing: 0.14em;
-      color: var(--ink-soft); text-transform: uppercase;
-      line-height: 2.2;
-    }
-    .ch-credits b { display: block; color: var(--ink); font-weight: 700; font-size: 0.58rem; }
-
-    /* placement variants — alternate corners so beats never repeat.
-       left chapters: numeral top-right, credits bottom-right.
-       right chapters: content right-aligned, numeral top-left, credits left. */
-    /* left chapters: numeral bottom-left, tool credits bottom-right */
-    .chapter.left  .ch-num     { left: var(--px); }
-    .chapter.left  .ch-credits { right: var(--px); text-align: right; }
-    /* right chapters: content right-aligned, numeral bottom-right, credits left */
-    .chapter.right .par        { margin-left: auto; text-align: right; }
-    .chapter.right .ch-kicker,
-    .chapter.right h2          { text-align: right; }
-    .chapter.right .ch-copy    { margin-left: auto; text-align: right; }
-    .chapter.right .ch-num     { right: var(--px); }
-    .chapter.right .ch-credits { left: var(--px); text-align: left; }
-    /* content chapters: numeral always bottom-left (header owns the top) */
-    .chapter.content .ch-num   { left: var(--px); right: auto; }
-
-    /* content chapters (04–06): header starts below the top chrome band
-       (nav + pill + page-marker), content fills the rest of the frame */
-    .chapter.content { justify-content: flex-start; padding-top: clamp(7.5rem, 16vh, 11rem); }
-    .chapter.content .par { max-width: none; }
-    .chapter.content h2 { font-size: clamp(2.4rem, 6vw, 4.5rem); }
-    .chapter.content .ch-sub {
-      margin: 1rem 0 2rem;
-      font-size: clamp(0.95rem, 1.3vw, 1.1rem); color: var(--ink-soft);
-      max-width: 52ch; line-height: 1.6;
-    }
-    .chapter.content.right .ch-sub { margin-left: auto; text-align: right; }
-
-    /* ── INTRO chapter — the approved hero, carried in verbatim ─────── */
-    .chapter.intro {
-      justify-content: flex-start;
-      padding: 0;
-      opacity: 1;
-    }
-    .head {
-      position: relative; z-index: 2;
-      padding: clamp(6rem, 14vh, 9rem) var(--px) 0;
-      max-width: 46rem;   /* widened so the manifesto sits one line/sentence */
-    }
-    .name {
-      font-family: var(--grotesk);
-      font-weight: 800;
-      font-size: clamp(2.5rem, 9.5vw, 6rem);  /* ≤ 6rem desktop / ≤ 2.75rem @390 */
-      line-height: 0.9;
-      letter-spacing: -0.035em;
-      text-transform: uppercase;
-      color: var(--ink);
-    }
-    .name .ln { display: block; }
-    .role {
-      margin-top: clamp(1.1rem, 2.6vh, 1.7rem);
-      font-family: var(--grotesk);
-      font-weight: 700;
-      font-size: clamp(1.05rem, 1.5vw, 1.25rem);  /* role 18–22px band */
-      line-height: 1.25;
-      letter-spacing: 0.01em;
+    .beat-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.22em;
       text-transform: uppercase;
       color: var(--ink-2);
-    }
-    .role .ln { display: block; }
-    .manifesto {
-      margin-top: clamp(1.3rem, 3vh, 2rem);
-      font-family: var(--grotesk);
-      font-weight: 400;
-      font-size: clamp(1rem, 1.45vw, 1.25rem);   /* body 16–20px */
-      line-height: 1.6;
-      color: var(--ink-soft);
-      max-width: 42rem;
-    }
-    .manifesto .ln { display: block; }
-    .manifesto .accent { color: var(--ink); font-weight: 600; }
-    .actions {
-      display: flex; align-items: center; gap: 1.5rem;
-      margin-top: clamp(1.6rem, 3.5vh, 2.4rem);
-      flex-wrap: wrap;
-      pointer-events: auto;
-    }
-    .link-cta {
-      display: inline-flex; align-items: center; gap: 0.45rem;
-      font-family: var(--grotesk);
-      font-weight: 700; font-size: 0.82rem; letter-spacing: 0.02em;
-      text-transform: uppercase; text-decoration: none;
-      color: var(--ink);
-      padding-bottom: 0.25rem;
-      border-bottom: 1.5px solid var(--ink);
-      transition: gap 0.2s var(--ease);
-    }
-    .link-cta:hover { gap: 0.75rem; }
-
-    /* scroll hint pinned bottom-left of the viewport */
-    .scroll-hint {
-      position: absolute; left: var(--px);
-      bottom: clamp(1.4rem, 4vh, 2.4rem); z-index: 2;
-      display: inline-flex; align-items: center; gap: 0.5rem;
-      font-family: var(--mono);
-      font-size: 0.66rem; font-weight: 500; letter-spacing: 0.18em;
-      text-transform: uppercase; text-decoration: none;
-      color: var(--ink-soft);
-      pointer-events: auto;
-    }
-    .scroll-hint svg { animation: bob 2.6s ease-in-out infinite; }
-    @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
-
-    /* section marker bottom-right — quiet mono chrome */
-    .stage-meta {
-      position: absolute; right: var(--px);
-      bottom: clamp(1.4rem, 4vh, 2.4rem); z-index: 2;
-      font-family: var(--mono);
-      font-size: 0.66rem; font-weight: 500; letter-spacing: 0.14em;
-      text-transform: uppercase; color: var(--ink-soft);
-      text-align: right;
-    }
-    .chapter.intro .scroll-hint,
-    .chapter.intro .stage-meta { display: inline-flex; }
-
-    /* manifesto + actions start hidden for the type-in; NAME/ROLE always shown */
-    .manifesto .ln, .actions { opacity: 0; }
-
-    /* ── 04 THE PROOF — premium light media cards ──────────────────── */
-    .poster-row {
-      display: flex; gap: clamp(1rem, 2vw, 1.6rem);
-      pointer-events: auto;
-      width: 100%;
-      margin-top: 0.4rem;
-    }
-    .poster {
-      flex: 1; min-width: 0;
-      display: flex; flex-direction: column;
-      background: var(--surface);
-      border: 1px solid var(--rule);
-      border-radius: 14px;
-      overflow: hidden;
-      text-decoration: none;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-      transition: transform 0.3s var(--ease), box-shadow 0.3s, border-color 0.3s;
-    }
-    .poster:hover {
-      transform: translateY(-6px);
-      border-color: var(--rule-2);
-      box-shadow: 0 24px 50px -18px rgba(0,0,0,0.22);
-    }
-    .poster-art {
-      aspect-ratio: 16 / 9; min-height: 0; overflow: hidden;
-      background: var(--surface-2);
-      border-bottom: 1px solid var(--rule);
-    }
-    .poster-art svg { width: 100%; height: 100%; display: block; }
-    .poster-body { padding: clamp(1.1rem, 1.6vw, 1.5rem); }
-    .poster-title {
-      font-family: var(--grotesk);
-      font-weight: 800; font-size: clamp(1.05rem, 1.4vw, 1.2rem);
-      letter-spacing: -0.01em; text-transform: uppercase;
-      color: var(--ink); line-height: 1.1; margin-bottom: 0.45rem;
-    }
-    .poster-line {
-      font-size: 0.86rem; color: var(--ink-soft); line-height: 1.55;
       margin-bottom: 0.9rem;
     }
-    .poster-credits {
-      font-family: var(--mono);
-      font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase;
-      color: var(--ink-soft);
-    }
-    .builds-more {
-      margin-top: clamp(1.2rem, 2.5vh, 1.8rem);
-      font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.04em;
-      color: var(--ink-soft);
-      pointer-events: auto;
-    }
-    .builds-more a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink); }
-    .builds-more a:hover { opacity: 0.6; }
 
-    /* ── 05 DECISIONS — two essay cards, same family ───────────────── */
-    .essay-row {
-      display: flex; gap: clamp(1rem, 2vw, 1.6rem);
-      width: 100%; margin-top: 0.4rem;
-      pointer-events: auto;
-      align-items: stretch;
+    .beat-title {
+      font-family: var(--font-display);
+      font-size: clamp(2.75rem, 9vw, 6rem);
+      font-weight: 700;
+      line-height: 0.92;
+      letter-spacing: -0.03em;
+      text-transform: uppercase;
+      color: var(--ink);
+      margin-bottom: 1.2rem;
     }
-    .essay-card {
-      flex: 1; min-width: 0;
-      display: flex; flex-direction: column; justify-content: space-between;
-      padding: clamp(1.4rem, 2.2vw, 2rem);
-      background: var(--surface);
-      border: 1px solid var(--rule);
-      border-radius: 14px;
-      text-decoration: none; text-align: left;   /* body always reads left */
-      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-      transition: transform 0.3s var(--ease), box-shadow 0.3s, border-color 0.3s;
-    }
-    .essay-card:hover {
-      transform: translateY(-6px);
-      border-color: var(--rule-2);
-      box-shadow: 0 24px 50px -18px rgba(0,0,0,0.22);
-    }
-    .essay-num {
-      font-family: var(--mono); font-size: 0.66rem; font-weight: 600;
-      letter-spacing: 0.12em; color: var(--ink-soft); margin-bottom: 1rem;
-    }
-    .essay-title {
-      font-family: var(--grotesk);
-      font-weight: 800; font-size: clamp(1.25rem, 2.2vw, 1.7rem);
-      letter-spacing: -0.02em; text-transform: uppercase;
-      color: var(--ink); line-height: 1.1; margin-bottom: 0.7rem;
-    }
-    .essay-desc { font-size: 0.9rem; color: var(--ink-soft); line-height: 1.6; }
-    .essay-read {
-      margin-top: 1.4rem;
-      font-family: var(--mono);
-      font-size: 0.66rem; font-weight: 700; letter-spacing: 0.14em;
-      color: var(--ink); text-transform: uppercase;
-      transition: transform 0.25s; display: inline-block;
-    }
-    .essay-card:hover .essay-read { transform: translateX(6px); }
 
-    /* ── 06 TALK — the end title card, centered ────────────────────── */
-    .chapter.finale { justify-content: center; }
-    .chapter.finale .par {
-      max-width: 56rem; margin: 0 auto;
-      display: flex; flex-direction: column; align-items: center; text-align: center;
+    /* Hero title is larger */
+    #beat-hero .beat-title {
+      font-size: clamp(3rem, 11vw, 8rem);
     }
-    .chapter.finale .ch-kicker { text-align: center; }
-    .chapter.finale h2 {
-      font-size: clamp(2.5rem, 7vw, 5.5rem);
-      line-height: 1.0; text-align: center;
-    }
-    .talk-line em { font-style: normal; }
-    .chapter.finale .ch-sub {
-      margin: 1.4rem auto 2.4rem;
-      max-width: 50ch; text-align: center;
-    }
-    /* the ask bar — a command line waiting for the recruiter */
-    .ask-bar {
-      pointer-events: auto;
-      display: flex; align-items: center; gap: 1.1rem;
-      width: min(640px, 100%);
-      margin: 0 auto;
-      padding: 1.05rem 1.4rem;
-      background: var(--surface);
-      border: 1px solid var(--rule-2);
-      border-radius: 999px;
-      transition: border-color 0.3s, box-shadow 0.3s;
-    }
-    .ask-bar:hover {
-      border-color: var(--ink);
-      box-shadow: 0 12px 30px -16px rgba(0,0,0,0.2);
-    }
-    .ask-input {
-      flex: 1; min-width: 0;
-      background: transparent; border: none; outline: none;
+
+    .beat-body {
+      font-size: clamp(0.95rem, 1.4vw, 1.15rem);
+      line-height: 1.7;
       color: var(--ink-2);
-      font-family: var(--mono); font-size: 0.85rem;
+      max-width: 52ch;
+    }
+
+    .beat-body strong {
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    /* Stack tags inline */
+    .beat-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.2rem;
+      list-style: none;
+    }
+
+    .beat-tags li {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--ink-2);
+      border: 1px solid var(--border);
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+    }
+
+    /* Project and essay links */
+    .beat-links {
+      list-style: none;
+      margin-top: 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .beat-links a {
+      color: var(--cyan);
+      text-decoration: none;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.2s;
+    }
+
+    .beat-links a:hover {
+      border-color: var(--cyan);
+    }
+
+    /* Disabled bot input */
+    .bot-input {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 1.6rem;
+      padding: 1rem 1.4rem;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.5);
+      border-radius: 999px;
+      max-width: 36rem;
+    }
+
+    .bot-input input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--ink-2);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
       cursor: not-allowed;
     }
-    .ask-input::placeholder { color: var(--ink-soft); }
-    .ask-status {
-      display: flex; align-items: center; gap: 0.45rem;
-      font-family: var(--mono);
-      font-size: 0.58rem; font-weight: 700; letter-spacing: 0.16em;
-      color: var(--ink); text-transform: uppercase;
+
+    .bot-input input::placeholder { color: var(--ink-3); }
+
+    .bot-label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--cyan);
       white-space: nowrap;
     }
-    .badge-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--ink); animation: pulse 2.5s ease-in-out infinite; }
-    @keyframes pulse { 0%,100% { opacity: 0.35; } 50% { opacity: 1; } }
-    .chat-note {
-      margin-top: 1.2rem; font-family: var(--mono); font-size: 0.7rem; color: var(--ink-soft);
-      letter-spacing: 0.02em; pointer-events: auto; text-align: center;
-    }
-    .chat-note a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink); }
-    .chat-note a:hover { opacity: 0.6; }
 
-    /* ── FOOTER — dark contrast block as punctuation (reference step 10) ─ */
+    /* Footer */
     footer {
-      position: relative; z-index: 7;
-      background: #0a0a0a; color: #f4f4f4;
-      padding: clamp(3rem, 7vh, 5rem) 0 clamp(2rem, 5vh, 3rem);
+      border-top: 1px solid var(--border);
+      padding: 2.5rem var(--px);
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--ink-2);
+      letter-spacing: 0.06em;
     }
+
     .footer-inner {
-      max-width: 1180px; margin: 0 auto; padding: 0 var(--px);
-      display: flex; justify-content: space-between; align-items: flex-start;
-      flex-wrap: wrap; gap: 1.5rem;
-    }
-    .footer-name { font-family: var(--grotesk); font-weight: 800; font-size: 1.1rem; letter-spacing: -0.01em; text-transform: uppercase; color: #fff; margin-bottom: 0.25rem; }
-    .footer-role { font-family: var(--mono); font-size: 0.65rem; color: #b8b8b8; letter-spacing: 0.07em; }
-    .footer-links { display: flex; gap: 0.6rem; list-style: none; }
-    .footer-icon-link {
-      display: flex; align-items: center; justify-content: center;
-      width: 38px; height: 38px;
-      color: #d4d4d4; border: 1px solid #2a2a2a; border-radius: 999px;
-      text-decoration: none;
-      transition: color 0.2s, border-color 0.2s, background 0.2s;
-    }
-    .footer-icon-link:hover { color: #0a0a0a; background: #fff; border-color: #fff; }
-    .footer-bottom {
-      width: 100%; padding-top: 1.5rem; margin-top: 1rem; border-top: 1px solid #1e1e1e;
-      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.35rem;
-    }
-    .footer-bottom p { font-family: var(--mono); font-size: 0.6rem; color: #8a8a8a; letter-spacing: 0.03em; }
-
-    /* ── responsive ────────────────────────────────────────────────── */
-    @media (max-width: 900px) {
-      .poster-row { flex-direction: column; }
-      .poster-art { aspect-ratio: 21 / 9; }
-      .essay-row { flex-direction: column; }
-      /* mirrored right chapter reads left again on narrow screens */
-      .chapter.right .par,
-      .chapter.right .ch-copy { margin-left: 0; text-align: left; }
-      .chapter.right .ch-kicker, .chapter.right h2 { text-align: left; }
-      .chapter.content.right .ch-sub { margin-left: 0; text-align: left; }
-      .chapter.finale .par { text-align: center; }
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      max-width: 1200px;
+      margin: 0 auto;
     }
 
-    @media (max-width: 720px) {
-      /* phone: drop the section nav (scroll drives the film); keep a compact
-         chrome row of just the pill + live page marker so it stays short and
-         can't overlap the chapters beneath */
-      .chrome { align-items: center; justify-content: space-between; gap: 1rem; }
-      .nav { display: none; }
-      .chrome-right { flex-direction: row; align-items: center; gap: 1rem; }
-      .head { max-width: none; padding-top: clamp(6.5rem, 16vh, 9rem); }
-      .stage-meta, .chapter.intro .stage-meta { display: none; }   /* avoid colliding with scroll hint on a phone */
-      /* chapters clear the compact chrome row above them */
-      .chapter:not(.intro) { padding-top: clamp(6rem, 15vh, 9rem); }
-      .chapter.content { padding-top: clamp(7rem, 17vh, 10rem); }
-      /* on a phone the page-marker already carries the beat number, and the
-         stacked posters/essays fill the frame down to where ch-num sits */
-      .chapter.content .ch-num, .ch-credits { display: none; }
-      .ghost { display: none; }
-      .ghost { display: none; }   /* watermark crowds a phone */
-    }
-
-    /* short viewports: compact content beats so they can't clip in the pin */
-    @media (max-height: 760px) {
-      .chapter h2 { font-size: clamp(2.4rem, 7vw, 4.5rem); }
-      .chapter.content h2 { font-size: clamp(2rem, 5vw, 3.4rem); }
-      .ch-copy, .chapter.content .ch-sub { margin-top: 0.8rem; }
-      .poster-art { aspect-ratio: 21 / 6; }
-      .poster-line { display: none; }
-      .ch-credits { display: none; }
-      .ghost { display: none; }
-    }
-
-    /* reduced motion AND no-JS: no pin, no canvas — chapters stack as
-       readable static sections so every beat stays reachable */
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-      }
-      .dots, .ghost { display: none; }
-      .stage { height: auto; overflow: visible; }
-      .chrome { position: static; }
-      .chapter, .chapter:not(.intro) {
-        position: relative; inset: auto;
-        opacity: 1 !important; visibility: visible !important;
-        display: flex !important;
-        min-height: 0; height: auto;
-        padding: clamp(3rem, 7vh, 5rem) var(--px);
-        border-top: 1px solid var(--rule);
-      }
-      .chapter.intro { border-top: none; padding-bottom: 3rem; }
-      .head { padding: 0; }
-      .ch-num { position: static; margin-bottom: 0.8rem; }
-      .ch-credits { position: static; text-align: left !important; margin-top: 1.4rem; }
-      .chapter.right .par, .chapter.right .ch-copy,
-      .chapter.right .ch-kicker, .chapter.right h2,
-      .chapter.content.right .ch-sub { text-align: left !important; margin-left: 0 !important; }
-      .manifesto .ln, .actions { opacity: 1 !important; }
-      .scroll-hint { position: static; margin-top: 1.4rem; }
-      .stage-meta { display: none; }
-    }
+    .footer-links { display: flex; gap: 1.5rem; list-style: none; }
+    .footer-links a { color: var(--ink-2); text-decoration: none; }
+    .footer-links a:hover { color: var(--ink); }
   </style>
 
-  <!-- no-JS: chapters stack statically (same as reduced motion) -->
-  <noscript>
-    <style>
-      .dots, .ghost { display: none; }
-      .stage { height: auto; overflow: visible; }
-      .chrome { position: static; }
-      .chapter, .chapter:not(.intro) {
-        position: relative; inset: auto;
-        opacity: 1 !important; visibility: visible !important;
-        display: flex !important; min-height: 0; height: auto;
-        padding: clamp(3rem, 7vh, 5rem) var(--px);
-        border-top: 1px solid var(--rule);
-      }
-      .chapter.intro { border-top: none; }
-      .head { padding: 0; }
-      .ch-num { position: static; margin-bottom: 0.8rem; }
-      .ch-credits { position: static; margin-top: 1.4rem; }
-      .manifesto .ln, .actions { opacity: 1 !important; }
-      .scroll-hint, .stage-meta { position: static; }
-    </style>
-  </noscript>
-  <TrackBeacon />
-</head>
+  <main id="main">
 
-<body>
-  <main>
+    <!-- 00 · Hero -->
+    <section class="beat" id="beat-hero">
+      <p class="beat-eyebrow">{TIMELINE[0].eyebrow}</p>
+      <h1 class="beat-title">{TIMELINE[0].title}</h1>
+      <p class="beat-body" set:html={TIMELINE[0].body}></p>
+    </section>
 
-    <!-- ═══ THE STAGE — the whole page is one pinned film ═════════════ -->
-    <section class="stage" id="stage">
-      <!-- drifting dots: black on white, evolving per beat, no lines -->
-      <canvas class="dots" id="dots" aria-hidden="true"></canvas>
+    <!-- 01 · Neste -->
+    <section class="beat" id="beat-neste">
+      <p class="beat-eyebrow">{TIMELINE[1].eyebrow}</p>
+      <h2 class="beat-title">{TIMELINE[1].title}</h2>
+      <p class="beat-body" set:html={TIMELINE[1].body}></p>
+      {TIMELINE[1].tags && (
+        <ul class="beat-tags">
+          {TIMELINE[1].tags.map(t => <li>{t}</li>)}
+        </ul>
+      )}
+    </section>
 
-      <!-- top chrome: numbered nav (left) + black pill (right).
-           href anchors are the reduced-motion / no-JS fallback;
-           data-jump scrolls into the pinned film when motion is on -->
-      <div class="chrome">
-        <nav aria-label="Sections">
-          <ul class="nav">
-            <li><a href="#builds" data-jump="0.598"><span class="row"><span class="label">Builds</span><span class="num">001</span></span></a></li>
-            <li><a href="#thinking" data-jump="0.741"><span class="row"><span class="label">Thinking</span><span class="num">002</span></span></a></li>
-            <li><a href="#talk" data-jump="0.905"><span class="row"><span class="label">Talk</span><span class="num">003</span></span></a></li>
-          </ul>
-        </nav>
-        <div class="chrome-right">
-          <a class="pill" href="#talk" data-jump="0.905">Interview my CV <span set:html={icon(icons.ArrowRight, 13)} /></a>
-          <span class="page-marker" id="page-marker">(001)</span>
-        </div>
-      </div>
+    <!-- 02 · PostNord -->
+    <section class="beat" id="beat-postnord">
+      <p class="beat-eyebrow">{TIMELINE[2].eyebrow}</p>
+      <h2 class="beat-title">{TIMELINE[2].title}</h2>
+      <p class="beat-body" set:html={TIMELINE[2].body}></p>
+      {TIMELINE[2].tags && (
+        <ul class="beat-tags">
+          {TIMELINE[2].tags.map(t => <li>{t}</li>)}
+        </ul>
+      )}
+    </section>
 
-      <!-- 00 · INTRO — the approved hero, verbatim copy + type values -->
-      <div class="chapter intro">
-        <header class="head">
-          <h1 class="name" data-hero-critical>
-            <span class="ln">Tong</span>
-            <span class="ln">Nie</span>
-          </h1>
-          <p class="role" data-hero-critical>
-            <span class="ln">Data Engineer</span>
-            <span class="ln">— EU.</span>
-          </p>
-          <p class="manifesto">
-            <span class="ln">An engineer who moves data by day.</span>
-            <span class="ln">A builder who teaches it to speak by night.</span>
-            <span class="ln accent">Same craft. Different rules.</span>
-          </p>
-          <div class="actions">
-            <a class="link-cta" href="/cv">View CV <span set:html={icon(icons.ArrowRight, 13)} /></a>
-          </div>
-        </header>
-        <a class="scroll-hint" href="#builds" data-jump="0.598">scroll to play <span set:html={icon(icons.ArrowDown, 12)} /></a>
-        <span class="stage-meta">Tong Nie © 2026 — Data, by day &amp; night</span>
-      </div>
+    <!-- 03 · Basware -->
+    <section class="beat" id="beat-basware">
+      <p class="beat-eyebrow">{TIMELINE[3].eyebrow}</p>
+      <h2 class="beat-title">{TIMELINE[3].title}</h2>
+      <p class="beat-body" set:html={TIMELINE[3].body}></p>
+      {TIMELINE[3].tags && (
+        <ul class="beat-tags">
+          {TIMELINE[3].tags.map(t => <li>{t}</li>)}
+        </ul>
+      )}
+    </section>
 
-      <!-- 01 · ENERGY — Neste -->
-      <div class="chapter left">
-        <div class="ghost" aria-hidden="true">01</div>
-        <div class="ch-num">001 / 06</div>
-        <div class="ch-credits" aria-hidden="true">
-          <b>Tools</b>
-          Azure · Snowflake<br>Agile Data Engine · Power BI
-        </div>
-        <div class="par">
-          <p class="ch-kicker">Neste · Data Analyst · 2023</p>
-          <h2 data-overlap-ok>Energy</h2>
-          <p class="ch-copy">
-            APIs into Snowflake, dashboards into decisions.
-            <span class="accent">The place that taught me what “downstream” really means.</span>
-          </p>
-        </div>
-      </div>
+    <!-- 04 · Projects -->
+    <section class="beat" id="beat-projects">
+      <p class="beat-eyebrow">{TIMELINE[4].eyebrow}</p>
+      <h2 class="beat-title">{TIMELINE[4].title}</h2>
+      <p class="beat-body" set:html={TIMELINE[4].body}></p>
+      {TIMELINE[4].links && (
+        <ul class="beat-links">
+          {TIMELINE[4].links.map(l => (
+            <li><a href={l.url} target="_blank" rel="noopener">{l.label}</a></li>
+          ))}
+        </ul>
+      )}
+    </section>
 
-      <!-- 02 · LOGISTICS — PostNord -->
-      <div class="chapter right">
-        <div class="ghost" aria-hidden="true">02</div>
-        <div class="ch-num">002 / 06</div>
-        <div class="ch-credits" aria-hidden="true">
-          <b>Tools</b>
-          Databricks · ADF<br>Power BI · Streaming
-        </div>
-        <div class="par">
-          <p class="ch-kicker">PostNord · Analytics Engineer · 2023–2026</p>
-          <h2 data-overlap-ok>Logistics</h2>
-          <p class="ch-copy">
-            Built the enterprise reporting platform from zero.
-            <span class="accent">Replaced a decade of weekly Excel with a three-hour latency.</span>
-          </p>
-        </div>
-      </div>
+    <!-- 05 · Writes -->
+    <section class="beat" id="beat-writes">
+      <p class="beat-eyebrow">{TIMELINE[5].eyebrow}</p>
+      <h2 class="beat-title">{TIMELINE[5].title}</h2>
+      <p class="beat-body" set:html={TIMELINE[5].body}></p>
+      {TIMELINE[5].links && (
+        <ul class="beat-links">
+          {TIMELINE[5].links.map(l => (
+            <li><a href={l.url}>{l.label}</a></li>
+          ))}
+        </ul>
+      )}
+    </section>
 
-      <!-- 03 · SCALE — Basware -->
-      <div class="chapter left">
-        <div class="ghost" aria-hidden="true">03</div>
-        <div class="ch-num">003 / 06</div>
-        <div class="ch-credits" aria-hidden="true">
-          <b>Tools</b>
-          Python libraries · DAB templates<br>GitHub Actions · AWS
-        </div>
-        <div class="par">
-          <p class="ch-kicker">Basware · Data Engineer · Now</p>
-          <h2 data-overlap-ok>Scale</h2>
-          <p class="ch-copy">
-            One thousand pipelines, one standard.
-            <span class="accent">Building the templates other engineers build with.</span>
-          </p>
-        </div>
-      </div>
-
-      <!-- 04 · THE PROOF — premium light media cards -->
-      <div class="chapter content left" id="builds">
-        <div class="ch-num">004 / 06</div>
-        <div class="par">
-          <p class="ch-kicker">Builds · Real clients, real data</p>
-          <h2 data-overlap-ok>The Proof</h2>
-          <p class="ch-sub">Production pipelines on two clouds, and BI that ships through CI/CD. Public code.</p>
-
-          <div class="poster-row">
-            <!-- Fingrid — medallion poster -->
-            <a class="poster" href="https://github.com/Einsuomi/Data_Engineering_Fingrid" target="_blank" rel="noopener">
-              <figure class="poster-art" aria-hidden="true">
-                <!-- viewBox is 16:9 (600×338) so the desktop crop slices nothing;
-                     all labels sit inside the 21:9 mobile-safe band (y≈41–297). -->
-                <svg viewBox="0 0 600 338" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
-                  <rect width="600" height="338" fill="#f4f4f4"/>
-                  <text x="60" y="78" fill="#8a8a8a" font-size="13" font-family="monospace" letter-spacing="3">MEDALLION · DELTA LAKE</text>
-                  <rect x="60"  y="208" width="140" height="62" fill="rgba(10,10,10,0.04)" stroke="rgba(10,10,10,0.3)"/>
-                  <text x="130" y="244" text-anchor="middle" fill="#595959" font-size="14" font-family="monospace">BRONZE</text>
-                  <rect x="230" y="158" width="140" height="112" fill="rgba(10,10,10,0.07)" stroke="rgba(10,10,10,0.5)"/>
-                  <text x="300" y="219" text-anchor="middle" fill="#333" font-size="14" font-family="monospace">SILVER</text>
-                  <rect x="400" y="108" width="140" height="162" fill="rgba(10,10,10,0.92)" stroke="#0a0a0a" stroke-width="1.4"/>
-                  <text x="470" y="194" text-anchor="middle" fill="#fff" font-size="14" font-family="monospace">GOLD</text>
-                </svg>
-              </figure>
-              <div class="poster-body">
-                <h3 class="poster-title">Fingrid Pipeline</h3>
-                <p class="poster-line">Metadata-driven lakehouse for Finland's power grid — onboard a dataset with a config row.</p>
-                <p class="poster-credits">Azure · Databricks · Delta Lake · Unity Catalog</p>
-              </div>
-            </a>
-
-            <!-- AWS DLT — IaC poster -->
-            <a class="poster" href="https://github.com/Einsuomi/AWS-data-engineering-demo" target="_blank" rel="noopener">
-              <figure class="poster-art" aria-hidden="true">
-                <!-- viewBox 16:9 (600×338); labels inside the mobile-safe band. -->
-                <svg viewBox="0 0 600 338" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
-                  <rect width="600" height="338" fill="#f4f4f4"/>
-                  <text x="60" y="86" fill="#8a8a8a" font-size="13" font-family="monospace" letter-spacing="3">INFRASTRUCTURE AS CODE</text>
-                  <g stroke="rgba(10,10,10,0.1)">
-                    <line x1="60" y1="150" x2="540" y2="150"/><line x1="60" y1="230" x2="540" y2="230"/>
-                    <line x1="200" y1="120" x2="200" y2="260"/><line x1="360" y1="120" x2="360" y2="260"/>
-                  </g>
-                  <rect x="70"  y="172" width="120" height="44" fill="rgba(10,10,10,0.05)"  stroke="rgba(10,10,10,0.35)"/>
-                  <rect x="240" y="172" width="120" height="44" fill="rgba(10,10,10,0.12)" stroke="rgba(10,10,10,0.6)"/>
-                  <rect x="410" y="172" width="120" height="44" fill="rgba(10,10,10,0.92)" stroke="#0a0a0a"/>
-                  <text x="130" y="200" text-anchor="middle" fill="#595959" font-size="14" font-family="monospace">S3</text>
-                  <text x="300" y="200" text-anchor="middle" fill="#333" font-size="14" font-family="monospace">DLT</text>
-                  <text x="470" y="200" text-anchor="middle" fill="#fff" font-size="14" font-family="monospace">PROD</text>
-                </svg>
-              </figure>
-              <div class="poster-body">
-                <h3 class="poster-title">AWS DLT Pipeline</h3>
-                <p class="poster-line">Same problem, different cloud — workspace provisioned by Terraform, ETL declared, not scripted.</p>
-                <p class="poster-credits">AWS S3 · Terraform · Delta Live Tables · DABs</p>
-              </div>
-            </a>
-
-            <!-- J&D — BI CI/CD poster -->
-            <a class="poster" href="https://github.com/Einsuomi/J-D-Power-BI-CI-CD" target="_blank" rel="noopener">
-              <figure class="poster-art" aria-hidden="true">
-                <!-- viewBox 16:9 (600×338); labels inside the mobile-safe band. -->
-                <svg viewBox="0 0 600 338" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
-                  <rect width="600" height="338" fill="#f4f4f4"/>
-                  <text x="60" y="82" fill="#8a8a8a" font-size="13" font-family="monospace" letter-spacing="3">BI THROUGH CI/CD</text>
-                  <rect x="60"  y="168" width="130" height="86" fill="rgba(10,10,10,0.04)" stroke="rgba(10,10,10,0.3)"/>
-                  <text x="125" y="216" text-anchor="middle" fill="#595959" font-size="14" font-family="monospace">DEV</text>
-                  <rect x="235" y="168" width="130" height="86" fill="rgba(10,10,10,0.07)" stroke="rgba(10,10,10,0.5)"/>
-                  <text x="300" y="216" text-anchor="middle" fill="#333" font-size="14" font-family="monospace">TEST</text>
-                  <rect x="410" y="154" width="130" height="114" fill="rgba(10,10,10,0.92)" stroke="#0a0a0a" stroke-width="1.4"/>
-                  <text x="475" y="216" text-anchor="middle" fill="#fff" font-size="14" font-family="monospace">PROD</text>
-                  <line x1="190" y1="211" x2="235" y2="211" stroke="rgba(10,10,10,0.3)" stroke-width="1.5"/>
-                  <line x1="365" y1="211" x2="410" y2="211" stroke="rgba(10,10,10,0.3)" stroke-width="1.5"/>
-                </svg>
-              </figure>
-              <div class="poster-body">
-                <h3 class="poster-title">Power BI CI/CD</h3>
-                <p class="poster-line">Enterprise BI with validation gates and multi-stage release — dashboards deployed like software.</p>
-                <p class="poster-credits">Power BI · Azure DevOps · Microsoft Fabric</p>
-              </div>
-            </a>
-          </div>
-
-          <p class="builds-more">
-            + twelve Python data analysis &amp; ML notebooks on
-            <a href="https://github.com/Einsuomi" target="_blank" rel="noopener">GitHub</a>
-          </p>
-        </div>
-      </div>
-
-      <!-- 05 · DECISIONS, WRITTEN DOWN — essays -->
-      <div class="chapter content right" id="thinking">
-        <div class="ch-num">005 / 06</div>
-        <div class="par">
-          <p class="ch-kicker">Thinking · How I decide</p>
-          <h2 data-overlap-ok>Decisions, written down</h2>
-          <p class="ch-sub">Engineering judgment is the part of the job that doesn't show up in a stack list.</p>
-          <div class="essay-row">
-            <a href="/work/deleting-a-dependency" class="essay-card">
-              <div>
-                <p class="essay-num">A1</p>
-                <p class="essay-title">Deleting a Dependency</p>
-                <p class="essay-desc">On knowing when the right move is removing something rather than building around it.</p>
-              </div>
-              <span class="essay-read">Read the case →</span>
-            </a>
-            <a href="/work/trust-boundary-before-defensive-coding" class="essay-card">
-              <div>
-                <p class="essay-num">A2</p>
-                <p class="essay-title">Trust Boundary Before Defensive Coding</p>
-                <p class="essay-desc">Why drawing the trust boundary first makes defensive code cheaper to write and easier to delete.</p>
-              </div>
-              <span class="essay-read">Read the case →</span>
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <!-- 06 · TALK — the end title card -->
-      <div class="chapter content finale" id="talk">
-        <div class="ch-num">006 / 06</div>
-        <div class="par">
-          <p class="ch-kicker">Talk · The part that speaks</p>
-          <h2 class="talk-line" data-overlap-ok>Don't read my CV.<br><em>Interview it.</em></h2>
-          <p class="ch-sub">
-            A chatbot grounded in my public notes — experience, projects, approach, opinions.
-            It answers from what I've written, never from guesswork.
-          </p>
-          <div class="ask-bar">
-            <input class="ask-input" type="text" placeholder="Ask about my pipelines, my stack, my decisions…" disabled aria-label="Chat input — coming soon" />
-            <span class="ask-status"><span class="badge-dot"></span>Soon</span>
-          </div>
-          <p class="chat-note">
-            Opening soon — until then:
-            <a href="mailto:ethan.nie2020@gmail.com">ethan.nie2020@gmail.com</a>
-          </p>
-        </div>
+    <!-- 06 · Bot (disabled shell — Phase 4) -->
+    <section class="beat" id="beat-bot">
+      <p class="beat-eyebrow">{TIMELINE[6].eyebrow}</p>
+      <h2 class="beat-title">{TIMELINE[6].title}</h2>
+      <p class="beat-body" set:html={TIMELINE[6].body}></p>
+      <div class="bot-input">
+        <input
+          type="text"
+          placeholder="Ask about my pipelines, my stack, my decisions…"
+          disabled
+          aria-label="Chat input — coming soon"
+          aria-disabled="true"
+        />
+        <span class="bot-label">Soon</span>
       </div>
     </section>
 
   </main>
 
-  <!-- FOOTER — dark contrast block, the only thing after the film ──── -->
   <footer>
     <div class="footer-inner">
-      <div>
-        <p class="footer-name">Tong Nie</p>
-        <p class="footer-role">Data Engineer</p>
-      </div>
+      <span>Tong Nie — Data Engineer & Builder</span>
       <ul class="footer-links">
-        <li>
-          <a href="https://github.com/Einsuomi" class="footer-icon-link" target="_blank" rel="noopener" aria-label="GitHub">
-            <span set:html={icon(GithubData, 16)} />
-          </a>
-        </li>
-        <li>
-          <a href="https://www.linkedin.com/in/tong-nie/" class="footer-icon-link" target="_blank" rel="noopener" aria-label="LinkedIn">
-            <span set:html={icon(LinkedinData, 16)} />
-          </a>
-        </li>
-        <li>
-          <a href="mailto:ethan.nie2020@gmail.com" class="footer-icon-link" aria-label="Email">
-            <span set:html={icon(icons.Mail, 16)} />
-          </a>
-        </li>
-        <li>
-          <a href="/cv" class="footer-icon-link" aria-label="CV">
-            <span set:html={icon(icons.ExternalLink, 16)} />
-          </a>
-        </li>
+        <li><a href={`mailto:${CONTACT.email}`}>Email</a></li>
+        <li><a href={CONTACT.linkedin} target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href={CONTACT.github} target="_blank" rel="noopener">GitHub</a></li>
       </ul>
-      <div class="footer-bottom">
-        <p>Anonymous usage data only — no cookies, no cross-site tracking.</p>
-        <p>Colophon: Astro · GSAP · Lenis — analytics pipeline (Supabase → Databricks → dbt) coming online.</p>
-      </div>
     </div>
   </footer>
 
-  <!-- ═══════════════════════════════════════════════════════════════
-       SCRIPT — dot-field canvas + Lenis + GSAP pin/scrub
-  ═══════════════════════════════════════════════════════════════════ -->
-  <script>
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    // ── drifting black-dot field — carried from the approved hero, but the
-    // field now EVOLVES per beat: density/drift-direction/parallax depth
-    // ease between targets so the background never hard-cuts between beats.
-    const canvas = document.getElementById('dots') as HTMLCanvasElement;
-    const ctx = canvas.getContext('2d')!;
-
-    let W = 0, H = 0, dpr = 1;
-    const MAX = 70;                 // pool size; active count varies per beat
-    type Dot = { x: number; y: number; r: number; big: boolean; alpha: number; depth: number; spd: number; };
-    let dots: Dot[] = [];
-
-    function rand(a: number, b: number) { return a + Math.random() * (b - a); }
-
-    // per-beat field targets — count, drift angle (radians), speed scale,
-    // parallax strength. These ease in, so the field morphs, never cuts.
-    const FIELDS = [
-      { count: 50, ang: 0.00,            speed: 1.0,  par: 1.0 },  // 00 intro — calm, like the hero
-      { count: 44, ang: -0.35,           speed: 1.25, par: 1.2 },  // 01 energy — rising drift
-      { count: 58, ang: Math.PI * 0.5,   speed: 1.1,  par: 0.9 },  // 02 logistics — lateral flow
-      { count: 64, ang: Math.PI * 0.85,  speed: 1.4,  par: 1.3 },  // 03 scale — dense, fast
-      { count: 38, ang: 0.15,            speed: 0.7,  par: 0.7 },  // 04 proof — sparse, content room
-      { count: 34, ang: -0.15,           speed: 0.65, par: 0.6 },  // 05 thinking — quietest
-      { count: 46, ang: Math.PI * 1.5,   speed: 0.9,  par: 1.0 },  // 06 talk — settling
-    ];
-    // live, eased field state
-    const field = { count: 50, ang: 0, speed: 1.0, par: 1.0 };
-
-    function build() {
-      dots = [];
-      const bigCount = 10;
-      for (let i = 0; i < MAX; i++) {
-        const big = i < bigCount;
-        dots.push({
-          x: rand(0, W), y: rand(0, H),
-          r: big ? rand(6, 12) : rand(2, 4),
-          big,
-          alpha: big ? rand(0.06, 0.14) : rand(0.55, 0.95),
-          depth: big ? rand(0.6, 1.0) : rand(0.15, 0.5),
-          spd: big ? rand(0.02, 0.06) : rand(0.04, 0.12),   // base per-frame speed
-        });
-      }
-    }
-
-    function resize() {
-      dpr = Math.min(window.devicePixelRatio || 1, 2);   // capped per CLAUDE.md
-      W = canvas.offsetWidth;
-      H = canvas.offsetHeight;
-      canvas.width = W * dpr;
-      canvas.height = H * dpr;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      build();
-    }
-
-    // mouse parallax offset (eased toward target)
-    let mx = 0, my = 0, tmx = 0, tmy = 0;
-    if (!reduceMotion) {
-      window.addEventListener('mousemove', e => {
-        tmx = (e.clientX / window.innerWidth - 0.5) * 24;
-        tmy = (e.clientY / window.innerHeight - 0.5) * 18;
-      });
-    }
-
-    function drawDot(d: Dot, ox: number, oy: number) {
-      const x = d.x + ox * d.depth * field.par;
-      const y = d.y + oy * d.depth * field.par;
-      ctx.beginPath();
-      if (d.big) {
-        const g = ctx.createRadialGradient(x, y, 0, x, y, d.r);
-        g.addColorStop(0, `rgba(0,0,0,${d.alpha})`);
-        g.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = g;
-        ctx.arc(x, y, d.r, 0, Math.PI * 2);
-      } else {
-        ctx.fillStyle = `rgba(0,0,0,${d.alpha})`;
-        ctx.arc(x, y, d.r, 0, Math.PI * 2);
-      }
-      ctx.fill();
-    }
-
-    function frame() {
-      ctx.clearRect(0, 0, W, H);
-      void raf;   // rAF handle kept for symmetry; not cancelled (stage lives for the page)
-      mx += (tmx - mx) * 0.05;
-      my += (tmy - my) * 0.05;
-      const dirx = Math.cos(field.ang), diry = Math.sin(field.ang);
-      const activeCount = Math.round(field.count);
-      for (let i = 0; i < dots.length; i++) {
-        const d = dots[i];
-        // direction + speed come from the live (eased) field state
-        d.x += dirx * d.spd * field.speed;
-        d.y += diry * d.spd * field.speed;
-        const m = d.r + 2;
-        if (d.x < -m) d.x = W + m; else if (d.x > W + m) d.x = -m;
-        if (d.y < -m) d.y = H + m; else if (d.y > H + m) d.y = -m;
-        // dots beyond the active count for this beat are skipped (density fade)
-        if (i < activeCount) drawDot(d, mx, my);
-      }
-      raf = requestAnimationFrame(frame);
-    }
-
-    let raf = 0;
-    window.addEventListener('resize', resize);
-    resize();
-
-    if (reduceMotion) {
-      // static field, drawn once, full intro density
-      for (let i = 0; i < 50; i++) drawDot(dots[i], 0, 0);
-    } else {
-      raf = requestAnimationFrame(frame);
-
-      // ── intro type-in + pin/scrub — GSAP lazy-loaded after first paint so
-      // the hero (name + role) is never gated on JS. ──────────────────────
-      Promise.all([
-        import('gsap'),
-        import('gsap/ScrollTrigger'),
-        import('lenis'),
-      ]).then(([{ gsap }, { ScrollTrigger }, { default: Lenis }]) => {
-        gsap.registerPlugin(ScrollTrigger);
-
-        // intro manifesto type-in (≤300ms before motion)
-        const introTl = gsap.timeline({ delay: 0.25 });
-        introTl.fromTo('.manifesto .ln',
-            { opacity: 0, y: 14 },
-            { opacity: 1, y: 0, stagger: 0.22, duration: 0.6, ease: 'power2.out' })
-          .to('.actions',
-            { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, '-=0.2');
-        gsap.set('.actions', { y: 10 });
-
-        // smooth inertia scroll
-        const lenis = new Lenis({ lerp: 0.09 });
-        (window as any).__lenis = lenis;   // exposed for screenshot tooling only
-        lenis.on('scroll', ScrollTrigger.update);
-        gsap.ticker.add((t: number) => lenis.raf(t * 1000));
-        gsap.ticker.lagSmoothing(0);
-
-        const marker = document.getElementById('page-marker')!;
-
-        // ── ONE pinned scrub for the whole film: 7 beats over 760% ──────
-        const chapters = gsap.utils.toArray<HTMLElement>('.chapter');
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: '#stage',
-            start: 'top top',
-            end: '+=760%',
-            pin: true,
-            scrub: true,
-            onUpdate: self => {
-              const p = self.progress;
-              // active beat index = whichever beat's HOLD window contains p.
-              // thresholds are the midpoints between adjacent hold centres, so
-              // the marker flips exactly when one beat hands off to the next.
-              const active =
-                p < 0.105 ? 0 : p < 0.248 ? 1 : p < 0.391 ? 2 : p < 0.534 ? 3 :
-                p < 0.677 ? 4 : p < 0.820 ? 5 : 6;
-              // Marker must equal the visible chapter numeral: beats 1–6 carry
-              // ch-num 001–006, so the marker is the beat index itself. The intro
-              // beat (index 0, no ch-num) reads (001) — matching Skvortsov's hero
-              // chrome and keeping the sequence monotonic (001,001,002…006).
-              const beat = active === 0 ? 1 : active;
-              marker.textContent = `(00${beat})`;
-              // ease the live field toward the active beat's target —
-              // density / drift / parallax morph, the background never cuts
-              const f = FIELDS[active];
-              field.count += (f.count - field.count) * 0.04;
-              field.ang   += (f.ang   - field.ang)   * 0.04;
-              field.speed += (f.speed - field.speed) * 0.04;
-              field.par   += (f.par   - field.par)   * 0.04;
-            },
-          },
-        });
-
-        // Seven evenly-spaced beats over the pin. Each beat: [fadeInStart,
-        // fadeOutEnd] in PROGRESS units (0–1). A trailing zero-tween pins the
-        // timeline's total duration to exactly 1.0 so progress maps linearly to
-        // these positions (no scrub skew). Holds are wide so each beat reads.
-        const FADE = 0.03;
-        const windows: [HTMLElement, number, number][] = [
-          [chapters[0], 0.000, 0.090],
-          [chapters[1], 0.105, 0.233],
-          [chapters[2], 0.248, 0.376],
-          [chapters[3], 0.391, 0.519],
-          [chapters[4], 0.534, 0.662],
-          [chapters[5], 0.677, 0.805],
-          [chapters[6], 0.820, 1.000],   // finale holds to the very end
-        ];
-        // autoAlpha = opacity + visibility, so hidden chapters can't catch clicks
-        for (const [el, a, b] of windows) {
-          if (a > 0) tl.fromTo(el, { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: FADE }, a);
-          if (b < 1) tl.to(el, { autoAlpha: 0, y: -40, duration: FADE }, b - FADE);
-        }
-        // anchor total duration to exactly 1.0 (a no-op tween at t=1.0)
-        tl.set({}, {}, 1.0);
-
-        // nav links + pill + scroll hint jump to a point inside the film
-        const st = tl.scrollTrigger!;
-        document.querySelectorAll<HTMLAnchorElement>('a[data-jump]').forEach(a => {
-          a.addEventListener('click', e => {
-            e.preventDefault();
-            const frac = Number(a.dataset.jump);
-            lenis.scrollTo(st.start + (st.end - st.start) * frac, { duration: 1.6 });
-          });
-        });
-
-        // text parallax: content drifts gently against the field
-        window.addEventListener('mousemove', e => {
-          const nx = (e.clientX / innerWidth - 0.5), ny = (e.clientY / innerHeight - 0.5);
-          gsap.to('.par', { x: nx * -8, y: ny * -6, duration: 0.6, ease: 'power2.out', overwrite: 'auto' });
-        });
-
-        // footer reveal — the only scrolled content after the film
-        gsap.from('.footer-inner > *', {
-          scrollTrigger: { trigger: 'footer', start: 'top 92%', once: true },
-          opacity: 0, y: 14, stagger: 0.1, duration: 0.6, ease: 'power2.out',
-        });
-      });
-    }
-  </script>
-</body>
-</html>
+</Base>

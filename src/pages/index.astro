@@ -1,964 +1,305 @@
 ---
 /**
- * Home page v3 — "the life-story cut".
+ * Dark version — default route (/).
  *
- * The whole page is ONE pinned cinematic stage: scroll scrubs the frame
- * sequence while seven beats crossfade in place — 00 intro (name +
- * manifesto), 01–03 career chapters (ENERGY → LOGISTICS → SCALE),
- * 04 BUILDS (posters), 05 THINKING (essays), 06 TALK (chat finale).
- * Only the footer scrolls normally after the film ends.
+ * This page is a thin shell: it renders all 7 beats as real, semantic HTML
+ * inside <main> so crawlers, ATS systems, and no-JS visitors get full content.
+ * The designer's Three.js particle scene will attach to the canvas mount point
+ * below and animate over this HTML — the HTML is the fallback, not a duplicate.
  *
- * Mechanics: scroll-scrubbed canvas frames, GSAP pin + chapter windows,
- * Lenis inertia, SplitType name reveal, Anton display, HUD bar, progress
- * rail, mouse parallax, film grain. Reduced motion: chapters stack as
- * static sections over no canvas.
+ * Design tokens: near-black #060606, cream #ECE8DE, blue #3B6CF6 / amber #E8762B.
+ * Fonts: Anton (display), Archivo 800/900 (labels), Inter (body).
  */
-import '@fontsource/anton/index.css';
-import { icons } from '../lib/lucide-icons.js';
-import TrackBeacon from '../components/TrackBeacon.astro';
-
-function icon(data: any[], size = 16, cls = ''): string {
-  if (!data) return '';
-  const inner = (data as [string, Record<string,string>][])
-    .map(([tag, attrs]) =>
-      `<${tag} ${Object.entries(attrs).map(([k,v]) => `${k}="${v}"`).join(' ')}/>`
-    ).join('');
-  const c = cls ? ` class="${cls}"` : '';
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${c} aria-hidden="true">${inner}</svg>`;
-}
-
-const GithubData: [string, Record<string,string>][] = [
-  ["path",{"d":"M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"}],
-  ["path",{"d":"M9 18c-4.51 2-5-2-7-2"}],
-];
-const LinkedinData: [string, Record<string,string>][] = [
-  ["path",{"d":"M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"}],
-  ["rect",{"width":"4","height":"12","x":"2","y":"9"}],
-  ["circle",{"cx":"4","cy":"4","r":"2"}],
-];
-
-const FRAMES = 120;
+import Base from '../layouts/Base.astro';
+import { TIMELINE, CONTACT } from '../lib/timeline.ts';
 ---
 
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <link rel="icon" href="/favicon.ico" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Tong Nie — Data Engineer. Three industries, one craft. An engineer who moves data by day; a builder who teaches it to speak by night." />
-  <meta name="generator" content={Astro.generator} />
-  <title>Tong Nie — Data Engineer</title>
+<Base version="dark">
+  <!--
+    SCENE MOUNT: dark
+    The particle cloud canvas goes here — positioned fixed/absolute by the
+    scene script so it sits behind this HTML without affecting document flow.
+  -->
+  <canvas id="scene" aria-hidden="true" style="display:none"></canvas>
 
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+    /*
+     * Dark version tokens — v3 (usta.agency) feel.
+     * These are the design-canonical values; designers will extend them.
+     */
     :root {
-      --bg:        #07070a;
-      --surface:   #0f0f14;
-      --surface-2: #15151c;
-      --border:    #222230;
-      --border-dim:#1a1a24;
-      --text:      #edeae2;
-      --text-2:    #b5b0a8;
-      --text-3:    #6e6a65;
-      --accent:    #c9a35a;
-      --accent-dim:#a08040;
-      --accent-bg: rgba(201,163,90,0.07);
-      --display:   'Anton','Arial Narrow',sans-serif;
-      --mono:      ui-monospace,'Cascadia Code','JetBrains Mono','Fira Code',monospace;
-      --sans:      'Helvetica Neue',Helvetica,'Arial Nova',Arial,sans-serif;
-      --px:        clamp(1.5rem, 5.5vw, 5rem);
-      --ease:      cubic-bezier(0.22,1,0.36,1);
+      --bg:       #060606;
+      --surface:  #0c0c0d;
+      --text:     #ece8de;
+      --text-2:   #86857f;
+      --accent:   #3b6cf6;
+      --amber:    #e8762b;
+      --border:   rgba(236,232,222,0.14);
+
+      --font-display: 'Anton', 'Arial Narrow', sans-serif;
+      --font-label:   'Archivo', sans-serif;
+      --font-body:    'Inter', sans-serif;
+      --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+
+      --px: clamp(1.5rem, 5.5vw, 5rem);
     }
 
-    html { background: var(--bg); }
-    body {
-      background: var(--bg); color: var(--text);
-      font-family: var(--sans);
+    html[data-version="dark"] body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
       line-height: 1.65;
       -webkit-font-smoothing: antialiased;
       overflow-x: hidden;
     }
-    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
-    /* film grain over everything */
-    .grain {
-      position: fixed; inset: -100%; z-index: 90; pointer-events: none;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-      opacity: 0.045;
-      animation: grain 8s steps(10) infinite;
-    }
-    @keyframes grain {
-      0%,100% { transform: translate(0,0); }      20% { transform: translate(-3%,2%); }
-      40%     { transform: translate(2%,-3%); }   60% { transform: translate(-2%,-2%); }
-      80%     { transform: translate(3%,3%); }
+    /* ── No-JS / reduced-motion fallback: plain stacked sections ──── */
+    main { padding: 0; }
+
+    .beat {
+      padding: clamp(3rem, 8vw, 6rem) var(--px);
+      border-bottom: 1px solid var(--border);
     }
 
-    /* ── HUD bar — film-credit chrome instead of a conventional nav ── */
-    /* gradient only, no backdrop blur: blur over a live canvas is a
-       mobile GPU killer (CLAUDE.md performance constraint) */
-    .hud-bar {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 40;
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 1rem clamp(1.2rem, 4vw, 3rem);
-      font-family: var(--mono);
-      font-size: 0.66rem; font-weight: 700; letter-spacing: 0.22em;
-      color: var(--text); text-transform: uppercase;
-      background: linear-gradient(to bottom, rgba(7,7,10,0.88), transparent);
+    .beat-eyebrow {
+      font-family: var(--font-label);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--amber);
+      margin-bottom: 0.9rem;
     }
-    .hud-bar .dim { color: var(--text-3); font-weight: 400; }
-    .hud-bar em { color: var(--accent); font-style: normal; }
-    .hud-links { display: flex; gap: 1.6rem; }
-    .hud-links a { color: var(--text); text-decoration: none; transition: color 0.2s; }
-    .hud-links a:hover { color: var(--accent); }
 
-    /* ── chapter progress rail, right edge ─────────────────────────── */
-    .rail {
-      position: fixed; right: clamp(0.9rem, 2vw, 1.6rem); top: 50%;
-      transform: translateY(-50%); z-index: 40;
-      display: flex; flex-direction: column; gap: 1.3rem;
-      font-family: var(--mono);
-      font-size: 0.58rem; font-weight: 700; letter-spacing: 0.2em;
-      color: var(--text-3); text-transform: uppercase;
-      opacity: 0; transition: opacity 0.4s;
-      pointer-events: none;
-    }
-    .rail.on { opacity: 1; }
-    .rail span { writing-mode: vertical-rl; transition: color 0.3s; }
-    .rail span.active { color: var(--accent); }
-
-    /* ── pinned stage ──────────────────────────────────────────────── */
-    .stage { position: relative; height: 100svh; overflow: hidden; }
-    .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-
-    /* cinematic letterbox bars */
-    .bar { position: absolute; left: 0; right: 0; height: clamp(18px, 3.5vh, 40px); background: #000; z-index: 5; }
-    .bar.top { top: 0; }
-    .bar.bottom { bottom: 0; }
-
-    /* ── chapters — every beat shares this one mechanism ───────────── */
-    .chapter {
-      position: absolute; inset: 0; z-index: 6;
-      display: flex; flex-direction: column; justify-content: flex-end;
-      padding: clamp(2.5rem, 7vw, 7rem);
-      pointer-events: none;
-      opacity: 0;
-    }
-    /* readability scrim — type must stay legible over any frame */
-    .chapter::before {
-      content: '';
-      position: absolute; inset: 0; z-index: -1;
-      background: linear-gradient(to top,
-        rgba(7,7,10,0.88) 0%, rgba(7,7,10,0.32) 40%, transparent 65%);
-    }
-    .chapter:not(.intro) { visibility: hidden; }
-
-    .ch-num {
-      position: absolute; top: clamp(4rem, 12vh, 7rem); left: clamp(2.5rem, 7vw, 7rem);
-      font-family: var(--display);
-      font-size: clamp(3rem, 9vw, 8rem); line-height: 1;
-      color: transparent;
-      -webkit-text-stroke: 1.5px rgba(237,234,226,0.5);
-    }
-    /* eyebrow: company · role · years — the film-credit line */
-    .ch-kicker {
-      font-family: var(--mono);
-      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.4em;
-      color: var(--accent); text-transform: uppercase; margin-bottom: 1.1rem;
-    }
-    .chapter h2 {
-      font-family: var(--display);
+    .beat-title {
+      font-family: var(--font-display);
+      font-size: clamp(3rem, 10vw, 8rem);
       font-weight: 400;
-      font-size: clamp(4.5rem, 16vw, 15rem);
-      line-height: 0.95;
+      line-height: 0.9;
       letter-spacing: 0.01em;
       text-transform: uppercase;
       color: var(--text);
-    }
-    /* exactly two lines of copy per chapter — the discipline is the design */
-    .ch-copy {
-      max-width: 44ch; margin-top: 1.3rem;
-      font-size: clamp(0.95rem, 1.4vw, 1.15rem); line-height: 1.7;
-      color: var(--text);
-      text-shadow: 0 1px 14px rgba(0,0,0,0.8);
-    }
-    /* tools as end-credits, opposite corner */
-    .ch-credits {
-      position: absolute; bottom: clamp(3rem, 9vh, 7rem); right: clamp(2.5rem, 7vw, 7rem);
-      font-family: var(--mono);
-      font-size: 0.66rem; font-weight: 500; letter-spacing: 0.22em;
-      color: var(--text-2); text-transform: uppercase; text-align: right;
-      line-height: 2.2;
-      text-shadow: 0 1px 14px rgba(0,0,0,0.9);
-    }
-    .ch-credits b { display: block; color: var(--text-3); font-weight: 700; font-size: 0.56rem; }
-
-    .chapter.right { align-items: flex-end; text-align: right; }
-    .chapter.right .ch-num { left: auto; right: clamp(2.5rem, 7vw, 7rem); }
-    .chapter.right .ch-credits { right: auto; left: clamp(2.5rem, 7vw, 7rem); text-align: left; }
-
-    /* content chapters (04–06): smaller display word, room for content,
-       interactive children re-enable pointer events themselves */
-    /* header sits high, content stretches to fill the rest of the frame.
-       padding-top matches the ch-num top line exactly, so every chapter
-       shares one vertical grid: content zone runs from the numeral line
-       (clamp(4rem,12vh,7rem)) down to the shared bottom padding. */
-    .chapter.content { justify-content: flex-start; padding-top: clamp(4rem, 12vh, 7rem); }
-    .chapter.content h2 { font-size: clamp(2.6rem, 7.5vw, 6rem); }
-    .chapter.content .par {
-      display: flex; flex-direction: column;
-      flex: 1; min-height: 0; width: 100%;
-    }
-    /* the numeral takes the corner opposite the content; headings keep
-       clear of it by reserving that corner's width */
-    .chapter.content .ch-num { left: auto; right: clamp(2.5rem, 7vw, 7rem); }
-    .chapter.content h2 { padding-right: clamp(7rem, 16vw, 13rem); }
-    /* mirrored content chapter (05): numeral left, content right —
-       keeps the corner alternation going: 01 L, 02 R, 03 L, 04 R, 05 L, 06 R */
-    .chapter.content.right .ch-num { right: auto; left: clamp(2.5rem, 7vw, 7rem); }
-    .chapter.content.right h2 { padding-right: 0; padding-left: clamp(7rem, 16vw, 13rem); }
-    /* mirrored header: display type right-aligns fine — body text never does */
-    .chapter.content.right .ch-kicker,
-    .chapter.content.right h2 { text-align: right; }
-    .chapter.content.right .ch-sub { margin-left: auto; text-align: right; }
-    .chapter.content .ch-sub {
-      margin: 0.9rem 0 1.8rem;
-      font-size: 0.92rem; color: var(--text-2); max-width: 54ch;
-      text-shadow: 0 1px 16px rgba(0,0,0,0.85);
+      margin-bottom: 1.2rem;
     }
 
-    /* ── intro chapter — name + manifesto ──────────────────────────── */
-    .chapter.intro { justify-content: center; opacity: 1; }
-    .chapter.intro::before {
-      background: linear-gradient(90deg, rgba(7,7,10,0.8) 0%, rgba(7,7,10,0.32) 50%, transparent 78%);
-    }
-    .intro-kicker {
-      font-family: var(--mono);
-      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5em;
-      color: var(--accent); text-transform: uppercase; margin-bottom: 1.4rem;
-    }
-    .intro-name-wrap { overflow: hidden; padding-bottom: 0.4rem; }
-    .intro-name {
-      font-family: var(--display);
-      font-weight: 400;
+    /* Hero title is larger */
+    #beat-hero .beat-title {
       font-size: clamp(4rem, 14vw, 12rem);
-      line-height: 0.95;
-      letter-spacing: 0.01em;
-      text-transform: uppercase;
+    }
+
+    .beat-body {
+      font-size: clamp(0.95rem, 1.4vw, 1.15rem);
+      line-height: 1.7;
       color: var(--text);
-    }
-    .intro-name .char { display: inline-block; }
-    /* the manifesto — three lines, the last one lands in accent */
-    .manifesto {
-      margin-top: 1.6rem;
-      font-size: clamp(1.05rem, 2vw, 1.45rem);
-      line-height: 1.55;
-      color: var(--text);
-      max-width: 46ch;
-      text-shadow: 0 1px 14px rgba(0,0,0,0.8);
-    }
-    .manifesto span { display: block; }
-    .manifesto .rule-line { color: var(--accent); }
-    .intro-ctas { display: flex; gap: 1rem; margin-top: 2.2rem; flex-wrap: wrap; align-items: center; }
-    .chapter.intro .intro-ctas { pointer-events: auto; }
-    .btn-a {
-      display: inline-flex; align-items: center; gap: 0.5rem;
-      padding: 0.85rem 1.6rem; background: var(--accent); color: #07070a;
-      font-family: var(--mono);
-      font-size: 0.74rem; font-weight: 700; letter-spacing: 0.12em;
-      text-transform: uppercase; text-decoration: none;
-      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
-    }
-    .btn-a:hover { background: var(--accent-dim); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(201,163,90,0.3); }
-    .btn-b {
-      display: inline-flex; align-items: center; gap: 0.5rem;
-      padding: 0.85rem 1.6rem; border: 1px solid rgba(237,234,226,0.35); color: var(--text);
-      font-family: var(--mono);
-      font-size: 0.74rem; font-weight: 700; letter-spacing: 0.12em;
-      text-transform: uppercase; text-decoration: none;
-      transition: border-color 0.2s;
-    }
-    .btn-b:hover { border-color: var(--accent); }
-    .scroll-nudge {
-      font-family: var(--mono);
-      font-size: 0.64rem; color: var(--text-3); letter-spacing: 0.12em;
-      text-transform: uppercase; text-decoration: none;
-      display: inline-flex; align-items: center; gap: 0.35rem;
-      animation: bob 2.8s ease-in-out infinite;
-    }
-    .scroll-nudge:hover { color: var(--text); }
-    @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
-
-    /* GSAP owns the intro entrance — start hidden to avoid the flash */
-    .intro-kicker, .intro-name-wrap, .manifesto, .intro-ctas { opacity: 0; }
-
-    /* ── 04 BUILDS — compact poster row inside the chapter ─────────── */
-    .poster-row {
-      display: flex; gap: 1rem;
-      pointer-events: auto;
-      flex: 1; min-height: 0;            /* grow into the lower frame */
-      margin-top: 0.6rem;
-    }
-    .poster {
-      flex: 1; min-width: 0;
-      display: flex; flex-direction: column;
-      border: 1px solid var(--border);
-      background: rgba(15,15,20,0.92);   /* solid-ish card over the film */
-      text-decoration: none;
-      transition: transform 0.3s var(--ease), border-color 0.3s, box-shadow 0.3s;
-    }
-    .poster:hover {
-      transform: translateY(-6px);
-      border-color: var(--accent);
-      box-shadow: 0 18px 44px rgba(0,0,0,0.5), 0 0 24px rgba(201,163,90,0.08);
-    }
-    .poster-art { flex: 1; min-height: 90px; overflow: hidden; border-bottom: 1px solid var(--border-dim); }
-    .poster-art svg { width: 100%; height: 100%; display: block; }
-    .poster-body { flex-shrink: 0; }
-    .builds-more { flex-shrink: 0; }
-    /* essays center themselves in the space left under the header */
-    #thinking .essay-list { flex: 1; display: flex; flex-direction: column; justify-content: center; }
-    #thinking .essay-link { padding: 1.7rem 0.5rem; }
-    .poster-body { padding: 0.9rem 1rem 1rem; }
-    .poster-title {
-      font-family: var(--display);
-      font-weight: 400; font-size: 1.1rem; letter-spacing: 0.02em;
-      text-transform: uppercase; color: var(--text); line-height: 1.1;
-      margin-bottom: 0.35rem;
-      transition: color 0.2s;
-    }
-    .poster:hover .poster-title { color: var(--accent); }
-    .poster-line { font-size: 0.78rem; color: var(--text-2); line-height: 1.5; margin-bottom: 0.7rem; }
-    .poster-credits {
-      font-family: var(--mono);
-      font-size: 0.56rem; letter-spacing: 0.14em; text-transform: uppercase;
-      color: var(--text-3);
-    }
-    .builds-more {
-      margin-top: 1.1rem;
-      font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.08em;
-      color: var(--text-3);
-      pointer-events: auto;
-      text-shadow: 0 1px 14px rgba(0,0,0,0.9);
-    }
-    .builds-more a { color: var(--text-2); text-decoration: none; border-bottom: 1px solid var(--border); }
-    .builds-more a:hover { color: var(--accent); border-color: var(--accent); }
-
-    /* ── 05 THINKING — two essay cards, same family as the posters ─── */
-    .essay-row {
-      display: flex; gap: 1rem;
-      flex: 1; min-height: 0; margin-top: 0.6rem;
-      pointer-events: auto;
-      align-items: stretch;
-    }
-    .essay-card {
-      flex: 1; min-width: 0;
-      display: flex; flex-direction: column; justify-content: space-between;
-      padding: 1.5rem 1.6rem;
-      border: 1px solid var(--border);
-      background: rgba(15,15,20,0.92);
-      text-decoration: none; text-align: left;   /* body text always reads left */
-      transition: transform 0.3s var(--ease), border-color 0.3s, box-shadow 0.3s;
-    }
-    .essay-card:hover {
-      transform: translateY(-6px);
-      border-color: var(--accent);
-      box-shadow: 0 18px 44px rgba(0,0,0,0.5), 0 0 24px rgba(201,163,90,0.08);
-    }
-    .essay-title {
-      font-family: var(--display);
-      font-weight: 400; font-size: clamp(1.25rem, 2.4vw, 1.8rem);
-      letter-spacing: 0.02em; text-transform: uppercase;
-      color: var(--text); line-height: 1.15; margin-bottom: 0.6rem;
-      transition: color 0.2s;
-    }
-    .essay-card:hover .essay-title { color: var(--accent); }
-    .essay-desc { font-size: 0.86rem; color: var(--text-2); line-height: 1.6; }
-    .essay-read {
-      margin-top: 1.2rem;
-      font-family: var(--mono);
-      font-size: 0.66rem; font-weight: 700; letter-spacing: 0.25em;
-      color: var(--accent); text-transform: uppercase;
-      transition: transform 0.25s; display: inline-block;
-    }
-    .essay-card:hover .essay-read { transform: translateX(6px); }
-
-    /* ── 06 TALK — the end title card ──────────────────────────────── */
-    /* the finale is the one centered beat: a closing shot, not a widget.
-       Big two-line headline, then a single luminous input bar. */
-    .chapter.finale { justify-content: center; }
-    .chapter.finale .par {
-      flex: 0 1 auto;
-      align-items: center; text-align: center;
-    }
-    .chapter.finale h2 {
-      padding: 0;
-      font-size: clamp(3rem, 9vw, 8rem);
-      line-height: 1.02;
-    }
-    .talk-line em { font-style: normal; color: var(--accent); }
-    .chapter.finale .ch-sub {
-      margin: 1.3rem auto 2.4rem;
       max-width: 52ch;
     }
-    /* the ask bar — a command line waiting for the recruiter */
-    .ask-bar {
-      pointer-events: auto;
-      display: flex; align-items: center; gap: 1.1rem;
-      width: min(640px, 100%);
-      margin: 0 auto;
-      padding: 1.05rem 1.4rem;
-      border: 1px solid rgba(201,163,90,0.35);
-      background: rgba(15,15,20,0.85);
-      transition: border-color 0.3s, box-shadow 0.3s;
+
+    .beat-body strong {
+      color: var(--text);
+      font-weight: 600;
     }
-    .ask-bar:hover {
-      border-color: var(--accent);
-      box-shadow: 0 0 34px rgba(201,163,90,0.14);
+
+    /* Stack tags inline */
+    .beat-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.2rem;
+      list-style: none;
     }
-    .ask-input {
-      flex: 1; min-width: 0;
-      background: transparent; border: none; outline: none;
+
+    .beat-tags li {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
       color: var(--text-2);
-      font-family: var(--mono); font-size: 0.85rem;
+      border: 1px solid var(--border);
+      padding: 0.2rem 0.55rem;
+    }
+
+    /* Project and essay links */
+    .beat-links {
+      list-style: none;
+      margin-top: 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .beat-links a {
+      color: var(--accent);
+      text-decoration: none;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.2s;
+    }
+
+    .beat-links a:hover {
+      border-color: var(--accent);
+    }
+
+    /* Disabled bot input */
+    .bot-input {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 1.6rem;
+      padding: 1rem 1.4rem;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      max-width: 36rem;
+    }
+
+    .bot-input input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-2);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
       cursor: not-allowed;
     }
-    .ask-input::placeholder { color: var(--text-3); }
-    .ask-status {
-      display: flex; align-items: center; gap: 0.45rem;
-      font-family: var(--mono);
-      font-size: 0.58rem; font-weight: 700; letter-spacing: 0.18em;
-      color: var(--accent); text-transform: uppercase;
+
+    .bot-input input::placeholder { color: var(--text-2); opacity: 0.6; }
+
+    .bot-label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--amber);
       white-space: nowrap;
     }
-    .badge-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: pulse 2.5s ease-in-out infinite; }
-    @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
-    .chat-note {
-      margin-top: 1.1rem; font-family: var(--mono); font-size: 0.64rem; color: var(--text-3);
-      letter-spacing: 0.04em; pointer-events: auto;
-      text-shadow: 0 1px 14px rgba(0,0,0,0.9);
-    }
-    .chat-note a { color: var(--accent); text-decoration: none; }
-    .chat-note a:hover { text-decoration: underline; }
 
-    /* ── FOOTER — the only thing after the film ────────────────────── */
-    footer { border-top: 1px solid var(--border); padding: 2.75rem 0; position: relative; z-index: 7; background: var(--bg); }
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2.5rem var(--px);
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-2);
+      letter-spacing: 0.06em;
+    }
+
     .footer-inner {
-      max-width: 1180px; margin: 0 auto; padding: 0 var(--px);
-      display: flex; justify-content: space-between; align-items: flex-start;
-      flex-wrap: wrap; gap: 1.5rem;
-    }
-    .footer-name { font-family: var(--display); font-weight: 400; font-size: 1rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-2); margin-bottom: 0.2rem; }
-    .footer-role { font-family: var(--mono); font-size: 0.65rem; color: var(--text-2); letter-spacing: 0.07em; }
-    .footer-links { display: flex; gap: 0.6rem; list-style: none; }
-    .footer-icon-link {
-      display: flex; align-items: center; justify-content: center;
-      width: 36px; height: 36px;
-      color: var(--text-3); border: 1px solid var(--border);
-      text-decoration: none;
-      transition: color 0.2s, border-color 0.2s, box-shadow 0.2s;
-    }
-    .footer-icon-link:hover { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 12px rgba(201,163,90,0.15); }
-    .footer-bottom {
-      width: 100%; padding-top: 1.25rem; border-top: 1px solid var(--border-dim);
-      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.35rem;
-    }
-    .footer-bottom p { font-family: var(--mono); font-size: 0.6rem; color: var(--text-3); letter-spacing: 0.03em; }
-
-    /* ── responsive ────────────────────────────────────────────────── */
-    @media (max-width: 900px) {
-      .poster-row { flex-direction: column; gap: 0.6rem; }
-      .poster-art { display: none; }     /* compact list rows on small screens */
-      .poster-body { padding: 0.75rem 0.9rem; }
-      .poster-line { display: none; }
-      .essay-row { flex-direction: column; gap: 0.6rem; }
-      .essay-card { padding: 1rem 1.1rem; }
-      /* mirrored header reads centered-left again on narrow screens */
-      .chapter.content.right .ch-kicker,
-      .chapter.content.right h2,
-      .chapter.content.right .ch-sub { text-align: left; margin-left: 0; }
-      .chapter.content.right h2 { padding-left: 0; padding-right: clamp(5rem, 14vw, 9rem); }
-    }
-    /* very short viewports: compact the content chapters so they can't
-       clip inside the pinned stage (poster art now shrinks on its own,
-       so this only kicks in when even that isn't enough) */
-    @media (max-height: 620px) {
-      .chapter.content h2 { font-size: clamp(2.2rem, 6vw, 4rem); }
-      .chapter.content .ch-sub { margin: 0.6rem 0 1.1rem; }
-      .poster-art { display: none; }
-      .poster-line { display: none; }
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      max-width: 1200px;
+      margin: 0 auto;
     }
 
-    @media (max-width: 640px) {
-      .ch-credits { display: none; }     /* end-credit lists clutter a phone */
-      .rail { display: none; }
-      .hud-links { display: none; }
-      .intro-ctas { gap: 0.75rem; }
-      .ask-bar { padding: 0.85rem 1rem; }
-    }
-
-    /* reduced motion: no pin, no canvas — chapters stack as readable
-       static sections so every beat stays reachable */
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-      }
-      .grain, .rail, .bar { display: none; }
-      .stage { height: auto; overflow: visible; }
-      .stage canvas { display: none; }
-      .chapter, .chapter:not(.intro) {
-        position: relative; inset: auto;
-        opacity: 1 !important; visibility: visible !important;
-        display: flex !important;
-        min-height: 0;
-        padding: 4rem var(--px);
-        border-top: 1px solid var(--border);
-      }
-      .ch-num { position: static; margin-bottom: 0.8rem; }
-      .ch-credits { position: static; text-align: left; margin-top: 1.2rem; }
-      .intro-kicker, .intro-name-wrap, .manifesto, .intro-ctas { opacity: 1 !important; }
-    }
+    .footer-links { display: flex; gap: 1.5rem; list-style: none; }
+    .footer-links a { color: var(--text-2); text-decoration: none; }
+    .footer-links a:hover { color: var(--text); }
   </style>
-  <TrackBeacon />
-</head>
 
-<body>
-  <div class="grain" aria-hidden="true"></div>
+  <main id="main">
 
-  <!-- HUD bar — film chrome, not a navbar. data-jump targets a point in
-       the pinned film; href anchors are the reduced-motion fallback -->
-  <div class="hud-bar">
-    <span>Tong<em>.</em>Nie <span class="dim">/ data engineer</span></span>
-    <span class="dim" id="hud-seq">SEQ 000 / {FRAMES}</span>
-    <span class="hud-links">
-      <a href="#builds" data-jump="0.58">Builds</a>
-      <a href="#thinking" data-jump="0.725">Thinking</a>
-      <a href="#talk" data-jump="0.92">Talk</a>
-      <a href="/cv">CV</a>
-    </span>
-  </div>
+    <!-- 00 · Hero -->
+    <section class="beat" id="beat-hero">
+      <p class="beat-eyebrow">{TIMELINE[0].eyebrow}</p>
+      <h1 class="beat-title">{TIMELINE[0].title}</h1>
+      <p class="beat-body" set:html={TIMELINE[0].body}></p>
+    </section>
 
-  <!-- chapter progress rail -->
-  <div class="rail" id="rail" aria-hidden="true">
-    <span class="active">00 Intro</span>
-    <span>01 Energy</span>
-    <span>02 Logistics</span>
-    <span>03 Scale</span>
-    <span>04 Builds</span>
-    <span>05 Thinking</span>
-    <span>06 Talk</span>
-  </div>
+    <!-- 01 · Neste -->
+    <section class="beat" id="beat-neste">
+      <p class="beat-eyebrow">{TIMELINE[1].eyebrow}</p>
+      <h2 class="beat-title">{TIMELINE[1].title}</h2>
+      <p class="beat-body" set:html={TIMELINE[1].body}></p>
+      {TIMELINE[1].tags && (
+        <ul class="beat-tags">
+          {TIMELINE[1].tags.map(t => <li>{t}</li>)}
+        </ul>
+      )}
+    </section>
 
-  <main>
+    <!-- 02 · PostNord -->
+    <section class="beat" id="beat-postnord">
+      <p class="beat-eyebrow">{TIMELINE[2].eyebrow}</p>
+      <h2 class="beat-title">{TIMELINE[2].title}</h2>
+      <p class="beat-body" set:html={TIMELINE[2].body}></p>
+      {TIMELINE[2].tags && (
+        <ul class="beat-tags">
+          {TIMELINE[2].tags.map(t => <li>{t}</li>)}
+        </ul>
+      )}
+    </section>
 
-    <!-- ═══ THE STAGE — the whole homepage is one pinned film ═════════ -->
-    <section class="stage" id="stage">
-      <canvas id="seq" aria-hidden="true"></canvas>
-      <div class="bar top" aria-hidden="true"></div>
-      <div class="bar bottom" aria-hidden="true"></div>
+    <!-- 03 · Basware -->
+    <section class="beat" id="beat-basware">
+      <p class="beat-eyebrow">{TIMELINE[3].eyebrow}</p>
+      <h2 class="beat-title">{TIMELINE[3].title}</h2>
+      <p class="beat-body" set:html={TIMELINE[3].body}></p>
+      {TIMELINE[3].tags && (
+        <ul class="beat-tags">
+          {TIMELINE[3].tags.map(t => <li>{t}</li>)}
+        </ul>
+      )}
+    </section>
 
-      <!-- 00 · intro — name + manifesto -->
-      <div class="chapter intro">
-        <div class="par">
-          <p class="intro-kicker">Data Engineer — EU</p>
-          <div class="intro-name-wrap">
-            <h1 class="intro-name">Tong Nie</h1>
-          </div>
-          <p class="manifesto">
-            <span>An engineer who moves data by day.</span>
-            <span>A builder who teaches it to speak by night.</span>
-            <span class="rule-line">Same craft. Different rules.</span>
-          </p>
-          <div class="intro-ctas">
-            <a class="btn-a" href="#talk" data-jump="0.92">Interview my CV <span set:html={icon(icons.ArrowRight, 13)} /></a>
-            <a class="btn-b" href="/cv">View CV</a>
-            <a class="scroll-nudge" href="#builds" data-jump="0.58">scroll to play <span set:html={icon(icons.ArrowDown, 12)} /></a>
-          </div>
-        </div>
-      </div>
+    <!-- 04 · Projects -->
+    <section class="beat" id="beat-projects">
+      <p class="beat-eyebrow">{TIMELINE[4].eyebrow}</p>
+      <h2 class="beat-title">{TIMELINE[4].title}</h2>
+      <p class="beat-body" set:html={TIMELINE[4].body}></p>
+      {TIMELINE[4].links && (
+        <ul class="beat-links">
+          {TIMELINE[4].links.map(l => (
+            <li><a href={l.url} target="_blank" rel="noopener">{l.label}</a></li>
+          ))}
+        </ul>
+      )}
+    </section>
 
-      <!-- 01 · ENERGY — Neste -->
-      <div class="chapter">
-        <div class="ch-num">01</div>
-        <div class="ch-credits" aria-hidden="true">
-          <b>Tools</b>
-          Azure · Snowflake<br>Agile Data Engine · Power BI
-        </div>
-        <div class="par">
-          <p class="ch-kicker">Neste · Data Analyst · 2023</p>
-          <h2>Energy</h2>
-          <p class="ch-copy">
-            APIs into Snowflake, dashboards into decisions.
-            The place that taught me what “downstream” really means.
-          </p>
-        </div>
-      </div>
+    <!-- 05 · Writes -->
+    <section class="beat" id="beat-writes">
+      <p class="beat-eyebrow">{TIMELINE[5].eyebrow}</p>
+      <h2 class="beat-title">{TIMELINE[5].title}</h2>
+      <p class="beat-body" set:html={TIMELINE[5].body}></p>
+      {TIMELINE[5].links && (
+        <ul class="beat-links">
+          {TIMELINE[5].links.map(l => (
+            <li><a href={l.url}>{l.label}</a></li>
+          ))}
+        </ul>
+      )}
+    </section>
 
-      <!-- 02 · LOGISTICS — PostNord -->
-      <div class="chapter right">
-        <div class="ch-num">02</div>
-        <div class="ch-credits" aria-hidden="true">
-          <b>Tools</b>
-          Databricks · ADF<br>Power BI · Streaming
-        </div>
-        <div class="par">
-          <p class="ch-kicker">PostNord · Analytics Engineer · 2023–2026</p>
-          <h2>Logistics</h2>
-          <p class="ch-copy">
-            Built the enterprise reporting platform from zero.
-            Replaced a decade of weekly Excel with a three-hour latency.
-          </p>
-        </div>
-      </div>
-
-      <!-- 03 · SCALE — Basware -->
-      <div class="chapter">
-        <div class="ch-num">03</div>
-        <div class="ch-credits" aria-hidden="true">
-          <b>Tools</b>
-          Python libraries · DAB templates<br>GitHub Actions · AWS
-        </div>
-        <div class="par">
-          <p class="ch-kicker">Basware · Data Engineer · Now</p>
-          <h2>Scale</h2>
-          <p class="ch-copy">
-            One thousand pipelines, one standard.
-            Building the templates other engineers build with.
-          </p>
-        </div>
-      </div>
-
-      <!-- 04 · BUILDS — posters live inside the film now -->
-      <div class="chapter content" id="builds">
-        <div class="ch-num">04</div>
-        <div class="par">
-          <p class="ch-kicker">Builds · Real clients, real data</p>
-          <h2>The Proof</h2>
-          <p class="ch-sub">Production pipelines on two clouds, and BI that ships through CI/CD. Public code.</p>
-
-          <div class="poster-row">
-            <!-- Fingrid — medallion poster -->
-            <a class="poster" href="https://github.com/Einsuomi/Data_Engineering_Fingrid" target="_blank" rel="noopener">
-              <figure class="poster-art" aria-hidden="true">
-                <svg viewBox="0 0 600 220" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
-                  <rect width="600" height="220" fill="#0c0c11"/>
-                  <rect x="40"  y="140" width="140" height="50" fill="rgba(201,163,90,0.08)" stroke="rgba(201,163,90,0.35)"/>
-                  <text x="110" y="170" text-anchor="middle" fill="#c9a35a" font-size="12" font-family="monospace" opacity="0.7">BRONZE</text>
-                  <rect x="230" y="100" width="140" height="90" fill="rgba(201,163,90,0.11)" stroke="rgba(201,163,90,0.55)"/>
-                  <text x="300" y="150" text-anchor="middle" fill="#c9a35a" font-size="12" font-family="monospace" opacity="0.85">SILVER</text>
-                  <rect x="420" y="55" width="140" height="135" fill="rgba(201,163,90,0.16)" stroke="#c9a35a" stroke-width="1.4"/>
-                  <text x="490" y="128" text-anchor="middle" fill="#c9a35a" font-size="12" font-family="monospace">GOLD</text>
-                  <text x="40" y="40" fill="#6e6a65" font-size="10" font-family="monospace" letter-spacing="3">MEDALLION · DELTA LAKE</text>
-                </svg>
-              </figure>
-              <div class="poster-body">
-                <h3 class="poster-title">Fingrid Pipeline</h3>
-                <p class="poster-line">Metadata-driven lakehouse for Finland's power grid — onboard a dataset with a config row.</p>
-                <p class="poster-credits">Azure · Databricks · Delta Lake · Unity Catalog</p>
-              </div>
-            </a>
-
-            <!-- AWS DLT — IaC poster -->
-            <a class="poster" href="https://github.com/Einsuomi/AWS-data-engineering-demo" target="_blank" rel="noopener">
-              <figure class="poster-art" aria-hidden="true">
-                <svg viewBox="0 0 600 220" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
-                  <rect width="600" height="220" fill="#0c0c11"/>
-                  <g stroke="rgba(201,163,90,0.18)">
-                    <line x1="40" y1="110" x2="560" y2="110"/><line x1="40" y1="160" x2="560" y2="160"/>
-                    <line x1="180" y1="70" x2="180" y2="200"/><line x1="320" y1="70" x2="320" y2="200"/><line x1="460" y1="70" x2="460" y2="200"/>
-                  </g>
-                  <rect x="60"  y="120" width="100" height="32" fill="rgba(201,163,90,0.1)"  stroke="rgba(201,163,90,0.4)"/>
-                  <rect x="200" y="120" width="100" height="32" fill="rgba(201,163,90,0.16)" stroke="rgba(201,163,90,0.6)"/>
-                  <rect x="340" y="120" width="100" height="32" fill="rgba(201,163,90,0.22)" stroke="#c9a35a"/>
-                  <text x="110" y="141" text-anchor="middle" fill="#c9a35a" font-size="10" font-family="monospace" opacity="0.7">S3</text>
-                  <text x="250" y="141" text-anchor="middle" fill="#c9a35a" font-size="10" font-family="monospace" opacity="0.85">DLT</text>
-                  <text x="390" y="141" text-anchor="middle" fill="#c9a35a" font-size="10" font-family="monospace">PROD</text>
-                  <text x="40" y="40" fill="#6e6a65" font-size="10" font-family="monospace" letter-spacing="3">INFRASTRUCTURE AS CODE</text>
-                </svg>
-              </figure>
-              <div class="poster-body">
-                <h3 class="poster-title">AWS DLT Pipeline</h3>
-                <p class="poster-line">Same problem, different cloud — workspace provisioned by Terraform, ETL declared, not scripted.</p>
-                <p class="poster-credits">AWS S3 · Terraform · Delta Live Tables · DABs</p>
-              </div>
-            </a>
-
-            <!-- J&D — BI CI/CD poster -->
-            <a class="poster" href="https://github.com/Einsuomi/J-D-Power-BI-CI-CD" target="_blank" rel="noopener">
-              <figure class="poster-art" aria-hidden="true">
-                <svg viewBox="0 0 600 220" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
-                  <rect width="600" height="220" fill="#0c0c11"/>
-                  <rect x="40"  y="110" width="130" height="70" fill="rgba(201,163,90,0.07)" stroke="rgba(201,163,90,0.35)"/>
-                  <text x="105" y="150" text-anchor="middle" fill="#c9a35a" font-size="11" font-family="monospace" opacity="0.7">DEV</text>
-                  <rect x="230" y="110" width="130" height="70" fill="rgba(201,163,90,0.11)" stroke="rgba(201,163,90,0.55)"/>
-                  <text x="295" y="150" text-anchor="middle" fill="#c9a35a" font-size="11" font-family="monospace" opacity="0.85">TEST</text>
-                  <rect x="420" y="98" width="140" height="94" fill="rgba(201,163,90,0.16)" stroke="#c9a35a" stroke-width="1.4"/>
-                  <text x="490" y="142" text-anchor="middle" fill="#c9a35a" font-size="11" font-family="monospace">PROD</text>
-                  <line x1="170" y1="145" x2="230" y2="145" stroke="rgba(201,163,90,0.4)" stroke-width="1.5"/>
-                  <line x1="360" y1="145" x2="420" y2="145" stroke="rgba(201,163,90,0.4)" stroke-width="1.5"/>
-                  <text x="40" y="40" fill="#6e6a65" font-size="10" font-family="monospace" letter-spacing="3">BI THROUGH CI/CD</text>
-                </svg>
-              </figure>
-              <div class="poster-body">
-                <h3 class="poster-title">Power BI CI/CD</h3>
-                <p class="poster-line">Enterprise BI with validation gates and multi-stage release — dashboards deployed like software.</p>
-                <p class="poster-credits">Power BI · Azure DevOps · Microsoft Fabric</p>
-              </div>
-            </a>
-          </div>
-
-          <p class="builds-more">
-            + twelve Python data analysis &amp; ML notebooks on
-            <a href="https://github.com/Einsuomi" target="_blank" rel="noopener">GitHub</a>
-          </p>
-        </div>
-      </div>
-
-      <!-- 05 · THINKING — essays inside the film -->
-      <div class="chapter content right" id="thinking">
-        <div class="ch-num">05</div>
-        <div class="par">
-          <p class="ch-kicker">Thinking · How I decide</p>
-          <h2>Decisions, written down</h2>
-          <p class="ch-sub">Engineering judgment is the part of the job that doesn't show up in a stack list.</p>
-          <div class="essay-row">
-            <a href="/work/deleting-a-dependency" class="essay-card">
-              <div>
-                <p class="essay-title">Deleting a Dependency</p>
-                <p class="essay-desc">On knowing when the right move is removing something rather than building around it.</p>
-              </div>
-              <span class="essay-read">Read the case →</span>
-            </a>
-            <a href="/work/trust-boundary-before-defensive-coding" class="essay-card">
-              <div>
-                <p class="essay-title">Trust Boundary Before Defensive Coding</p>
-                <p class="essay-desc">Why drawing the trust boundary first makes defensive code cheaper to write and easier to delete.</p>
-              </div>
-              <span class="essay-read">Read the case →</span>
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <!-- 06 · TALK — the end title card -->
-      <div class="chapter content finale" id="talk">
-        <div class="ch-num">06</div>
-        <div class="par">
-          <p class="ch-kicker">Talk · The part that speaks</p>
-          <h2 class="talk-line">Don't read my CV.<br><em>Interview it.</em></h2>
-          <p class="ch-sub">
-            A chatbot grounded in my public notes — experience, projects, approach, opinions.
-            It answers from what I've written, never from guesswork.
-          </p>
-          <div class="ask-bar">
-            <input class="ask-input" type="text" placeholder="Ask about my pipelines, my stack, my decisions…" disabled aria-label="Chat input — coming soon" />
-            <span class="ask-status"><span class="badge-dot"></span>Soon</span>
-          </div>
-          <p class="chat-note">
-            Opening soon — until then:
-            <a href="mailto:ethan.nie2020@gmail.com">ethan.nie2020@gmail.com</a>
-          </p>
-        </div>
+    <!-- 06 · Bot (disabled shell — Phase 4) -->
+    <section class="beat" id="beat-bot">
+      <p class="beat-eyebrow">{TIMELINE[6].eyebrow}</p>
+      <h2 class="beat-title">{TIMELINE[6].title}</h2>
+      <p class="beat-body" set:html={TIMELINE[6].body}></p>
+      <div class="bot-input">
+        <input
+          type="text"
+          placeholder="Ask about my pipelines, my stack, my decisions…"
+          disabled
+          aria-label="Chat input — coming soon"
+          aria-disabled="true"
+        />
+        <span class="bot-label">Soon</span>
       </div>
     </section>
 
   </main>
 
-  <!-- FOOTER — the only thing after the film ─────────────────────── -->
   <footer>
     <div class="footer-inner">
-      <div>
-        <p class="footer-name">Tong Nie</p>
-        <p class="footer-role">Data Engineer</p>
-      </div>
+      <span>Tong Nie — Data Engineer & Builder</span>
       <ul class="footer-links">
-        <li>
-          <a href="https://github.com/Einsuomi" class="footer-icon-link" target="_blank" rel="noopener" aria-label="GitHub">
-            <span set:html={icon(GithubData, 16)} />
-          </a>
-        </li>
-        <li>
-          <a href="https://www.linkedin.com/in/tong-nie/" class="footer-icon-link" target="_blank" rel="noopener" aria-label="LinkedIn">
-            <span set:html={icon(LinkedinData, 16)} />
-          </a>
-        </li>
-        <li>
-          <a href="mailto:ethan.nie2020@gmail.com" class="footer-icon-link" aria-label="Email">
-            <span set:html={icon(icons.Mail, 16)} />
-          </a>
-        </li>
-        <li>
-          <a href="/cv" class="footer-icon-link" aria-label="CV">
-            <span set:html={icon(icons.ExternalLink, 16)} />
-          </a>
-        </li>
+        <li><a href={`mailto:${CONTACT.email}`}>Email</a></li>
+        <li><a href={CONTACT.linkedin} target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href={CONTACT.github} target="_blank" rel="noopener">GitHub</a></li>
       </ul>
-      <div class="footer-bottom">
-        <p>Anonymous usage data only — no cookies, no cross-site tracking.</p>
-        <p>Colophon: Astro · GSAP · Lenis — analytics pipeline (Supabase → Databricks → dbt) coming online.</p>
-      </div>
     </div>
   </footer>
 
-  <!-- ═══════════════════════════════════════════════════════════════
-       SCRIPT — Lenis + GSAP + SplitType + frame canvas
-  ═══════════════════════════════════════════════════════════════════ -->
-  <script>
-    import Lenis from 'lenis';
-    import { gsap } from 'gsap';
-    import { ScrollTrigger } from 'gsap/ScrollTrigger';
-    import SplitType from 'split-type';
-
-    gsap.registerPlugin(ScrollTrigger);
-
-    const FRAMES = 120;
-    const canvas = document.getElementById('seq') as HTMLCanvasElement;
-    const ctx = canvas.getContext('2d')!;
-    const hudSeq = document.getElementById('hud-seq')!;
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    // ── frame loading: frame 0 first for instant paint, rest stream in
-    const images: HTMLImageElement[] = [];
-    const ready: boolean[] = [];
-    let current = 0;
-
-    function loadFrame(i: number) {
-      const img = new Image();
-      img.onload = () => { ready[i] = true; if (i === current) draw(i); };
-      img.src = `/seq2/frame_${String(i).padStart(3, '0')}.jpg`;
-      images[i] = img;
-    }
-    loadFrame(0);
-    for (let i = 1; i < FRAMES; i++) loadFrame(i);
-
-    // if the exact frame isn't decoded yet, draw the nearest one that is
-    function nearest(i: number): number {
-      if (ready[i]) return i;
-      for (let d = 1; d < FRAMES; d++) {
-        if (ready[i - d]) return i - d;
-        if (ready[i + d]) return i + d;
-      }
-      return -1;
-    }
-
-    // cover-crop draw so any viewport ratio (incl. portrait) stays framed
-    function draw(target: number) {
-      const i = nearest(target);
-      if (i < 0) return;
-      current = target;
-      const img = images[i];
-      const cw = canvas.width, ch = canvas.height;
-      const scale = Math.max(cw / img.width, ch / img.height);
-      const w = img.width * scale, h = img.height * scale;
-      ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
-      hudSeq.textContent = `SEQ ${String(target).padStart(3, '0')} / ${FRAMES}`;
-    }
-
-    function resize() {
-      // capped pixel ratio — retina sharpness without melting GPUs
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width  = canvas.offsetWidth * dpr;
-      canvas.height = canvas.offsetHeight * dpr;
-      draw(current);
-    }
-    window.addEventListener('resize', resize);
-    resize();
-
-    // ── smooth inertia scroll ───────────────────────────────────────
-    const lenis = new Lenis({ lerp: 0.09 });
-    lenis.on('scroll', ScrollTrigger.update);
-    gsap.ticker.add(t => lenis.raf(t * 1000));
-    gsap.ticker.lagSmoothing(0);
-
-    // ── ONE pinned scrub for the whole film: 7 beats over 700% ──────
-    const railEl = document.getElementById('rail')!;
-    const railItems = Array.from(railEl.querySelectorAll('span'));
-
-    if (!reduceMotion) {
-      railEl.classList.add('on');
-      const chapters = gsap.utils.toArray<HTMLElement>('.chapter');
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: '#stage',
-          start: 'top top',
-          end: '+=760%',   // extra runway so the finale holds longer
-          pin: true,
-          scrub: true,
-          onUpdate: self => {
-            draw(Math.round(self.progress * (FRAMES - 1)));
-            // highlight the rail item for the active chapter window
-            const p = self.progress;
-            const active =
-              p < 0.095 ? 0 : p < 0.23 ? 1 : p < 0.365 ? 2 : p < 0.50 ? 3 :
-              p < 0.655 ? 4 : p < 0.795 ? 5 : 6;
-            railItems.forEach((el, i) => el.classList.toggle('active', i === active));
-            railEl.classList.toggle('on', self.isActive);
-          },
-        },
-      });
-
-      // [chapter, fade-in at, fade-out at] as fractions of the pin;
-      // TALK holds to the end — the film closes on the call-to-action
-      const windows: [HTMLElement, number, number][] = [
-        [chapters[0], 0.000, 0.075],
-        [chapters[1], 0.115, 0.210],
-        [chapters[2], 0.250, 0.345],
-        [chapters[3], 0.385, 0.480],
-        [chapters[4], 0.520, 0.640],
-        [chapters[5], 0.675, 0.775],
-        [chapters[6], 0.815, 1.010],   // the finale gets the longest hold
-      ];
-      // autoAlpha = opacity + visibility, so hidden chapters can't catch clicks
-      for (const [el, a, b] of windows) {
-        if (a > 0) tl.fromTo(el, { autoAlpha: 0, y: 50 }, { autoAlpha: 1, y: 0, duration: 0.045 }, a);
-        if (b <= 1) tl.to(el, { autoAlpha: 0, y: -50, duration: 0.045 }, b - 0.045);
-      }
-
-      // HUD links + intro CTAs jump to a point inside the film
-      const st = tl.scrollTrigger!;
-      document.querySelectorAll<HTMLAnchorElement>('a[data-jump]').forEach(a => {
-        a.addEventListener('click', e => {
-          e.preventDefault();
-          const p = Number(a.dataset.jump);
-          lenis.scrollTo(st.start + (st.end - st.start) * p, { duration: 1.6 });
-        });
-      });
-
-      // mouse parallax: scene drifts with the cursor, text drifts against it
-      const xc = gsap.quickTo(canvas, 'x', { duration: 0.6, ease: 'power2.out' });
-      const yc = gsap.quickTo(canvas, 'y', { duration: 0.6, ease: 'power2.out' });
-      window.addEventListener('mousemove', e => {
-        const nx = (e.clientX / innerWidth - 0.5), ny = (e.clientY / innerHeight - 0.5);
-        xc(nx * 14); yc(ny * 10);
-        gsap.to('.par', { x: nx * -10, y: ny * -7, duration: 0.6, ease: 'power2.out', overwrite: 'auto' });
-      });
-    }
-
-    // ── intro entrance: name chars, then the manifesto line by line ──
-    const split = new SplitType('.intro-name', { types: 'chars' });
-    gsap.set(['.intro-name-wrap', '.intro-name'], { opacity: 1 });
-
-    const heroTl = gsap.timeline({ delay: 0.25 });
-    heroTl
-      .to('.intro-kicker', { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' })
-      .fromTo(split.chars,
-        { opacity: 0, y: 70 },
-        { opacity: 1, y: 0, stagger: 0.03, duration: 0.7, ease: 'expo.out' },
-        '-=0.2')
-      .to('.manifesto', { opacity: 1, duration: 0.01 }, '-=0.3')
-      .from('.manifesto span', { opacity: 0, y: 18, stagger: 0.22, duration: 0.6, ease: 'power2.out' }, '<')
-      .to('.intro-ctas', { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, '-=0.2');
-    gsap.set(['.intro-kicker', '.intro-ctas'], { y: 14 });
-
-    // footer reveal — the only scrolled content after the film
-    gsap.from('.footer-inner > *', {
-      scrollTrigger: { trigger: 'footer', start: 'top 92%', once: true },
-      opacity: 0, y: 14, stagger: 0.1, duration: 0.6, ease: 'power2.out',
-    });
-  </script>
-</body>
-</html>
+</Base>
