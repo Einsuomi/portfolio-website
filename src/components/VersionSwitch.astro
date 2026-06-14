@@ -1,0 +1,130 @@
+---
+/**
+ * VersionSwitch — fixed bottom-right corner toggle between dark (/) and light (/light).
+ *
+ * Behaviour:
+ * - With JS: on load, reads localStorage key `portfolio-version`. If stored value
+ *   differs from the current route's version, redirects to the correct route.
+ *   Clicking the inactive option saves to localStorage, fires an analytics beacon,
+ *   then navigates.
+ * - Without JS: renders as plain <a> links to / and /light — fully usable.
+ * - Guards against redirect loops via a query-string flag (?nr=1).
+ */
+export interface Props {
+  version: 'dark' | 'light';
+}
+
+const { version } = Astro.props;
+
+// Route for each version.
+const DARK_URL  = '/';
+const LIGHT_URL = '/light';
+// localStorage key used across both routes.
+const LS_KEY = 'portfolio-version';
+---
+
+<!--
+  The switch is always rendered as real anchor links so it works with JS disabled.
+  The inline script below progressively enhances the click handlers.
+-->
+<nav class="version-switch" aria-label="Switch site version">
+  <a
+    href={DARK_URL}
+    class:list={['vs-option', version === 'dark' && 'vs-active']}
+    aria-label="Dark version"
+    aria-current={version === 'dark' ? 'page' : undefined}
+    data-version-target="dark"
+  >Dark</a>
+  <span class="vs-sep" aria-hidden="true">/</span>
+  <a
+    href={LIGHT_URL}
+    class:list={['vs-option', version === 'light' && 'vs-active']}
+    aria-label="Light version"
+    aria-current={version === 'light' ? 'page' : undefined}
+    data-version-target="light"
+  >Light</a>
+</nav>
+
+<style>
+  /* Fixed to bottom-right; designers will restyle per version — this is
+     functional chrome only. */
+  .version-switch {
+    position: fixed;
+    bottom: 1.25rem;
+    right: 1.25rem;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    font-family: ui-monospace, 'JetBrains Mono', monospace;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    padding: 0.4rem 0.75rem;
+    border-radius: 999px;
+    /* No backdrop-filter blur — CLAUDE.md: no blur over live canvas on mobile. */
+  }
+
+  .vs-option {
+    color: rgba(255, 255, 255, 0.5);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .vs-option:hover,
+  .vs-option.vs-active {
+    color: #fff;
+  }
+
+  .vs-sep {
+    color: rgba(255, 255, 255, 0.3);
+  }
+</style>
+
+<script is:inline define:vars={{ version, DARK_URL, LIGHT_URL, LS_KEY }}>
+  (function () {
+    // Read the user's stored preference.
+    var stored;
+    try { stored = localStorage.getItem(LS_KEY); } catch (_) { return; }
+
+    // Guard against redirect loops: if URL already has ?nr=1 we do nothing.
+    if (stored && stored !== version && !location.search.includes('nr=1')) {
+      var target = stored === 'light' ? LIGHT_URL + '?nr=1' : DARK_URL + '?nr=1';
+      location.replace(target);
+      return;
+    }
+
+    // Enhance the inactive option's click to store the choice and fire analytics.
+    document.querySelectorAll('[data-version-target]').forEach(function (el) {
+      var target = el.getAttribute('data-version-target');
+      if (target === version) return;  // active option — nothing to do
+
+      el.addEventListener('click', function (e) {
+        e.preventDefault();
+
+        // Persist choice.
+        try { localStorage.setItem(LS_KEY, target); } catch (_) {}
+
+        // Fire analytics beacon for the version_switch event, reusing the
+        // same /api/track endpoint (path acts as the event identifier).
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(
+            '/api/track',
+            JSON.stringify({
+              // Encode the event as a synthetic path so the existing endpoint
+              // contract (path required, starts with /) is satisfied unchanged.
+              path: '/event/version_switch/' + target,
+              referrer: location.pathname,
+            })
+          );
+        }
+
+        // Navigate to the target route.
+        var dest = target === 'light' ? LIGHT_URL : DARK_URL;
+        location.href = dest;
+      });
+    });
+  })();
+</script>
