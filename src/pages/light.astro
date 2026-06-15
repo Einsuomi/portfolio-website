@@ -1,13 +1,16 @@
 ---
 /**
- * Light version — route (/light).
+ * Light version — route (/light).  v4 (vectrfl.com) feel.
  *
- * This page is a thin shell: it renders all 7 beats as real, semantic HTML
- * inside <main> so crawlers, ATS systems, and no-JS visitors get full content.
- * The designer's Three.js pipeline scene will attach to the canvas mount point
- * below and animate behind this HTML.
+ * Real, semantic HTML for all 7 beats lives in <main> so crawlers, ATS
+ * systems and no-JS visitors get full content (the no-JS / reduced-motion
+ * fallback is the plain stacked sections). A fixed-full-screen Three.js
+ * pipeline scene (src/scripts/light-scene.ts) rides a glowing curve BEHIND
+ * this HTML; when it boots it sets html.has-scene, which lifts the beats
+ * into fixed v4 "stage panels" that the scene fades in/out by scroll
+ * progress. The scene NEVER injects copy — it only animates this DOM.
  *
- * Design tokens: fog #eaf0f7, ink #0b1220, cyan #1ea7ff.
+ * Design tokens: fog #eaf0f7, ink #0b1220, cyan #1ea7ff + per-beat accents.
  * Fonts: Space Grotesk 600/700 (display), Inter (body), JetBrains Mono (HUD/tags).
  */
 import Base from '../layouts/Base.astro';
@@ -15,279 +18,159 @@ import { TIMELINE, CONTACT } from '../lib/timeline.ts';
 ---
 
 <Base version="light">
+  <!-- Fixed WebGL backdrop. Hidden until the scene boots; never the LCP. -->
+  <canvas id="scene" aria-hidden="true"></canvas>
+
+  <!-- Loader: a quiet ring + wordmark over the fog. Removed entirely with no JS. -->
+  <div class="loader" id="loader" aria-hidden="true">
+    <div class="loader__ring"></div>
+    <div class="loader__lz">Tong Nie — pipeline</div>
+  </div>
+
+  <!-- Telemetry HUD (top-left brand). Marked fixed-chrome: exempt from collision checks. -->
+  <div class="hud hud-tl" data-fixed-chrome aria-hidden="true">
+    <div class="hud-brand">Tong Nie</div>
+    <div class="hud-sub">Data Engineer &amp; Builder</div>
+  </div>
+
+  <!-- Telemetry HUD (top-right readout). Live values written by the scene. -->
+  <div class="hud hud-tr" data-fixed-chrome aria-hidden="true">
+    <div><span class="dot"></span><b id="t-stage">ORIGIN</b></div>
+    <div>traversal <b id="t-prog">000.0%</b></div>
+    <div>throughput <b id="t-thru">2,000 evt/s</b></div>
+    <div>node <b id="t-coord">x0 z0</b></div>
+  </div>
+
+  <!-- Right-edge stage rail with ticks. One segment per beat. -->
+  <nav class="rail" id="rail" data-fixed-chrome aria-hidden="true">
+    {TIMELINE.map(b => (
+      <div class="seg" id={`rail-${b.id}`} style={`--seg:${b.id}`}>
+        <span class="tick"></span><span class="lbl">{b.id}</span>
+      </div>
+    ))}
+  </nav>
+
+  <!-- Bottom scroll cue. Fades out once the camera starts moving. -->
+  <div class="scrollcue" id="cue" data-fixed-chrome aria-hidden="true">
+    <span>scroll to travel</span>
+    <span class="bar"></span>
+  </div>
+
   <!--
-    SCENE MOUNT: light
-    The pipeline 3D canvas goes here — positioned fixed/absolute by the
-    scene script so it sits behind this HTML without affecting document flow.
+    SCROLL TRACK: a tall transparent spacer the scene resizes to N×120vh so
+    there is scroll distance to ride the pipeline. With no JS it has zero
+    height and the stacked <main> sections provide the scroll instead.
   -->
-  <canvas id="scene" aria-hidden="true" style="display:none"></canvas>
-
-  <style>
-    /*
-     * Light version tokens — v4 (vectrfl.com) feel.
-     * These are the design-canonical values; designers will extend them.
-     */
-    :root {
-      --bg:      #eaf0f7;
-      --bg-deep: #dde6f1;
-      --ink:     #0b1220;
-      --ink-2:   #4a5468;
-      --ink-3:   #8a93a6;
-      --border:  rgba(11,18,32,0.10);
-      --cyan:    #1ea7ff;
-      --glow:    #36b6ff;
-
-      --font-display: 'Space Grotesk', 'Inter', sans-serif;
-      --font-body:    'Inter', sans-serif;
-      --font-mono:    'JetBrains Mono', ui-monospace, monospace;
-
-      --px: clamp(1.5rem, 5vw, 4rem);
-    }
-
-    html[data-version="light"] body {
-      background: var(--bg);
-      color: var(--ink);
-      font-family: var(--font-body);
-      line-height: 1.65;
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-    }
-
-    /* ── No-JS / reduced-motion fallback: plain stacked sections ──── */
-    main { padding: 0; }
-
-    .beat {
-      padding: clamp(3rem, 8vw, 6rem) var(--px);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .beat-eyebrow {
-      font-family: var(--font-mono);
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: var(--ink-2);
-      margin-bottom: 0.9rem;
-    }
-
-    .beat-title {
-      font-family: var(--font-display);
-      font-size: clamp(2.75rem, 9vw, 6rem);
-      font-weight: 700;
-      line-height: 0.92;
-      letter-spacing: -0.03em;
-      text-transform: uppercase;
-      color: var(--ink);
-      margin-bottom: 1.2rem;
-    }
-
-    /* Hero title is larger */
-    #beat-hero .beat-title {
-      font-size: clamp(3rem, 11vw, 8rem);
-    }
-
-    .beat-body {
-      font-size: clamp(0.95rem, 1.4vw, 1.15rem);
-      line-height: 1.7;
-      color: var(--ink-2);
-      max-width: 52ch;
-    }
-
-    .beat-body strong {
-      color: var(--ink);
-      font-weight: 600;
-    }
-
-    /* Stack tags inline */
-    .beat-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-top: 1.2rem;
-      list-style: none;
-    }
-
-    .beat-tags li {
-      font-family: var(--font-mono);
-      font-size: 0.66rem;
-      letter-spacing: 0.10em;
-      text-transform: uppercase;
-      color: var(--ink-2);
-      border: 1px solid var(--border);
-      padding: 0.25rem 0.6rem;
-      border-radius: 4px;
-    }
-
-    /* Project and essay links */
-    .beat-links {
-      list-style: none;
-      margin-top: 1.2rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.6rem;
-    }
-
-    .beat-links a {
-      color: var(--cyan);
-      text-decoration: none;
-      font-family: var(--font-mono);
-      font-size: 0.82rem;
-      letter-spacing: 0.05em;
-      border-bottom: 1px solid transparent;
-      transition: border-color 0.2s;
-    }
-
-    .beat-links a:hover {
-      border-color: var(--cyan);
-    }
-
-    /* Disabled bot input */
-    .bot-input {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      margin-top: 1.6rem;
-      padding: 1rem 1.4rem;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,0.5);
-      border-radius: 999px;
-      max-width: 36rem;
-    }
-
-    .bot-input input {
-      flex: 1;
-      background: transparent;
-      border: none;
-      outline: none;
-      color: var(--ink-2);
-      font-family: var(--font-mono);
-      font-size: 0.85rem;
-      cursor: not-allowed;
-    }
-
-    .bot-input input::placeholder { color: var(--ink-3); }
-
-    .bot-label {
-      font-family: var(--font-mono);
-      font-size: 0.6rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--cyan);
-      white-space: nowrap;
-    }
-
-    /* Footer */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 2.5rem var(--px);
-      font-family: var(--font-mono);
-      font-size: 0.65rem;
-      color: var(--ink-2);
-      letter-spacing: 0.06em;
-    }
-
-    .footer-inner {
-      display: flex;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 1rem;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .footer-links { display: flex; gap: 1.5rem; list-style: none; }
-    .footer-links a { color: var(--ink-2); text-decoration: none; }
-    .footer-links a:hover { color: var(--ink); }
-  </style>
+  <div id="track" aria-hidden="true"></div>
 
   <main id="main">
 
-    <!-- 00 · Hero -->
-    <section class="beat" id="beat-hero">
-      <p class="beat-eyebrow">{TIMELINE[0].eyebrow}</p>
-      <h1 class="beat-title">{TIMELINE[0].title}</h1>
-      <p class="beat-body" set:html={TIMELINE[0].body}></p>
+    <!-- 00 · Hero — world node over W. Europe -->
+    <section class="beat center" id="beat-hero" data-acc="#1ea7ff">
+      <div class="inner" data-overlap-ok>
+        <p class="eyebrow" data-hero-critical>{TIMELINE[0].eyebrow}</p>
+        <h1 class="title hero-title" data-hero-critical>{TIMELINE[0].title}</h1>
+        <p class="body lede" set:html={TIMELINE[0].body}></p>
+      </div>
     </section>
 
-    <!-- 01 · Neste -->
-    <section class="beat" id="beat-neste">
-      <p class="beat-eyebrow">{TIMELINE[1].eyebrow}</p>
-      <h2 class="beat-title">{TIMELINE[1].title}</h2>
-      <p class="beat-body" set:html={TIMELINE[1].body}></p>
-      {TIMELINE[1].tags && (
-        <ul class="beat-tags">
-          {TIMELINE[1].tags.map(t => <li>{t}</li>)}
-        </ul>
-      )}
+    <!-- 01 · Neste — energy landmark -->
+    <section class="beat left" id="beat-neste" data-acc="#16c79a">
+      <div class="inner" data-overlap-ok>
+        <p class="eyebrow">{TIMELINE[1].eyebrow}</p>
+        <h2 class="title">{TIMELINE[1].title}</h2>
+        <p class="body" set:html={TIMELINE[1].body}></p>
+        {TIMELINE[1].tags && (
+          <ul class="tags">{TIMELINE[1].tags.map(t => <li>{t}</li>)}</ul>
+        )}
+      </div>
     </section>
 
-    <!-- 02 · PostNord -->
-    <section class="beat" id="beat-postnord">
-      <p class="beat-eyebrow">{TIMELINE[2].eyebrow}</p>
-      <h2 class="beat-title">{TIMELINE[2].title}</h2>
-      <p class="beat-body" set:html={TIMELINE[2].body}></p>
-      {TIMELINE[2].tags && (
-        <ul class="beat-tags">
-          {TIMELINE[2].tags.map(t => <li>{t}</li>)}
-        </ul>
-      )}
+    <!-- 02 · PostNord — network / route landmark -->
+    <section class="beat right" id="beat-postnord" data-acc="#2d8cef">
+      <div class="inner" data-overlap-ok>
+        <p class="eyebrow">{TIMELINE[2].eyebrow}</p>
+        <h2 class="title">{TIMELINE[2].title}</h2>
+        <p class="body" set:html={TIMELINE[2].body}></p>
+        {TIMELINE[2].tags && (
+          <ul class="tags">{TIMELINE[2].tags.map(t => <li>{t}</li>)}</ul>
+        )}
+      </div>
     </section>
 
-    <!-- 03 · Basware -->
-    <section class="beat" id="beat-basware">
-      <p class="beat-eyebrow">{TIMELINE[3].eyebrow}</p>
-      <h2 class="beat-title">{TIMELINE[3].title}</h2>
-      <p class="beat-body" set:html={TIMELINE[3].body}></p>
-      {TIMELINE[3].tags && (
-        <ul class="beat-tags">
-          {TIMELINE[3].tags.map(t => <li>{t}</li>)}
-        </ul>
-      )}
+    <!-- 03 · Basware — scale / grid landmark -->
+    <section class="beat left" id="beat-basware" data-acc="#7c5cff">
+      <div class="inner" data-overlap-ok>
+        <p class="eyebrow">{TIMELINE[3].eyebrow}</p>
+        <h2 class="title">{TIMELINE[3].title}</h2>
+        <p class="body" set:html={TIMELINE[3].body}></p>
+        {TIMELINE[3].tags && (
+          <ul class="tags">{TIMELINE[3].tags.map(t => <li>{t}</li>)}</ul>
+        )}
+      </div>
     </section>
 
-    <!-- 04 · Projects -->
-    <section class="beat" id="beat-projects">
-      <p class="beat-eyebrow">{TIMELINE[4].eyebrow}</p>
-      <h2 class="beat-title">{TIMELINE[4].title}</h2>
-      <p class="beat-body" set:html={TIMELINE[4].body}></p>
-      {TIMELINE[4].links && (
-        <ul class="beat-links">
-          {TIMELINE[4].links.map(l => (
-            <li><a href={l.url} target="_blank" rel="noopener">{l.label}</a></li>
-          ))}
-        </ul>
-      )}
+    <!-- 04 · Projects — cluster of built artifacts -->
+    <section class="beat right" id="beat-projects" data-acc="#ff8a3c">
+      <div class="inner" data-overlap-ok>
+        <p class="eyebrow">{TIMELINE[4].eyebrow}</p>
+        <h2 class="title">{TIMELINE[4].title}</h2>
+        <p class="body" set:html={TIMELINE[4].body}></p>
+        {TIMELINE[4].links && (
+          <ul class="links">
+            {TIMELINE[4].links.map(l => (
+              <li><a href={l.url} target="_blank" rel="noopener">{l.label}<span class="arr">↗</span></a></li>
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
 
-    <!-- 05 · Writes -->
-    <section class="beat" id="beat-writes">
-      <p class="beat-eyebrow">{TIMELINE[5].eyebrow}</p>
-      <h2 class="beat-title">{TIMELINE[5].title}</h2>
-      <p class="beat-body" set:html={TIMELINE[5].body}></p>
-      {TIMELINE[5].links && (
-        <ul class="beat-links">
-          {TIMELINE[5].links.map(l => (
-            <li><a href={l.url}>{l.label}</a></li>
-          ))}
-        </ul>
-      )}
+    <!-- 05 · Writes — text / stream form -->
+    <section class="beat left" id="beat-writes" data-acc="#ff5d8f">
+      <div class="inner" data-overlap-ok>
+        <p class="eyebrow">{TIMELINE[5].eyebrow}</p>
+        <h2 class="title">{TIMELINE[5].title}</h2>
+        <p class="body" set:html={TIMELINE[5].body}></p>
+        {TIMELINE[5].links && (
+          <ul class="links">
+            {/* Titles are placeholder until essays are published.
+                Render as plain text when url isn't a real http(s) address;
+                swap to a real <a> automatically once the url is filled in. */}
+            {TIMELINE[5].links.map(l => (
+              <li>
+                {l.url.startsWith('http://') || l.url.startsWith('https://')
+                  ? <a href={l.url}>{l.label}<span class="arr">↗</span></a>
+                  : <span class="link-plain">{l.label}</span>
+                }
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
 
-    <!-- 06 · Bot (disabled shell — Phase 4) -->
-    <section class="beat" id="beat-bot">
-      <p class="beat-eyebrow">{TIMELINE[6].eyebrow}</p>
-      <h2 class="beat-title">{TIMELINE[6].title}</h2>
-      <p class="beat-body" set:html={TIMELINE[6].body}></p>
-      <div class="bot-input">
-        <input
-          type="text"
-          placeholder="Ask about my pipelines, my stack, my decisions…"
-          disabled
-          aria-label="Chat input — coming soon"
-          aria-disabled="true"
-        />
-        <span class="bot-label">Soon</span>
+    <!-- 06 · Bot (disabled shell — Phase 4) — pulsing end node -->
+    <section class="beat center" id="beat-bot" data-acc="#1ea7ff">
+      <div class="inner" data-overlap-ok>
+        <p class="eyebrow">{TIMELINE[6].eyebrow}</p>
+        <h2 class="title">{TIMELINE[6].title}</h2>
+        <p class="body" set:html={TIMELINE[6].body}></p>
+        <div class="bot-input">
+          <input
+            type="text"
+            placeholder="Ask about my pipelines, my stack, my decisions…"
+            disabled
+            aria-label="Chat input — coming soon"
+            aria-disabled="true"
+          />
+          <span class="bot-label">Soon</span>
+        </div>
+        <div class="cta">
+          <a class="btn primary" href={`mailto:${CONTACT.email}`}>Email me</a>
+          <a class="btn" href={CONTACT.linkedin} target="_blank" rel="noopener">LinkedIn</a>
+          <a class="btn" href={CONTACT.github} target="_blank" rel="noopener">GitHub</a>
+        </div>
       </div>
     </section>
 
@@ -295,7 +178,7 @@ import { TIMELINE, CONTACT } from '../lib/timeline.ts';
 
   <footer>
     <div class="footer-inner">
-      <span>Tong Nie — Data Engineer & Builder</span>
+      <span>Tong Nie — Data Engineer &amp; Builder</span>
       <ul class="footer-links">
         <li><a href={`mailto:${CONTACT.email}`}>Email</a></li>
         <li><a href={CONTACT.linkedin} target="_blank" rel="noopener">LinkedIn</a></li>
@@ -304,4 +187,337 @@ import { TIMELINE, CONTACT } from '../lib/timeline.ts';
     </div>
   </footer>
 
+  <style>
+    /* ──────────────────────────────────────────────────────────────
+       Light version — v4 (vectrfl.com) grammar.
+       ────────────────────────────────────────────────────────────── */
+    :root {
+      --fog:      #eaf0f7;
+      --fog-deep: #dde6f1;
+      --ink:      #0b1220;   /* AA on fog: ~15:1 */
+      --ink-2:    #3a4456;   /* darkened from #4a5468 → AA body on fog (~7.6:1) */
+      --ink-3:    #5a6072;   /* darkened from #8a93a6 → AA on fog for small mono */
+      --border:   rgba(11,18,32,0.12);
+      --cyan:     #1284d6;   /* darkened cyan for AA-on-fog text use (links/eyebrow) */
+      --cyan-viv: #1ea7ff;   /* vivid cyan for non-text glow / ticks only */
+      --acc:      #1284d6;   /* live accent, driven by the scene per beat */
+
+      --font-display: 'Space Grotesk Variable', 'Space Grotesk', 'Inter', sans-serif;
+      --font-body:    'Inter', sans-serif;
+      --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+
+      --px: clamp(1.5rem, 6vw, 4rem);
+    }
+
+    html[data-version="light"] body {
+      background: var(--fog);
+      color: var(--ink);
+      font-family: var(--font-body);
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* ── WebGL canvas ──────────────────────────────────────────── */
+    #scene {
+      position: fixed; inset: 0; width: 100vw; height: 100vh;
+      z-index: 0; display: none; touch-action: pan-y;
+    }
+    #track { display: none; }
+    /* Only with the live scene does the tall scroll-track exist. */
+    html.has-scene #track { display: block; position: relative; z-index: 1; pointer-events: none; }
+
+    /* ── loader ────────────────────────────────────────────────── */
+    .loader {
+      position: fixed; inset: 0; z-index: 80; background: var(--fog);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+      transition: opacity .8s ease, visibility .8s ease;
+    }
+    .loader.is-done { opacity: 0; visibility: hidden; }
+    /* No JS → no loader (it would otherwise hide content forever). */
+    html:not(.js) .loader { display: none; }
+    .loader__ring {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 2px solid var(--border); border-top-color: var(--cyan);
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader__lz {
+      font-family: var(--font-mono); font-size: 11px; letter-spacing: .18em;
+      color: var(--ink-2); text-transform: uppercase;
+    }
+
+    /* ── telemetry HUD ─────────────────────────────────────────── */
+    .hud {
+      position: fixed; z-index: 6; font-family: var(--font-mono);
+      font-size: 11px; letter-spacing: .06em; color: var(--ink-2);
+      pointer-events: none; user-select: none;
+    }
+    /* HUD only appears with the live scene (it narrates the ride). */
+    html:not(.has-scene) .hud { display: none; }
+    .hud-tl { top: max(20px, env(safe-area-inset-top)); left: 22px; }
+    .hud-brand { font-family: var(--font-display); font-weight: 700; font-size: 15px; letter-spacing: .01em; color: var(--ink); }
+    .hud-sub { margin-top: 3px; text-transform: uppercase; font-size: 10px; color: var(--ink-3); }
+    .hud-tr { top: max(20px, env(safe-area-inset-top)); right: 22px; text-align: right; line-height: 1.7; }
+    .hud-tr b { color: var(--ink); font-weight: 500; }
+    .hud-tr .dot {
+      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--cyan-viv); margin-right: 6px; box-shadow: 0 0 8px var(--cyan-viv);
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+    /* ── stage rail ────────────────────────────────────────────── */
+    .rail {
+      position: fixed; z-index: 6; right: 24px; top: 50%; transform: translateY(-50%);
+      display: flex; flex-direction: column; gap: 0; pointer-events: none;
+    }
+    html:not(.has-scene) .rail { display: none; }
+    .rail .seg { display: flex; align-items: center; gap: 10px; height: 34px; opacity: .5; transition: opacity .35s ease; }
+    .rail .seg .tick { width: 22px; height: 1px; background: var(--ink-2); transition: all .35s ease; }
+    .rail .seg .lbl {
+      font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--ink-2);
+    }
+    .rail .seg.on { opacity: 1; }
+    .rail .seg.on .tick { width: 40px; height: 2px; background: var(--acc); box-shadow: 0 0 10px var(--acc); }
+    .rail .seg.on .lbl { color: var(--ink); font-weight: 500; }
+
+    /* ── scroll cue ────────────────────────────────────────────── */
+    .scrollcue {
+      position: fixed; bottom: max(26px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+      z-index: 6; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .22em;
+      text-transform: uppercase; color: var(--ink-3); display: flex; flex-direction: column;
+      align-items: center; gap: 8px; pointer-events: none; transition: opacity .5s ease;
+    }
+    html:not(.has-scene) .scrollcue { display: none; }
+    .scrollcue .bar {
+      width: 1px; height: 34px;
+      background: linear-gradient(var(--ink-3), transparent);
+      animation: drop 1.8s ease-in-out infinite;
+    }
+    @keyframes drop {
+      0% { transform: scaleY(.2); transform-origin: top; }
+      50% { transform: scaleY(1); transform-origin: top; }
+      100% { transform: scaleY(.2); transform-origin: bottom; }
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       BEATS — two grammars:
+       (1) no-JS / reduced-motion: plain stacked, readable sections.
+       (2) html.has-scene: fixed full-viewport v4 "stage panels" the
+           scene fades in/out by scroll progress.
+       ══════════════════════════════════════════════════════════════ */
+
+    /* (1) default stacked grammar */
+    .beat {
+      position: relative; z-index: 2;
+      min-height: 100vh; display: flex; align-items: center;
+      padding: 7rem max(var(--px), 7rem) 6rem var(--px);
+    }
+    .beat .inner { max-width: 560px; }
+
+    .eyebrow {
+      font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-2);
+      margin-bottom: 0.9rem; display: flex; align-items: center; gap: 10px;
+    }
+    /* Eyebrow TEXT uses AA-safe ink (--acc is scene-driven vivid, fails contrast on fog);
+       the leading tick keeps the per-beat accent colour as a non-text graphic. */
+    .eyebrow::before {
+      content: ""; width: 24px; height: 2px; background: var(--acc); box-shadow: 0 0 10px var(--acc);
+    }
+
+    .title {
+      font-family: var(--font-display); font-weight: 600; line-height: 1.0;
+      font-size: clamp(2.6rem, 7vw, 4.6rem); letter-spacing: -0.02em;
+      color: var(--ink); margin-bottom: 1.1rem;
+    }
+    .hero-title { font-weight: 700; font-size: clamp(3rem, 10vw, 6rem); letter-spacing: -0.03em; }
+
+    .body {
+      font-size: clamp(0.98rem, 1.4vw, 1.18rem); line-height: 1.7;
+      color: var(--ink-2); max-width: 46ch;
+    }
+    .body strong { color: var(--ink); font-weight: 600; }
+    .lede { max-width: 52ch; }
+
+    .tags {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.4rem; list-style: none;
+    }
+    .tags li {
+      font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.10em;
+      text-transform: uppercase; color: var(--ink-2);
+      border: 1px solid var(--border); padding: 0.28rem 0.65rem; border-radius: 999px;
+      /* cheap translucent glass — NO backdrop blur (mobile / over-canvas safe) */
+      background: rgba(255,255,255,0.55);
+    }
+
+    .links { list-style: none; margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.7rem; }
+    .links a {
+      display: inline-flex; align-items: center; gap: .5rem; color: var(--ink);
+      font-family: var(--font-mono); font-size: 0.84rem; letter-spacing: 0.02em;
+      border-bottom: 1px solid var(--border); padding-bottom: .25rem; transition: color .2s, border-color .2s;
+    }
+    .links a:hover { color: var(--acc); border-color: var(--acc); }
+    .links .arr { color: var(--acc); font-size: .9em; }
+    /* Plain-text title: same font/size/color as a link item, no underline or arrow. */
+    .link-plain {
+      display: inline-flex; align-items: center; gap: .5rem; color: var(--ink);
+      font-family: var(--font-mono); font-size: 0.84rem; letter-spacing: 0.02em;
+      border-bottom: 1px solid transparent; padding-bottom: .25rem;
+    }
+
+    /* hero centered + alternating layouts (only meaningful in panel mode) */
+    .beat.center { justify-content: center; text-align: center; }
+    .beat.center .inner { max-width: 720px; }
+    .beat.center .eyebrow { justify-content: center; }
+
+    /* bot input + CTA */
+    .bot-input {
+      display: flex; align-items: center; gap: 1rem; margin: 1.6rem auto 0;
+      padding: 1rem 1.4rem; border: 1px solid var(--border);
+      background: rgba(255,255,255,0.6); border-radius: 999px; max-width: 36rem;
+    }
+    .bot-input input {
+      flex: 1; background: transparent; border: none; outline: none; min-width: 0;
+      color: var(--ink-2); font-family: var(--font-mono); font-size: 0.85rem; cursor: not-allowed;
+    }
+    .bot-input input::placeholder { color: var(--ink-3); }
+    .bot-label {
+      font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.18em;
+      /* AA-safe ink, not the scene-driven vivid --acc (same reason as .eyebrow). */
+      text-transform: uppercase; color: var(--ink-2); white-space: nowrap;
+    }
+    .cta { margin-top: 1.8rem; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em;
+      padding: 12px 20px; border-radius: 999px; border: 1px solid var(--ink); color: var(--ink);
+      background: transparent; transition: transform .2s, background .2s, box-shadow .2s, border-color .2s;
+    }
+    .btn.primary { background: var(--ink); color: var(--fog); }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(11,18,32,.18); }
+    .btn.primary:hover { background: var(--acc); border-color: var(--acc); box-shadow: 0 8px 28px var(--acc); }
+
+    /* ── footer ────────────────────────────────────────────────── */
+    footer {
+      position: relative; z-index: 2; border-top: 1px solid var(--border);
+      padding: 2.5rem var(--px); font-family: var(--font-mono); font-size: 0.65rem;
+      color: var(--ink-2); letter-spacing: 0.06em; background: var(--fog);
+    }
+    /* With the live scene, the stacked sections are replaced by fixed panels,
+       so the footer would float over the canvas at full height — hide it. */
+    html.has-scene footer { display: none; }
+    .footer-inner {
+      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+      max-width: 1200px; margin: 0 auto;
+    }
+    .footer-links { display: flex; gap: 1.5rem; list-style: none; }
+    .footer-links a { color: var(--ink-2); }
+    .footer-links a:hover { color: var(--ink); }
+
+    /* ══════════════════════════════════════════════════════════════
+       (2) PANEL MODE — html.has-scene lifts each beat into a fixed,
+       full-viewport stage panel the scene fades in/out. The soft white
+       scrim behind the text block is what keeps copy legible (AA) over
+       the bright tile field — the v4 demo's missing piece.
+       ══════════════════════════════════════════════════════════════ */
+    html.has-scene main { padding: 0; }
+    html.has-scene .beat {
+      position: fixed; left: 0; right: 0; top: 0;
+      height: 100vh; height: 100dvh; min-height: 0;
+      z-index: 5; opacity: 0; pointer-events: none;
+      padding: 0 max(28px, 6vw);
+      will-change: opacity, transform;
+    }
+    html.has-scene .beat.left  { justify-content: flex-start; }
+    html.has-scene .beat.right { justify-content: flex-end; text-align: right; }
+    html.has-scene .beat .inner {
+      /* legibility scrim: a soft radial wash fading the fog up behind text,
+         no hard edge — the panel sits ON the world rather than in a card */
+      position: relative; padding: 1.6rem 1.9rem; border-radius: 14px;
+      background: radial-gradient(120% 120% at 30% 30%,
+                  rgba(234,240,247,0.92) 0%, rgba(234,240,247,0.78) 55%, rgba(234,240,247,0) 100%);
+    }
+    html.has-scene .beat.center .inner {
+      background: radial-gradient(120% 120% at 50% 45%,
+                  rgba(234,240,247,0.92) 0%, rgba(234,240,247,0.78) 55%, rgba(234,240,247,0) 100%);
+    }
+    html.has-scene .beat.right .inner {
+      background: radial-gradient(120% 120% at 70% 30%,
+                  rgba(234,240,247,0.92) 0%, rgba(234,240,247,0.78) 55%, rgba(234,240,247,0) 100%);
+    }
+    html.has-scene .beat.right .eyebrow { flex-direction: row-reverse; }
+    html.has-scene .beat.right .tags,
+    html.has-scene .beat.right .links { justify-content: flex-end; }
+    html.has-scene .beat.right .links a { flex-direction: row-reverse; }
+    html.has-scene .beat.right .body { margin-left: auto; }
+    /* In panel mode the title can grow back toward the v4 scale. */
+    html.has-scene .title { font-size: clamp(2.4rem, 6vw, 4.4rem); }
+    html.has-scene .hero-title { font-size: clamp(3rem, 8vw, 5.6rem); }
+
+    /* ── responsive ────────────────────────────────────────────── */
+    @media (max-width: 820px) {
+      .beat { padding: 6rem var(--px) 7rem; align-items: flex-start; }
+      .beat.center { align-items: center; }
+      /* keep text boxes clear of the bottom-right version switch */
+      .body, .tags { margin-right: 6rem; }
+      .beat.center .body, .beat.center .tags { margin-right: auto; }
+    }
+    @media (max-width: 760px) {
+      /* v4 hides the rail + right HUD on phones; panels bottom-anchor */
+      .rail, .hud-tr { display: none; }
+      html.has-scene .beat {
+        align-items: flex-end; padding: 0 22px 16vh;
+        justify-content: flex-start; text-align: left;
+      }
+      html.has-scene .beat.right { justify-content: flex-start; text-align: left; }
+      html.has-scene .beat.right .eyebrow { flex-direction: row; }
+      html.has-scene .beat.right .tags,
+      html.has-scene .beat.right .links { justify-content: flex-start; }
+      html.has-scene .beat.right .links a { flex-direction: row; }
+      html.has-scene .beat.right .body { margin-left: 0; }
+      html.has-scene .beat .inner { max-width: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .loader__ring, .scrollcue .bar, .hud-tr .dot { animation: none; }
+    }
+
+    /* Version switch (shared chrome) — light styling: glass pill, no blur. */
+    html[data-version="light"] :global(.version-switch) {
+      bottom: 0.85rem; right: 0.85rem;
+      background: rgba(255,255,255,0.78); color: var(--ink);
+      border: 1px solid var(--border);
+    }
+    html[data-version="light"] :global(.version-switch .vs-option) { color: var(--ink-3); }
+    html[data-version="light"] :global(.version-switch .vs-option:hover),
+    html[data-version="light"] :global(.version-switch .vs-option.vs-active) { color: var(--ink); }
+    html[data-version="light"] :global(.version-switch .vs-sep) { color: var(--ink-3); }
+  </style>
+
+  <!--
+    Lazy-load the pipeline scene AFTER first paint so the text hero is the
+    LCP, never the canvas. requestIdleCallback (with a timeout fallback)
+    defers the heavy three/lenis bundle past the initial render. The module
+    self-guards reduced-motion + WebGL failure → static stacked sections.
+  -->
+  <script>
+    function loadLightScene() {
+      import('../scripts/light-scene.ts').catch(() => {
+        document.documentElement.classList.add('no-scene');
+        document.getElementById('loader')?.classList.add('is-done');
+      });
+    }
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(loadLightScene, { timeout: 1500 });
+    } else {
+      setTimeout(loadLightScene, 200);
+    }
+    // Safety net: never let the loader trap the page if the scene stalls.
+    setTimeout(function () {
+      document.getElementById('loader')?.classList.add('is-done');
+    }, 6000);
+  </script>
 </Base>

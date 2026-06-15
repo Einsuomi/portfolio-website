@@ -19,6 +19,9 @@ reference/
 # designer self-screenshot scratch output — local only
 .shots/
 
+# Playwright MCP scratch output (screenshots, console/page dumps) — local only
+.playwright-mcp/
+
 # logs
 npm-debug.log*
 yarn-debug.log*

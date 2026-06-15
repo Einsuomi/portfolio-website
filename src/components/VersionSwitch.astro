@@ -27,7 +27,7 @@ const LS_KEY = 'portfolio-version';
   The switch is always rendered as real anchor links so it works with JS disabled.
   The inline script below progressively enhances the click handlers.
 -->
-<nav class="version-switch" aria-label="Switch site version">
+<nav class="version-switch" aria-label="Switch site version" data-fixed-chrome>
   <a
     href={DARK_URL}
     class:list={['vs-option', version === 'dark' && 'vs-active']}

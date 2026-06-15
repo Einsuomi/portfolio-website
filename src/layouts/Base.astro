@@ -32,7 +32,12 @@ const BG = version === 'dark' ? '#060606' : '#eaf0f7';
 // These OG/meta values are the same regardless of version.
 const TITLE       = 'Tong Nie — Data Engineer & Builder';
 const DESCRIPTION = 'Enterprise data pipelines on Azure, AWS and Databricks. Three years in, lakehouse-deep, building in public from Western Europe.';
-const CANONICAL   = version === 'dark' ? 'https://tongnie.dev/' : 'https://tongnie.dev/light';
+// SITE: real deploy origin for absolute canonical/OG URLs. tongnie.dev is NOT registered
+// yet — leave '' until the production origin (e.g. https://<project>.vercel.app) is known;
+// canonical/OG then fall back to a relative path rather than asserting a dead domain.
+const SITE        = 'https://portfolio-website-umber-one-98.vercel.app';
+const PATH        = version === 'dark' ? '/' : '/light';
+const CANONICAL   = SITE ? SITE + PATH : PATH;
 ---
 
 <!doctype html>

@@ -10,7 +10,7 @@
  *   - Hero readability at t≈1s and t≈5s after navigation (live mode only)
  *
  * Usage:
- *   node scripts/verify-ui.mjs              # checks /, /dark, /light
+ *   node scripts/verify-ui.mjs              # checks /, /light
  *   node scripts/verify-ui.mjs /dark /light # custom routes
  *
  * Prerequisites (one-time setup):
@@ -184,7 +184,21 @@ const findCollisions = ({ threshold }) => {
 
     const st = getComputedStyle(el);
     if (st.display === 'none' || st.visibility === 'hidden') continue;
-    if (parseFloat(st.opacity) <= 0.15) continue;
+
+    // invisible (opacity:0) text is not a visible collision, consistent with
+    // skipping display:none/visibility:hidden — walk ancestors to get effective opacity
+    let effectiveOpacity = 1;
+    let ancestor = el;
+    while (ancestor && ancestor !== document.body) {
+      effectiveOpacity *= parseFloat(getComputedStyle(ancestor).opacity);
+      ancestor = ancestor.parentElement;
+    }
+    if (effectiveOpacity < 0.01) continue;
+
+    // data-fixed-chrome marks intentional floating UI (fixed nav, HUD, rails)
+    // that is exempt from content-overlap assertions. Designers can mark any
+    // fixed chrome the same way — it will be skipped on both sides of the check.
+    if (el.closest('[data-fixed-chrome]')) continue;
 
     els.push(el);
   }
@@ -544,7 +558,7 @@ async function runPass({ browser, baseUrl, axeJs, route, vp, mode }) {
 async function main() {
   // Routes from CLI args (must start with /) or the defaults
   const cliRoutes = process.argv.slice(2).filter(a => a.startsWith('/'));
-  const ROUTES = cliRoutes.length ? cliRoutes : ['/', '/dark', '/light'];
+  const ROUTES = cliRoutes.length ? cliRoutes : ['/', '/light'];
 
   // Run both animation modes for every route × viewport
   const MODES = ['reduced', 'live'];

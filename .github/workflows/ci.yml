@@ -51,7 +51,7 @@ jobs:
         # Run only the routes under active review. / (homepage) is known
         # baseline debt tracked separately for the homepage consolidation phase
         # and is intentionally excluded here to avoid false-positive noise.
-        run: npm run verify-ui /dark /light
+        run: npm run verify-ui / /light
 
   lighthouse:
     runs-on: ubuntu-latest
