@@ -10,8 +10,8 @@
  *   - Hero readability at t≈1s and t≈5s after navigation (live mode only)
  *
  * Usage:
- *   node scripts/verify-ui.mjs              # checks /, /light
- *   node scripts/verify-ui.mjs /dark /light # custom routes
+ *   node scripts/verify-ui.mjs        # checks / (dark homepage)
+ *   node scripts/verify-ui.mjs /foo   # custom routes
  *
  * Prerequisites (one-time setup):
  *   npx playwright install chromium
@@ -558,7 +558,7 @@ async function runPass({ browser, baseUrl, axeJs, route, vp, mode }) {
 async function main() {
   // Routes from CLI args (must start with /) or the defaults
   const cliRoutes = process.argv.slice(2).filter(a => a.startsWith('/'));
-  const ROUTES = cliRoutes.length ? cliRoutes : ['/', '/light'];
+  const ROUTES = cliRoutes.length ? cliRoutes : ['/'];
 
   // Run both animation modes for every route × viewport
   const MODES = ['reduced', 'live'];

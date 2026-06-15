@@ -36,8 +36,8 @@ Cinematic, precise, candid.
   every section, hero-metric blocks, glassmorphism by default.
 - Prompt-library template grade (motionsites.ai-style output) — the exact look this
   project exists to clear.
-- The light treatment must NOT be an inverted dark theme — it has its own grammar
-  (see `specs/phase-1b-visual-base.md`).
+- The light treatment is a **colour theme of the dark scene** (shared layout + scene,
+  re-tuned tokens) — never a lazy plain inversion (see `reference/v3-v4-demos.md`).
 
 ## Design Principles
 

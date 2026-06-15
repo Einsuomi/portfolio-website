@@ -1,6 +1,11 @@
 # Phase 1b — Visual Base: Dark & Light Versions (both ship)
 
-**Status: DRAFT — awaiting Tong's approval.** Supersedes the 2026-06-12 draft.
+**Status: SHIPPED, THEN PARTLY SUPERSEDED (2026-06-15).** Both versions were built and
+merged (PR #6). Direction has since changed: the dark version is the keeper and ships;
+the light camera-ride version was RETIRED (snapshot in
+`backups/light-v1-camera-ride-pipeline/`), and light will be REBUILT as a colour theme of
+the dark scene — not a separate page. This file is kept as the phase-1b record; for current
+direction see `reference/v3-v4-demos.md`.
 
 ## Why
 
