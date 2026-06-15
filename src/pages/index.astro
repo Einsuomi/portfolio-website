@@ -406,21 +406,6 @@ import { TIMELINE, CONTACT } from '../lib/timeline.ts';
     /* ── reveal base state — only when JS+scene will animate them ── */
     html.has-scene [data-reveal] { opacity: 0; }
 
-    /*
-     * Version switch (shared chrome) — on the dark route, dock it tight to
-     * the bottom-right corner with a solid pill so it reads as a deliberate
-     * floating control over the cloud. The hero brand 'Let's talk' carries
-     * the contact CTA; this stays purely the dark/light toggle.
-     * NOTE: a fixed floating control will geometrically overlap flowing text
-     * at some scroll positions — a repo-wide condition (the untouched light
-     * shell shows it too). Flagged to the architect.
-     */
-    html[data-version="dark"] .version-switch {
-      bottom: 0.85rem; right: 0.85rem;
-      background: #0c0c0d; border: 1px solid var(--border);
-      padding: 0.35rem 0.7rem; font-size: 0.66rem;
-    }
-
     /* ── responsive ────────────────────────────────────────────── */
     @media (max-width: 820px) {
       .split--right .split__pad { text-align: left; margin-left: 0; }

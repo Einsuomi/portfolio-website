@@ -32,7 +32,6 @@
   },
   "devDependencies": {
     "axe-core": "^4.12.1",
-    "canvas": "^3.2.3",
     "playwright": "^1.60.0"
   }
 }

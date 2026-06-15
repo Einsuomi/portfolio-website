@@ -48,10 +48,8 @@ jobs:
       # @astrojs/vercel adapter does not support `astro preview`. No prior
       # build needed — astro dev serves source files directly.
       - name: UI quality harness (collision, overflow, a11y, console errors)
-        # Run only the routes under active review. / (homepage) is known
-        # baseline debt tracked separately for the homepage consolidation phase
-        # and is intentionally excluded here to avoid false-positive noise.
-        run: npm run verify-ui / /light
+        # Dark homepage is the single live route; the light theme is rebuilt later.
+        run: npm run verify-ui /
 
   lighthouse:
     runs-on: ubuntu-latest

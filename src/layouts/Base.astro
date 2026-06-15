@@ -1,12 +1,11 @@
 ---
 /**
- * Shared layout for both versions (dark + light).
- * Handles: fonts, SEO meta, analytics beacon, version switch, slot.
+ * Shared layout. Handles: fonts, SEO meta, analytics beacon, slot.
  * The `version` prop drives data-version on <html> and the background
- * flash-prevention colour set inline below.
+ * flash-prevention colour set inline below. Only 'dark' ships today; the
+ * light theme will be rebuilt as a colour variant over this same scaffold.
  */
 import TrackBeacon from '../components/TrackBeacon.astro';
-import VersionSwitch from '../components/VersionSwitch.astro';
 
 // Self-hosted fonts — no gstatic at runtime (GDPR requirement).
 // Anton is already in package.json; the rest were added this phase.
@@ -96,9 +95,6 @@ const CANONICAL   = SITE ? SITE + PATH : PATH;
 <body>
   <!-- Analytics fires on every page load; silently absent with no JS. -->
   <TrackBeacon />
-
-  <!-- Persistent dark/light toggle in a fixed corner. -->
-  <VersionSwitch version={version} />
 
   <!-- Page body provided by each route. -->
   <slot />

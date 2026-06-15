@@ -1,43 +1,59 @@
-# Astro Starter Kit: Minimal
+# portfolio-website
 
-```sh
-npm create astro@latest -- --template minimal
-```
+Recruiter-facing portfolio for **Tong Nie** — Data Engineer & Builder.
+Public repo, deployed on Vercel. Built with Astro + a Three.js/GSAP WebGL homepage.
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+Live: https://portfolio-website-umber-one-98.vercel.app
 
-## 🚀 Project Structure
+## Stack
 
-Inside of your Astro project, you'll see the following folders and files:
+- **Astro** — static pages + a single Vercel server function (`/api/track`)
+- **Three.js** — homepage particle-cloud scene (`src/scripts/dark-scene.ts`)
+- **GSAP + Lenis** — scroll choreography and smooth scroll
+- **Supabase** — privacy-light visit analytics (anon, INSERT-only)
+- Self-hosted fonts (no runtime gstatic, GDPR)
+
+The homepage is one pinned stage with 7 beats (hero → Neste → PostNord →
+Basware → Projects → Writes → Talk-to-me). All copy lives in real HTML; WebGL is
+a layer on top, so the site works with JS disabled and for crawlers. Today the
+site ships dark only; a true light *theme* (colour variant of the same layout) is
+a planned rebuild.
+
+## Structure
 
 ```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+src/
+├── pages/
+│   ├── index.astro        # dark homepage — 7-beat pinned stage
+│   └── api/track.ts       # analytics beacon endpoint (server fn)
+├── layouts/Base.astro     # fonts, SEO/OG meta, analytics, slot
+├── components/TrackBeacon.astro
+├── scripts/dark-scene.ts  # Three.js particle-cloud scene
+├── lib/timeline.ts        # single source of truth for all beat copy
+├── lib/lucide-icons.js    # icons as static data (no CDN)
+└── content/wiki/          # public wiki pages synced from the Super Brain
+
+scripts/        # sync, leak scan, API + UI verification harnesses
+specs/          # project narrative + per-phase work specs
+supabase/       # analytics migrations
+reference/      # design reference (gitignored, local only)
+backups/        # retired-version snapshots (gitignored)
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+Content enters `src/content/` only via `npm run sync`, which filters out every
+`/confidential/` path from the Super Brain wiki. This is a public repo.
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+## Commands
 
-Any static assets, like images, can be placed in the `public/` directory.
+| Command              | What it does |
+|----------------------|--------------|
+| `npm run dev`        | Dev server at http://localhost:4321 |
+| `npm run build`      | Production build to `./dist/` |
+| `npm run preview`    | Preview the production build |
+| `npm run sync`       | Pull filtered public wiki into `src/content/` |
+| `npm run check-leaks`| Scan `dist/` for confidential markers |
+| `npm run verify-ui`  | Playwright + axe UI quality harness |
+| `npx astro check`    | Type / syntax check |
 
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+See `CLAUDE.md` for how the project is built (roles, rules, process) and
+`specs/project.md` for the roadmap.

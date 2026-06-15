@@ -1,5 +1,5 @@
 // Single source of truth for all homepage copy.
-// Both dark (/) and light (/light) routes consume this array.
+// The dark homepage (/) consumes this array; the light theme rebuild reuses it.
 // Beats are ordered hero → neste → postnord → basware → projects → writes → bot.
 
 export interface Beat {

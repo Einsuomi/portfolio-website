@@ -39,3 +39,6 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# retired-version snapshots — local backup copies (also in git history)
+backups/
