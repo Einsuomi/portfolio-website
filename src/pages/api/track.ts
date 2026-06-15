@@ -88,16 +88,23 @@ export const POST: APIRoute = async ({ request }) => {
   const supabaseUrl = import.meta.env.SUPABASE_URL as string;
   const supabaseKey = import.meta.env.SUPABASE_ANON_KEY as string;
 
-  const res = await fetch(`${supabaseUrl}/rest/v1/events`, {
-    method: 'POST',
-    headers: {
-      apikey: supabaseKey,
-      Authorization: `Bearer ${supabaseKey}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=minimal',
-    },
-    body: JSON.stringify(row),
-  });
+  // Wrap fetch so a network-level failure (e.g. timeout, DNS error) returns 502
+  // instead of throwing an unhandled exception and producing a 500.
+  let res: Response;
+  try {
+    res = await fetch(`${supabaseUrl}/rest/v1/events`, {
+      method: 'POST',
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify(row),
+    });
+  } catch {
+    return new Response('Upstream error', { status: 502 });
+  }
 
   if (!res.ok) {
     // Supabase returned an error — return 502 but don't expose the upstream body.

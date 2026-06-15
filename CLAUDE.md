@@ -42,17 +42,53 @@ the active work spec is the relevant `specs/phase-*.md`.
 - Never force-push, never rebase shared history, no destructive git actions.
 
 ### Performance & legibility (design law)
-- Lazy-load any 3D/WebGL after first paint; pixel ratio capped at
-  `Math.min(devicePixelRatio, 2)`.
+
+**No creative limits.** Palette, type, technique, scene complexity, ambition — fully open
+(see `project.md`). Both homepage versions are WebGL (dark = particle cloud, light =
+pipeline scene); Three.js is an approved dependency. Heavy is allowed. Performance is a
+**target we aim at, not a blocking gate** — fast is better, but never kill an ambitious
+effect to hit a number. CI reports perf (LCP, JS weight) as **informational**, not pass/fail.
+
+**Correctness floor (this is the deliverable, not a constraint on it).** The primary
+experience can be as wild as it wants; these only make sure it actually works for the
+recruiter who opens the link from LinkedIn on a phone:
+- **Content lives in real HTML, not JS-injected.** Name, role, and every beat's copy must
+  be in the served markup so the site works with JS disabled and is readable by search /
+  ATS / link-preview crawlers. WebGL is a layer on top, never the source of the text.
+- Hero communicates name + role + value within ~5s; text always readable over any
+  background. Mobile portrait works on a real phone — no horizontal overflow.
+- `prefers-reduced-motion` and WebGL-fail fallbacks render a static poster / stacked
+  sections, site fully usable.
+- Lazy-load 3D/WebGL after first paint; pixel ratio capped at
+  `Math.min(devicePixelRatio, 2)`; only the active route's scene loads — never both.
 - No `backdrop-filter` blur over a live-animating WebGL canvas on mobile — cheap glass
   (translucent bg, no blur) instead.
-- `prefers-reduced-motion` and WebGL-fail fallbacks: static poster, fully usable site.
-- Budget: LCP < 2.5s on mid-range mobile, initial JS < ~300 KB gz, smooth scroll on a phone.
-- Text always readable over any background. Hero communicates name + role + value within
-  ~5 seconds, before any animation finishes.
+
+## Design quality loop (architect duty — added after 2026-06-12 post-mortem)
+
+- **Reference artifacts, not reference prose.** Before any taste-driven dispatch, the
+  architect captures the actual reference into `reference/` (screenshots, frame
+  extractions, recordings) and the dispatch names the files. Designers must view them
+  and report a side-by-side self-comparison. Briefs carry NUMBERS (type ceilings,
+  spacing, visibility timings), never bare adjectives like "premium" or "oversized".
+- **Direction gate before full builds.** New visual directions ship as a hero-only
+  deliverable first; Tong judges the direction early (explicitly labeled taste preview —
+  the one exception to the presentation gate). Only an approved direction gets a full
+  build, which then runs the normal defect loop.
+- Verification must cover the LIVE page (animations on) and the cold-load first 5
+  seconds, not only settled/reduced-motion states.
 
 ## Review loop (architect duty)
 
+- **Presentation gate:** work is presented to Tong for judgment only after the full
+  loop has closed — designer/coder → architect verification → blind review → fixes →
+  re-review → clean APPROVE. Tong is the final gate and receives taste decisions,
+  not defect-hunting. Exception: WIP previews Tong explicitly requests, labeled WIP.
+- Mechanical failures (text overlap/clipping, overflow, console errors, contrast,
+  broken no-JS/reduced-motion fallback) are gated by automated checks, not by human
+  review or Tong's eyes. New defect classes become new assertions in the existing
+  verification harness — never a new one-off script per bug. Perf (LCP, JS weight) is
+  measured and reported but is **informational, not a blocking gate**.
 - A PR may be opened only after the reviewer issues a clean APPROVE on the FINAL
   commit. Every fix — coder- or architect-applied — goes back for re-review,
   however small. "APPROVE WITH NITS" plus an unreviewed fix is not a clean APPROVE.

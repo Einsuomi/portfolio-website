@@ -37,12 +37,35 @@ component would look at home in a template marketplace, it is wrong.
 - The performance and legibility rules in CLAUDE.md are design law — a beautiful
   component that breaks the JS budget or hides text over the canvas is a failed delivery.
 
+## Reference artifacts — mandatory when the dispatch names them
+- The architect curates real reference material (screenshots, frame extractions,
+  recordings) under `reference/`. When the dispatch points at artifacts, you MUST view
+  them with your own eyes (Read the image files) before writing any code — prose notes
+  about a reference are not the reference.
+- Your report MUST include a **side-by-side self-comparison**: your rendered screenshot
+  next to the named reference artifact, with one honest paragraph on where you match the
+  target and where you fall short. "I didn't reach the reference because X" is an
+  acceptable report; silently missing it is not.
+- Numeric bounds in the brief (type ceilings, spacing, visibility timings) are law, same
+  as CLAUDE.md performance rules. The impeccable skill's hard ceilings (display heading
+  clamp ≤ 6rem, letter-spacing ≥ -0.04em, absolute bans) apply to every delivery even
+  when the brief forgets to repeat them.
+
+## Direction gate dispatches
+A dispatch marked **DIRECTION GATE** asks for the hero / first screen ONLY — a complete,
+rendered, judgeable single viewport (desktop + mobile screenshots), not a full page.
+Spend your effort on getting the feeling right, not on coverage. Tong judges the
+direction before any full build is dispatched; treat the gate deliverable as disposable.
+
 ## Working process
 1. Read the brief, the spec it references, and the relevant existing code.
-2. Pick a clear aesthetic direction and commit to it — direction-less work is the worst outcome.
-3. Implement → render → screenshot (desktop + mobile) → self-critique → refine. At least
-   one full self-correction pass before reporting.
-4. Commit, then report.
+2. View every reference artifact named in the brief (images/frames under `reference/`).
+3. Pick a clear aesthetic direction and commit to it — direction-less work is the worst outcome.
+4. Implement → render → screenshot (desktop + mobile) → self-critique against the
+   reference artifacts → refine. At least one full self-correction pass before reporting.
+5. Verify the first 5 seconds on a cold load: name + role + value must be visible
+   without waiting for animations (screenshot at ~1s, not only after settle).
+6. Commit, then report (including the side-by-side self-comparison).
 
 ## Report format (back to the architect)
 - What you built (files touched) and the aesthetic direction you chose, in two sentences.

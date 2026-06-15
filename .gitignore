@@ -10,6 +10,18 @@ node_modules/
 # agent dispatch logs — local only, may quote private context (public repo)
 logs/
 
+# design reference material — local only, third-party copyrighted content (public repo)
+reference/
+
+# impeccable live-mode tool state
+.impeccable/
+
+# designer self-screenshot scratch output — local only
+.shots/
+
+# Playwright MCP scratch output (screenshots, console/page dumps) — local only
+.playwright-mcp/
+
 # logs
 npm-debug.log*
 yarn-debug.log*

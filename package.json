@@ -11,20 +11,28 @@
     "preview": "astro preview",
     "astro": "astro",
     "sync": "node scripts/sync-from-super-brain.mjs",
-    "check-leaks": "grep -r --include='*.html' --include='*.js' -l -f scripts/leak-denylist.txt dist/ && echo 'LEAK FOUND — review above' && exit 1 || echo 'No leaks found.'"
+    "check-leaks": "grep -r --include='*.html' --include='*.js' -l -f scripts/leak-denylist.txt dist/ && echo 'LEAK FOUND — review above' && exit 1 || echo 'No leaks found.'",
+    "verify-ui": "node scripts/verify-ui.mjs"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.9",
     "@astrojs/vercel": "^10.0.8",
+    "@fontsource-variable/space-grotesk": "^5.2.10",
     "@fontsource/anton": "^5.2.7",
+    "@fontsource/archivo": "^5.2.8",
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
     "astro": "^6.4.5",
     "gsap": "^3.15.0",
     "lenis": "^1.3.23",
     "lucide": "^1.17.0",
     "split-type": "^0.3.4",
+    "three": "^0.161.0",
     "typescript": "^6.0.3"
   },
   "devDependencies": {
-    "canvas": "^3.2.3"
+    "axe-core": "^4.12.1",
+    "canvas": "^3.2.3",
+    "playwright": "^1.60.0"
   }
 }
