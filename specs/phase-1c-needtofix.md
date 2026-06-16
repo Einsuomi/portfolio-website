@@ -18,9 +18,16 @@ Status legend: ❌ not done · 🟡 partial · ✅ done
 6. ❌ **Talk to me** — input box is centered AND figure is centered → collision. Move the
    figure to the **left or right side**.
 
-7. 🟡 **Reviewer couldn't catch the overlaps** (can't see the WebGL figure). Improve the
-   process so this defect class is caught mechanically. (Groundwork started in the test
-   harness; not calibrated; changed nothing on the page.)
+7. ✅ **Reviewer couldn't catch the overlaps** (can't see the WebGL figure) → now caught
+   mechanically. `verify-ui` reads the WebGL canvas per beat and asserts the figure mass
+   doesn't occlude the text rect (desktop + mobile, fails loudly). Calibrated 2026-06-16.
+   Root cause found + fixed: the old check screenshotted `#scene` *with the DOM text
+   composited on top*, so it scored the headings ("TONG NIE"…) as figure mass — which is
+   why Round A's overlaps slipped past it. Fix: hide the overlay DOM during canvas capture,
+   and isolate the figure via a density-grid + ambient-baseline (the screen-filling ambient
+   field defeated the old per-pixel measure). Gate = occlusion-only (Tong's call): currently
+   fails **bot** (18.4% — centred figure on centred input), passes the rest; flips fully
+   green once Round A2 placement moves the bot figure off-centre.
 
 ---
 Plan agreed: 2–6 are all solved by **auto-placing each figure in the empty region opposite

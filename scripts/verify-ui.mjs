@@ -97,22 +97,42 @@ const BEAT_MORPH_SETTLE_MS = 2200;
 // reads as ~6/255 ≈ 2%; isolated ambient dots land around 20–40; figure core 50+.
 const FIGURE_BRIGHTNESS_THRESHOLD = 40;
 
-// Local-density neighborhood: for each bright pixel inside the text rect we
-// check a (2*DENSITY_RADIUS+1)² window centred on it. A pixel is counted as
-// "locally dense" (part of the figure mass, not a lone ambient dot) when at
-// least DENSITY_MIN_NEIGHBORS of those surrounding pixels are also bright.
-// 5×5 window (radius 2) → 24 surrounding pixels. Requiring 3 means a lone
-// scattered dot (0–1 bright neighbors) is ignored; a dense cluster (10+ bright
-// neighbors per pixel) counts.
-const DENSITY_RADIUS = 2;
-const DENSITY_MIN_NEIGHBORS = 3;
+// Figure-core isolation via a coarse density grid.
+//
+// Why a grid + baseline (not per-pixel local density): Round A added a wide,
+// screen-filling AMBIENT field, so "locally dense" bright pixels now appear
+// over the text on every beat — the old per-pixel measure flagged all 7 beats
+// (including hero/neste where the figure is plainly on the opposite side).
+// The fix: the ambient field is roughly UNIFORM across the canvas, while the
+// figure is a concentrated high-density SPIKE. So we tile the canvas into
+// coarse cells, take the median cell density as the ambient baseline, and call
+// a cell "figure" only when its density is a strong outlier above that baseline.
+// Ambient cells sit at the baseline and drop out; the figure cells are what
+// remain. Then we ask: do those figure cells land inside the text rect?
 
-// Coverage threshold: fraction of the text rect area that must be covered by
-// locally-dense figure pixels before the beat is flagged as an overlap.
-// Ambient starfield → a handful of lone dots → near 0. Figure mass on text →
-// many clustered pixels → well above this line.
-// Ground-truth split: hero & neste should sit well below, fail beats well above.
-const FIGURE_COVERAGE_THRESHOLD = 0.004; // 0.4 % of text rect area
+// Cell edge length in screenshot px. 24px → a 1440-wide canvas tiles into 60
+// columns: coarse enough to average out ambient sparsity, fine enough to
+// localize the figure mass to a region of the screen.
+const GRID_CELL_PX = 24;
+
+// A cell counts as "figure" when its bright-pixel density exceeds the ambient
+// baseline by this fraction of the (p90 − median) spread, AND clears an absolute
+// floor (so a near-empty ambient frame still needs real mass to register).
+const FIGURE_OUTLIER_K = 0.5;
+const FIGURE_MIN_CELL_DENSITY = 0.15; // ≥15% of the cell's pixels must be bright
+
+// Overlap fires when this fraction of the text rect's cells are figure cells.
+// Ambient is excluded by the baseline step, so a clear beat → ~0; the figure
+// landing on the words → well above this line.
+//
+// Calibrated 2026-06-16 against the clean canvas (DOM hidden). Measured band:
+//   clear beats / minor edge-clips: 0–3.7% (e.g. postnord 2.7% = wordmark sits
+//     just above the text and clips the top edge; mobile projects 3.7%)
+//   true occlusion: bot 18.4% (centred figure on the centred chat input)
+// 7% sits in the wide gap — passes minor clips (which A2 placement clears
+// anyway) and fails dense, readability-harming occlusion. This is occlusion
+// detection, not "any figure pixel touching the rect".
+const FIGURE_OVERLAP_THRESHOLD = 0.07; // 7% of text-rect cells covered by figure
 
 // Text-box selectors checked per beat, in priority order. The first one found
 // in the section is used. Matches the actual HTML structure in index.astro.
@@ -457,82 +477,85 @@ async function scrollWalk(page, vp, settleLiveMs) {
 // ── canvas/figure vs text overlap check ──────────────────────────────────
 
 /**
- * Decode a raw PNG buffer (from Playwright's canvas screenshot) and measure
- * how much of the figure's dense particle mass falls inside the given text rect.
+ * Decode a raw PNG buffer (from Playwright's canvas screenshot) and decide how
+ * much of the concentrated FIGURE mass falls inside the given text rect.
  *
- * The key insight: the bbox approach fails because the scatter field + ambient
- * starfield inflate the bounding box to nearly full-viewport, so it "overlaps"
- * every text rect. Instead we measure directly inside the text rect:
+ * Why a density grid + ambient baseline (see constants block for the full why):
+ * the ambient field is roughly uniform across the canvas, the figure is a
+ * concentrated high-density spike. We tile the canvas into coarse cells, take
+ * the median cell density as the ambient baseline, and mark a cell as "figure"
+ * only when it is a strong outlier above that baseline. Ambient cells sit at the
+ * baseline and drop out; figure cells remain. We then measure what fraction of
+ * the text rect's cells are figure cells.
  *
- *   1. Convert the CSS-pixel text rect to screenshot-pixel coordinates.
- *   2. For each bright pixel inside that rect, count its bright neighbors in a
- *      small window. Pixels with enough neighbors are "locally dense" — part of
- *      the figure cluster, not a lone ambient dot.
- *   3. Return coverage = locally_dense_pixels / rect_area (screenshot pixels).
- *
- * A few isolated ambient dots over the text won't reach DENSITY_MIN_NEIGHBORS
- * and won't be counted. The dense figure mass (many overlapping additive-blended
- * particles) always forms tight clusters that exceed the neighbor threshold.
- *
- * Returns { coverage, densePxCount, rectArea } — coverage is the primary metric.
+ * Returns diagnostics so thresholds can be calibrated from real numbers:
+ *   { overlapFrac, figCellsInRect, rectCells, figCellsTotal, median, p90, maxD, figThresh }
+ * overlapFrac (fig cells inside rect / rect cells) is the primary metric.
  */
-function measureFigureDensityInRect(pngBuffer, vpWidth, vpHeight, cssTextRect) {
+function measureFigureOverlap(pngBuffer, vpWidth, vpHeight, cssTextRect) {
   const img = PNG.sync.read(pngBuffer);
   const { width, height, data } = img;
 
-  // Scale factor: screenshot pixels per CSS pixel (devicePixelRatio in Playwright).
-  // A headless Chromium session defaults to DPR=1, so scale is usually 1.
+  // Screenshot px per CSS px (Playwright headless defaults to DPR=1 → ~1).
   const scaleX = width  / vpWidth;
   const scaleY = height / vpHeight;
 
-  // Convert CSS-pixel text rect to screenshot-pixel rect, clamped to image bounds.
-  const rx0 = Math.max(0, Math.floor(cssTextRect.left   * scaleX));
-  const ry0 = Math.max(0, Math.floor(cssTextRect.top    * scaleY));
-  const rx1 = Math.min(width  - 1, Math.ceil(cssTextRect.right  * scaleX));
-  const ry1 = Math.min(height - 1, Math.ceil(cssTextRect.bottom * scaleY));
+  const cell = GRID_CELL_PX;
+  const cols = Math.ceil(width  / cell);
+  const rows = Math.ceil(height / cell);
+  const density = new Float32Array(cols * rows);
 
-  if (rx1 <= rx0 || ry1 <= ry0) return { coverage: 0, densePxCount: 0, rectArea: 0 };
-
-  // Pass 1: build a brightness map for the whole image (needed for neighbor lookups
-  // that may cross the rect boundary by up to DENSITY_RADIUS pixels).
-  const bright = new Uint8Array(width * height);
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const idx = (y * width + x) * 4;
-      const avg = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
-      if (avg > FIGURE_BRIGHTNESS_THRESHOLD) bright[y * width + x] = 1;
-    }
-  }
-
-  // Pass 2: for each bright pixel inside the text rect, count bright neighbors
-  // in a (2R+1)×(2R+1) window. If neighbors ≥ DENSITY_MIN_NEIGHBORS the pixel
-  // is part of the figure mass, not a lone ambient dot.
-  const R = DENSITY_RADIUS;
-  let densePxCount = 0;
-
-  for (let y = ry0; y <= ry1; y++) {
-    for (let x = rx0; x <= rx1; x++) {
-      if (!bright[y * width + x]) continue; // not even bright — skip
-
-      // Count bright neighbors in the NxN window (excluding the centre pixel).
-      let neighbors = 0;
-      const ny0 = Math.max(0, y - R), ny1 = Math.min(height - 1, y + R);
-      const nx0 = Math.max(0, x - R), nx1 = Math.min(width  - 1, x + R);
-      for (let ny = ny0; ny <= ny1 && neighbors < DENSITY_MIN_NEIGHBORS; ny++) {
-        for (let nx = nx0; nx <= nx1; nx++) {
-          if (ny === y && nx === x) continue; // skip self
-          if (bright[ny * width + nx]) neighbors++;
+  // Per-cell bright-pixel density. avg of RGB > threshold = "bright".
+  for (let cy = 0; cy < rows; cy++) {
+    for (let cx = 0; cx < cols; cx++) {
+      const x0 = cx * cell, x1 = Math.min(width,  x0 + cell);
+      const y0 = cy * cell, y1 = Math.min(height, y0 + cell);
+      let bright = 0;
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const idx = (y * width + x) * 4;
+          if ((data[idx] + data[idx + 1] + data[idx + 2]) / 3 > FIGURE_BRIGHTNESS_THRESHOLD) bright++;
         }
       }
-
-      if (neighbors >= DENSITY_MIN_NEIGHBORS) densePxCount++;
+      const total = (x1 - x0) * (y1 - y0);
+      density[cy * cols + cx] = total ? bright / total : 0;
     }
   }
 
-  const rectArea = (rx1 - rx0 + 1) * (ry1 - ry0 + 1);
-  const coverage = rectArea > 0 ? densePxCount / rectArea : 0;
+  // Ambient baseline = median cell density; spread = p90 − median.
+  const sorted = Array.from(density).sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length * 0.5)] || 0;
+  const p90    = sorted[Math.floor(sorted.length * 0.9)] || 0;
+  const maxD   = sorted[sorted.length - 1] || 0;
 
-  return { coverage, densePxCount, rectArea };
+  // A cell is "figure" when it is a strong outlier above the ambient baseline
+  // AND clears the absolute floor (guards a near-empty ambient frame).
+  const figThresh = Math.max(
+    median + FIGURE_OUTLIER_K * Math.max(0, p90 - median),
+    FIGURE_MIN_CELL_DENSITY
+  );
+
+  // Text rect → cell coordinates.
+  const tx0 = Math.max(0, Math.floor(cssTextRect.left   * scaleX / cell));
+  const ty0 = Math.max(0, Math.floor(cssTextRect.top    * scaleY / cell));
+  const tx1 = Math.min(cols - 1, Math.floor(cssTextRect.right  * scaleX / cell));
+  const ty1 = Math.min(rows - 1, Math.floor(cssTextRect.bottom * scaleY / cell));
+
+  let figCellsInRect = 0, rectCells = 0, figCellsTotal = 0;
+  for (let cy = 0; cy < rows; cy++) {
+    for (let cx = 0; cx < cols; cx++) {
+      const isFig = density[cy * cols + cx] >= figThresh;
+      if (isFig) figCellsTotal++;
+      const inRect = cx >= tx0 && cx <= tx1 && cy >= ty0 && cy <= ty1;
+      if (inRect) {
+        rectCells++;
+        if (isFig) figCellsInRect++;
+      }
+    }
+  }
+
+  const overlapFrac = rectCells ? figCellsInRect / rectCells : 0;
+  return { overlapFrac, figCellsInRect, rectCells, figCellsTotal, median, p90, maxD, figThresh };
 }
 
 /**
@@ -542,18 +565,19 @@ function measureFigureDensityInRect(pngBuffer, vpWidth, vpHeight, cssTextRect) {
  * Strategy:
  *   1. Find all <section data-shape="..."> elements.
  *   2. Per beat: scroll its centre into view, wait for the morph to settle,
- *      screenshot the #scene canvas, decode the PNG, then measure the density
- *      of figure pixels directly INSIDE the text rect.
- *   3. Flag the beat when figure-pixel density inside the text rect exceeds
- *      FIGURE_COVERAGE_THRESHOLD — i.e. when the figure mass actually lands
- *      on the words, not just when bounding boxes happen to intersect.
+ *      screenshot the #scene canvas, decode the PNG, then isolate the figure
+ *      mass (density-grid cells that are outliers above the ambient baseline)
+ *      and measure what fraction of the text rect's cells it covers.
+ *   3. Flag the beat when that fraction exceeds FIGURE_OVERLAP_THRESHOLD — i.e.
+ *      when the concentrated figure mass actually lands on the words.
  *
- * Why density-inside-rect (not bbox intersection): the scatter field + ambient
- * starfield inflate the figure's bounding box to near-full-viewport, so bbox
- * intersection flags every beat including hero and neste where the figure is
- * clearly on the opposite side of the screen from the text. The density measure
- * asks "are dense clusters of figure pixels actually on the text?" which is the
- * real question. Lone ambient dots over text → too sparse → not counted.
+ * Why grid + baseline (not bbox, not per-pixel local density): the scatter +
+ * ambient starfield inflate any bbox to near-full-viewport, and the wide ambient
+ * field makes "locally dense" pixels appear over the text on every beat — both
+ * flag hero/neste where the figure is plainly on the opposite side. The ambient
+ * field is roughly UNIFORM (sits at the median cell density) while the figure is
+ * a concentrated SPIKE; thresholding cells above the baseline keeps the figure
+ * and drops the ambient. See the constants block for the full rationale.
  *
  * Runs in LIVE mode only (the scene doesn't animate in reduced-motion mode).
  * Returns an array of overlap findings (empty = all clear).
@@ -586,6 +610,24 @@ async function checkBeatCanvasOverlap(page, vp) {
       };
     });
   }, BEAT_TEXT_SELECTORS);
+
+  // CRITICAL: hide the overlay DOM before screenshotting the canvas.
+  // #scene is a full-viewport canvas with the real-HTML content (#main), the
+  // custom cursor and the grain layered ON TOP of it. Playwright's element
+  // screenshot captures the page region at the element's box — i.e. it
+  // composites those overlying DOM pixels in. Without hiding them, the bright
+  // display headings ("TONG NIE", "POSTNORD"…) get measured as figure mass, so
+  // every beat flags on its own text. visibility:hidden keeps layout intact, so
+  // scroll height and getBoundingClientRect still work for the text-rect reads.
+  const OVERLAY_HIDE_JS = (hide) => {
+    const v = hide ? 'hidden' : '';
+    const d = hide ? 'none' : '';
+    const main = document.querySelector('#main');   if (main) main.style.visibility = v;
+    const cur  = document.querySelector('.cursor'); if (cur)  cur.style.display = d;
+    const grn  = document.querySelector('.grain');  if (grn)  grn.style.display = d;
+    const ldr  = document.querySelector('#loader'); if (ldr)  ldr.style.display = d;
+  };
+  await page.evaluate(OVERLAY_HIDE_JS, true);
 
   for (const beat of beats) {
     if (!beat.textRect) {
@@ -645,31 +687,35 @@ async function checkBeatCanvasOverlap(page, vp) {
       continue;
     }
 
-    // Measure locally-dense figure pixel coverage inside the text rect.
-    // Returns coverage fraction (0–1): how much of the text rect area is
-    // covered by pixels that are both bright AND part of a dense cluster.
-    // Lone ambient dots → near 0. Figure mass on text → above threshold.
-    const { coverage, densePxCount, rectArea } =
-      measureFigureDensityInRect(pngBuf, vp.width, vp.height, textRect);
+    // Isolate the figure mass (density-grid outliers above the ambient baseline)
+    // and measure what fraction of the text rect's cells it covers. Ambient is
+    // excluded by the baseline step → clear beat ≈ 0; figure on text → above.
+    const m = measureFigureOverlap(pngBuf, vp.width, vp.height, textRect);
 
-    // Always log the coverage number so the pass/fail gap is visible in output.
+    // Log rich diagnostics so the pass/fail gap (and the baseline maths) is
+    // visible in output for calibration.
     process.stdout.write(
-      `    beat="${beat.shape}"  coverage=${(coverage * 100).toFixed(3)}%  ` +
-      `densePx=${densePxCount}  rectArea=${rectArea}  ` +
-      `threshold=${(FIGURE_COVERAGE_THRESHOLD * 100).toFixed(3)}%\n`
+      `    beat="${beat.shape}"  overlap=${(m.overlapFrac * 100).toFixed(2)}%  ` +
+      `figInRect=${m.figCellsInRect}/${m.rectCells}  figTotal=${m.figCellsTotal}  ` +
+      `median=${(m.median * 100).toFixed(1)}% p90=${(m.p90 * 100).toFixed(1)}% max=${(m.maxD * 100).toFixed(1)}% ` +
+      `figThresh=${(m.figThresh * 100).toFixed(1)}%  ` +
+      `gate=${(FIGURE_OVERLAP_THRESHOLD * 100).toFixed(1)}%\n`
     );
 
-    if (coverage > FIGURE_COVERAGE_THRESHOLD) {
+    if (m.overlapFrac > FIGURE_OVERLAP_THRESHOLD) {
       findings.push({
-        shape:        beat.shape,
-        overlap:      true,
-        coverage,
-        densePxCount,
-        rectArea,
+        shape:          beat.shape,
+        overlap:        true,
+        overlapFrac:    m.overlapFrac,
+        figCellsInRect: m.figCellsInRect,
+        rectCells:      m.rectCells,
         textRect,
       });
     }
   }
+
+  // Restore the overlay DOM for any later checks on this page.
+  await page.evaluate(OVERLAY_HIDE_JS, false);
 
   return findings;
 }
@@ -899,7 +945,7 @@ async function main() {
           if (canvasOverlapFails > 0) {
             console.log(`  canvas figure/text overlaps: ${canvasOverlapFails}`);
             entry.canvasOverlaps.filter(f => f.overlap).forEach(f =>
-              console.log(`    beat="${f.shape}"  coverage=${(f.coverage * 100).toFixed(3)}%  densePx=${f.densePxCount}  text(l=${f.textRect.left} t=${f.textRect.top} r=${f.textRect.right} b=${f.textRect.bottom})`)
+              console.log(`    beat="${f.shape}"  overlap=${(f.overlapFrac * 100).toFixed(2)}%  figInRect=${f.figCellsInRect}/${f.rectCells}  text(l=${f.textRect.left} t=${f.textRect.top} r=${f.textRect.right} b=${f.textRect.bottom})`)
             );
           }
           // Informational: beats where the canvas check was skipped (scene not ready, etc.)
