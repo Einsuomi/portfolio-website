@@ -51,8 +51,26 @@ together.
      `pos = mix( mix(aPosA, aPosB, uMix), scatterPos, uScatterMix )`.
    - Scatter field spans ~full viewport (≈8–10 world units wide) so mid-gap reads as a
      screen-filling starfield, per the transition stills (19.41→19.47 sequence).
-   - **Expect a tuning pass** after first scroll — scatter radius, ramp curve, and the
-     hand-off point are taste calls best judged in motion.
+   - **Scroll→uniform map is LINEAR, not eased** (decided 2026-06-16 after researching
+     scroll-particle transitions — see refs below). Drive `uScatterMix` straight off scroll
+     progress with `ScrollTrigger { scrub: true, ease: 'none' }` so the scatter is
+     scroll-truthful and exactly reversible. The *silky* feel must come from **Lenis
+     smooth-scroll + a small scrub-smoothing value** (`scrub: 0.5–1`) — inertia, not an
+     easing curve baked into the uniform. (This supersedes the earlier "ramp curve is a
+     by-eye taste call": don't bake a curve; keep it linear and let Lenis + scrub carry it.)
+   - **Scatter is cohesive, not rippling.** The whole cloud flies out as one body (usta
+     behaviour) — **no per-particle delay/offset on the scatter geometry.** Per-particle
+     `aRand` phase stays reserved for breathing/twinkle (item 4) only. Explicitly *not*
+     adopting the Bruno-Simon delayed-smoothstep morph here (great for shape→shape reveals,
+     wrong for a body-moving scatter).
+   - *Optional in-shader dial only:* a gentle `smoothstep` on `uScatterMix` may shape the
+     scatter **radius response** (leave the figure crisply, bloom wide mid-gap) — but the
+     scroll→uniform map itself stays linear. Off by default; a taste dial, not the mechanism.
+   - **Expect a tuning pass** after first scroll — scatter radius and the hand-off point are
+     still taste calls best judged in motion (the ramp curve is now settled: linear).
+   - Refs: Loopspeed "Advanced scroll-based particle transitions"
+     (blog.loopspeed.co.uk/fbo-particles-simulation); Three.js Journey "Particles Morphing
+     Shader" (the delayed-morph approach we deliberately skip for scatter).
 
 3. **Ambient particles across the whole screen.** Reserve ~12–15% of the budget as
    permanent wide-field dots that never join the figure (they keep a faint scattered target

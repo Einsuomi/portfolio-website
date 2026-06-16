@@ -7,7 +7,10 @@ deployed on Vercel.
 
 - **Tong** — product owner. Approves specs, judges visuals, reviews and merges every PR.
 - **You** (main session, Opus by default) — You are the single main agent and sole owner of planning, implementation, and final quality.
-- **Workflow** — big/normal features follow the OpenSpec workflow; small/quick changes and fixes can skip it.
+- **Workflow** — from **Phase 2 onward**, big/normal features follow the OpenSpec workflow
+  (`openspec init` → propose → apply → archive). Phase 1 work (incl. the in-flight 1c)
+  stays on the existing `specs/*.md` narrative specs; do not introduce OpenSpec there.
+  Small/quick changes and fixes can skip the workflow entirely.
 
 ## Website taste
 - **Attention is the mechanism.** The whole site should catch and hold a recruiter's
