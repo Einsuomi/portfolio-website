@@ -81,6 +81,26 @@ async function boot(canvas: HTMLCanvasElement) {
   canvas.style.display = 'block';
   document.documentElement.classList.add('has-scene');
 
+  // Figure offset magnitude (world units). The figure sits opposite the text
+  // column; clamped smaller on mobile so it never leaves the viewport.
+  const OFFSET = isMobile ? 1.2 : 2.3;
+  // Per-beat figure offset: hero→right, neste→left, postnord→right,
+  // basware→left, projects→right, writes→left, bot→centre.
+  const OFFSETS: Record<string, number> = {
+    hero: OFFSET,
+    neste: -OFFSET,
+    postnord: OFFSET,
+    basware: -OFFSET,
+    projects: OFFSET,
+    writes: -OFFSET,
+    bot: 0,
+  };
+
+  // ~13% of the budget are permanent wide-field "ambient" dots that never
+  // join the figure — they keep a faint scattered target in every shape and
+  // twinkle on a faster timescale (item 3 + item 4 two-timescales).
+  const AMBIENT_FRACTION = 0.13;
+
   /* ---------------------------------------------------------------
      SHAPE GENERATORS — each returns a Float32Array of length COUNT*3.
      Several also return a per-particle "accent mask" used to light
@@ -326,6 +346,9 @@ async function boot(canvas: HTMLCanvasElement) {
      --------------------------------------------------------------- */
   const baseColors = new Float32Array(COUNT * 3);
   const rand = new Float32Array(COUNT);
+  // aAmbient: 1.0 for permanent wide-field dots (never join the figure),
+  // 0.0 for figure particles. Distributed by index so the fraction is exact.
+  const ambient = new Float32Array(COUNT);
   for (let i = 0; i < COUNT; i++) {
     const roll = Math.random();
     let col: any;
@@ -337,7 +360,25 @@ async function boot(canvas: HTMLCanvasElement) {
     baseColors[i * 3 + 1] = col.g * b;
     baseColors[i * 3 + 2] = col.b * b;
     rand[i] = Math.random();
+    ambient[i] = Math.random() < AMBIENT_FRACTION ? 1 : 0;
   }
+
+  // Permanent wide-field position for the ambient dots — a screen-filling
+  // starfield (~9 units wide) they hold in EVERY shape so the canvas is never
+  // empty of dots, including the hero at rest. Figure shapes write over the
+  // non-ambient particles below.
+  const AMBIENT_W = 4.6; // half-width: spans ~9.2 world units (full viewport)
+  function fillAmbient(pos: Float32Array) {
+    for (let i = 0; i < COUNT; i++) {
+      if (ambient[i] !== 1) continue;
+      pos[i * 3] = (Math.random() * 2 - 1) * AMBIENT_W;
+      pos[i * 3 + 1] = (Math.random() * 2 - 1) * AMBIENT_W * 0.62;
+      pos[i * 3 + 2] = (Math.random() * 2 - 1) * 1.8 - 0.6;
+    }
+  }
+  // Stamp the ambient field into every figure target so ambient dots stay put
+  // through all morphs (they never converge onto the figure).
+  for (const key of Object.keys(SHAPES)) fillAmbient(SHAPES[key].pos);
 
   // Accent color attribute — recomputed per morph so glyphs / nodes light up
   // in the beat's theme color. Tweened via uAccentMix for a smooth handoff.
@@ -376,6 +417,7 @@ async function boot(canvas: HTMLCanvasElement) {
   geo.setAttribute('aColA', new THREE.BufferAttribute(accentColorsA, 3));
   geo.setAttribute('aColB', new THREE.BufferAttribute(accentColorsB, 3));
   geo.setAttribute('aRand', new THREE.BufferAttribute(rand, 1));
+  geo.setAttribute('aAmbient', new THREE.BufferAttribute(ambient, 1));
   geo.setAttribute('position', new THREE.BufferAttribute(startPos.slice(), 3));
 
   const uniforms = {
@@ -387,6 +429,14 @@ async function boot(canvas: HTMLCanvasElement) {
     uSize: { value: isMobile ? 13 : 17 },
     uPixelRatio: { value: Math.min(devicePixelRatio, 2) },
     uDrift: { value: reduceMotion ? 0 : 1 },
+    // 0 = particles on the figure; 1 = flown out to the wide scatter field.
+    // Scrub-driven by ScrollTrigger across each section gap (reversible).
+    uScatterMix: { value: 0 },
+    // Figure x-offset (world units), tweened on morph so the cloud sits
+    // opposite the text. Ambient + scatter ignore this (they fill the screen).
+    uOffsetX: { value: OFFSET },
+    // Scatter field half-extents (world units) — a screen-filling starfield.
+    uScatterExtent: { value: new THREE.Vector3(4.8, 3.0, 2.0) },
   };
 
   const material = new THREE.ShaderMaterial({
@@ -400,6 +450,7 @@ async function boot(canvas: HTMLCanvasElement) {
       attribute vec3 aColA;
       attribute vec3 aColB;
       attribute float aRand;
+      attribute float aAmbient;
       uniform float uTime;
       uniform float uMix;
       uniform float uAccentMix;
@@ -408,18 +459,49 @@ async function boot(canvas: HTMLCanvasElement) {
       uniform float uSize;
       uniform float uPixelRatio;
       uniform float uDrift;
+      uniform float uScatterMix;
+      uniform float uOffsetX;
+      uniform vec3  uScatterExtent;
       varying vec3 vColor;
       varying float vAlpha;
 
+      const float TAU = 6.2831853;
+
+      // Cheap per-particle hash → 3 decorrelated values in [0,1).
+      vec3 hash3(float n) {
+        return fract(sin(vec3(n, n + 1.7, n + 3.3)) * vec3(43758.5453, 22578.1459, 19642.3490));
+      }
+
       void main() {
         vColor = mix(aColA, aColB, uAccentMix);
-        vec3 pos = mix(aPosA, aPosB, uMix);
 
-        // gentle ambient drift
-        float t = uTime * 0.4 + aRand * 6.2831;
-        pos.x += sin(t) * 0.05 * uDrift;
-        pos.y += cos(t * 1.3) * 0.05 * uDrift;
-        pos.z += sin(t * 0.7) * 0.05 * uDrift;
+        // --- figure position: morph A→B, then shift opposite the text.
+        // Ambient dots ignore the offset (they fill the whole screen).
+        vec3 figurePos = mix(aPosA, aPosB, uMix);
+        figurePos.x += uOffsetX * (1.0 - aAmbient);
+
+        // --- scatter target: a wide, screen-filling field derived from aRand.
+        // No extra buffer — hashed into uScatterExtent so mid-gap reads as a
+        // full-viewport starfield, and it's stable (reversible) per particle.
+        vec3 h = hash3(aRand * 137.0 + 0.5) * 2.0 - 1.0;
+        vec3 scatterPos = h * uScatterExtent;
+
+        // Ambient dots are already wide-field, so they don't scatter further.
+        float scatter = uScatterMix * (1.0 - aAmbient);
+        vec3 pos = mix(figurePos, scatterPos, scatter);
+
+        // --- breathing / drift (gated off under reduced motion via uDrift).
+        // Loop, not a line: per-axis frequency spread traces ellipses. Slow
+        // (~0.3Hz) and per-particle desynced (aRand*TAU). Amplitude grows with
+        // scatter (weightless starfield) and the z-component is widened so the
+        // perspective gl_PointSize carries most of the "breath". Ambient dots
+        // twinkle on a faster, smaller timescale.
+        float amp = (0.045 + 0.32 * uScatterMix) * uDrift;
+        float twinkle = mix(1.0, 2.6, aAmbient);   // ambient = faster timescale
+        float t = uTime * 0.42 * twinkle + aRand * TAU;
+        pos.x += sin(t) * amp;
+        pos.y += cos(t * 1.27) * amp;
+        pos.z += sin(t * 0.71) * amp * 2.4;        // widened z → depth breathing
 
         // cursor repulsion in the XY plane
         vec2 d = pos.xy - uMouse.xy;
@@ -431,9 +513,16 @@ async function boot(canvas: HTMLCanvasElement) {
         vec4 mv = modelViewMatrix * vec4(pos, 1.0);
         gl_Position = projectionMatrix * mv;
 
+        // Size: depth (1/-mv.z) carries the variation; tiny explicit sine only.
         float size = uSize * (0.6 + aRand * 0.8);
+        size *= mix(1.0, 0.62, aAmbient);          // ambient dots smaller
+        size *= 1.0 + 0.08 * sin(t * 1.6) * uDrift; // ≤0.1 amplitude size sine
         gl_PointSize = size * uPixelRatio * (1.0 / -mv.z);
-        vAlpha = 0.5 + aRand * 0.5;
+
+        // Ambient dots are fainter and flicker slightly (distant stars).
+        float baseA = 0.5 + aRand * 0.5;
+        float amb = 0.34 + 0.18 * sin(t * 1.9);
+        vAlpha = mix(baseA, amb, aAmbient);
       }
     `,
     fragmentShader: /* glsl */ `
@@ -457,25 +546,23 @@ async function boot(canvas: HTMLCanvasElement) {
      MORPH CONTROL — freeze current state into A, set B to target.
      --------------------------------------------------------------- */
   let currentShape = 'hero';
-  let posTween: gsap.core.Tween | null = null;
   let accentTween: gsap.core.Tween | null = null;
+  let offsetTween: gsap.core.Tween | null = null;
 
+  // Swap the figure target to `name` WHILE the cloud is scattered. uMix is
+  // snapped to 1 instantly (the figure is invisible behind the scatter field
+  // at the peak), so when uScatterMix ramps back 0 the dots reconverge onto
+  // the new shape — no visible cross-fade between figures. Keeps morphTo's
+  // A/B baking for the accent-colour handoff.
   function morphTo(name: string) {
     if (!SHAPES[name] || name === currentShape) return;
     const def = SHAPES[name];
-    const A = geo.attributes.aPosA as any;
     const B = geo.attributes.aPosB as any;
-    const a0 = A.array as Float32Array;
-    const b0 = B.array as Float32Array;
-    const mix = uniforms.uMix.value;
-    // Bake the current interpolated positions into A.
-    for (let i = 0; i < a0.length; i++) a0[i] = a0[i] + (b0[i] - a0[i]) * mix;
-    b0.set(def.pos);
-    A.needsUpdate = true;
+    (B.array as Float32Array).set(def.pos);
     B.needsUpdate = true;
-    uniforms.uMix.value = 0;
+    uniforms.uMix.value = 1; // figure target IS B
 
-    // Same handoff for the accent color so glyphs/nodes recolor smoothly.
+    // Accent-colour handoff (smooth recolour through the scatter).
     const cA = geo.attributes.aColA as any;
     const cB = geo.attributes.aColB as any;
     const ca = cA.array as Float32Array;
@@ -489,10 +576,15 @@ async function boot(canvas: HTMLCanvasElement) {
 
     currentShape = name;
 
-    if (posTween) posTween.kill();
+    // Tween figure offset to the new beat's side (opposite its text column).
+    if (offsetTween) offsetTween.kill();
+    offsetTween = gsap.to(uniforms.uOffsetX, {
+      value: OFFSETS[name] ?? 0,
+      duration: 1.2,
+      ease: 'power2.inOut',
+    });
     if (accentTween) accentTween.kill();
-    posTween = gsap.to(uniforms.uMix, { value: 1, duration: 1.7, ease: 'power2.inOut' });
-    accentTween = gsap.to(uniforms.uAccentMix, { value: 1, duration: 1.2, ease: 'power1.inOut' });
+    accentTween = gsap.to(uniforms.uAccentMix, { value: 1, duration: 1.0, ease: 'power1.inOut' });
   }
 
   /* ---------------------------------------------------------------
@@ -607,16 +699,41 @@ async function boot(canvas: HTMLCanvasElement) {
      SCROLL ORCHESTRATION — morph per beat + reveal copy.
      --------------------------------------------------------------- */
   function initScroll() {
-    document.querySelectorAll<HTMLElement>('[data-shape]').forEach((sec) => {
-      const shape = sec.dataset.shape!;
+    const sections = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-shape]')
+    );
+
+    // Scrub-driven scatter across each gap between consecutive sections.
+    // The trigger spans from one section's centre to the next section's centre;
+    // uScatterMix follows a 0→1→0 arc (1 at the boundary midpoint). The figure
+    // target is swapped to the next shape AT the scatter peak so the reconverge
+    // lands on the new figure. Fully scrub-tied → reverses exactly on scroll-up.
+    for (let i = 0; i < sections.length - 1; i++) {
+      const fromShape = sections[i].dataset.shape!;
+      const toShape = sections[i + 1].dataset.shape!;
+      let swapped = false;
       ScrollTrigger.create({
-        trigger: sec,
-        start: 'top 55%',
-        end: 'bottom 45%',
-        onEnter: () => morphTo(shape),
-        onEnterBack: () => morphTo(shape),
+        trigger: sections[i],
+        // centre of this section → centre of the next section.
+        start: 'center center',
+        endTrigger: sections[i + 1],
+        end: 'center center',
+        scrub: true,
+        onUpdate: (self) => {
+          const p = self.progress;
+          // 0→1→0 across the gap (sine bump peaks at the midpoint).
+          uniforms.uScatterMix.value = Math.sin(p * Math.PI);
+          // At the peak, swap the figure target in the scroll direction.
+          if (p > 0.5 && !swapped) {
+            morphTo(toShape);
+            swapped = true;
+          } else if (p < 0.5 && swapped) {
+            morphTo(fromShape);
+            swapped = false;
+          }
+        },
       });
-    });
+    }
 
     // Global scroll → subtle z-spin of the cloud.
     ScrollTrigger.create({

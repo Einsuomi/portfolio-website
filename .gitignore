@@ -7,7 +7,7 @@ dist/
 # dependencies
 node_modules/
 
-# agent dispatch logs — local only, may quote private context (public repo)
+# local-only working dir — verify-ui JSON reports, screenshots, scratch notes (public repo)
 logs/
 
 # design reference material — local only, third-party copyrighted content (public repo)

@@ -42,6 +42,9 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:net';
+// pngjs: decode canvas screenshots pixel-by-pixel to find the WebGL figure footprint.
+// devDependency only — not imported by any runtime/browser code.
+import { PNG } from 'pngjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const LOGS_DIR = join(ROOT, 'logs');
@@ -83,6 +86,38 @@ const AXE_CRITICAL_IMPACTS = new Set(['critical', 'serious']);
 // Hero check: minimum font-size (px) for a "visible headline" at t=1s / t=5s
 const HERO_MIN_FONT_SIZE_PX = 24;
 
+// ── canvas/figure vs text overlap constants ──────────────────────────────
+// How long to wait (ms) after scrolling a beat to its centre before sampling
+// the canvas. The uMix morph tween runs ~1.7s; 2200ms gives it a comfortable
+// margin to settle onto the target shape before we read pixels.
+const BEAT_MORPH_SETTLE_MS = 2200;
+
+// Pixel brightness threshold (0–255 per channel average) above which a pixel
+// is counted as "bright" (possibly figure or ambient dot). Background (#060606)
+// reads as ~6/255 ≈ 2%; isolated ambient dots land around 20–40; figure core 50+.
+const FIGURE_BRIGHTNESS_THRESHOLD = 40;
+
+// Local-density neighborhood: for each bright pixel inside the text rect we
+// check a (2*DENSITY_RADIUS+1)² window centred on it. A pixel is counted as
+// "locally dense" (part of the figure mass, not a lone ambient dot) when at
+// least DENSITY_MIN_NEIGHBORS of those surrounding pixels are also bright.
+// 5×5 window (radius 2) → 24 surrounding pixels. Requiring 3 means a lone
+// scattered dot (0–1 bright neighbors) is ignored; a dense cluster (10+ bright
+// neighbors per pixel) counts.
+const DENSITY_RADIUS = 2;
+const DENSITY_MIN_NEIGHBORS = 3;
+
+// Coverage threshold: fraction of the text rect area that must be covered by
+// locally-dense figure pixels before the beat is flagged as an overlap.
+// Ambient starfield → a handful of lone dots → near 0. Figure mass on text →
+// many clustered pixels → well above this line.
+// Ground-truth split: hero & neste should sit well below, fail beats well above.
+const FIGURE_COVERAGE_THRESHOLD = 0.004; // 0.4 % of text rect area
+
+// Text-box selectors checked per beat, in priority order. The first one found
+// in the section is used. Matches the actual HTML structure in index.astro.
+const BEAT_TEXT_SELECTORS = ['.hero__inner', '.split__pad', '.bot__inner'];
+
 // ── helpers ──────────────────────────────────────────────────────────────
 
 /** Find a free TCP port by briefly binding to port 0 */
@@ -102,7 +137,7 @@ function getFreePort() {
  * HTTP polling is more reliable than TCP connect for astro preview, which
  * may bind the port before it's ready to serve requests.
  */
-async function waitForHttp(url, timeoutMs = 60_000) {
+async function waitForHttp(url, timeoutMs = 120_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
@@ -419,6 +454,226 @@ async function scrollWalk(page, vp, settleLiveMs) {
   return { collisions, horizOverflow };
 }
 
+// ── canvas/figure vs text overlap check ──────────────────────────────────
+
+/**
+ * Decode a raw PNG buffer (from Playwright's canvas screenshot) and measure
+ * how much of the figure's dense particle mass falls inside the given text rect.
+ *
+ * The key insight: the bbox approach fails because the scatter field + ambient
+ * starfield inflate the bounding box to nearly full-viewport, so it "overlaps"
+ * every text rect. Instead we measure directly inside the text rect:
+ *
+ *   1. Convert the CSS-pixel text rect to screenshot-pixel coordinates.
+ *   2. For each bright pixel inside that rect, count its bright neighbors in a
+ *      small window. Pixels with enough neighbors are "locally dense" — part of
+ *      the figure cluster, not a lone ambient dot.
+ *   3. Return coverage = locally_dense_pixels / rect_area (screenshot pixels).
+ *
+ * A few isolated ambient dots over the text won't reach DENSITY_MIN_NEIGHBORS
+ * and won't be counted. The dense figure mass (many overlapping additive-blended
+ * particles) always forms tight clusters that exceed the neighbor threshold.
+ *
+ * Returns { coverage, densePxCount, rectArea } — coverage is the primary metric.
+ */
+function measureFigureDensityInRect(pngBuffer, vpWidth, vpHeight, cssTextRect) {
+  const img = PNG.sync.read(pngBuffer);
+  const { width, height, data } = img;
+
+  // Scale factor: screenshot pixels per CSS pixel (devicePixelRatio in Playwright).
+  // A headless Chromium session defaults to DPR=1, so scale is usually 1.
+  const scaleX = width  / vpWidth;
+  const scaleY = height / vpHeight;
+
+  // Convert CSS-pixel text rect to screenshot-pixel rect, clamped to image bounds.
+  const rx0 = Math.max(0, Math.floor(cssTextRect.left   * scaleX));
+  const ry0 = Math.max(0, Math.floor(cssTextRect.top    * scaleY));
+  const rx1 = Math.min(width  - 1, Math.ceil(cssTextRect.right  * scaleX));
+  const ry1 = Math.min(height - 1, Math.ceil(cssTextRect.bottom * scaleY));
+
+  if (rx1 <= rx0 || ry1 <= ry0) return { coverage: 0, densePxCount: 0, rectArea: 0 };
+
+  // Pass 1: build a brightness map for the whole image (needed for neighbor lookups
+  // that may cross the rect boundary by up to DENSITY_RADIUS pixels).
+  const bright = new Uint8Array(width * height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      const avg = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+      if (avg > FIGURE_BRIGHTNESS_THRESHOLD) bright[y * width + x] = 1;
+    }
+  }
+
+  // Pass 2: for each bright pixel inside the text rect, count bright neighbors
+  // in a (2R+1)×(2R+1) window. If neighbors ≥ DENSITY_MIN_NEIGHBORS the pixel
+  // is part of the figure mass, not a lone ambient dot.
+  const R = DENSITY_RADIUS;
+  let densePxCount = 0;
+
+  for (let y = ry0; y <= ry1; y++) {
+    for (let x = rx0; x <= rx1; x++) {
+      if (!bright[y * width + x]) continue; // not even bright — skip
+
+      // Count bright neighbors in the NxN window (excluding the centre pixel).
+      let neighbors = 0;
+      const ny0 = Math.max(0, y - R), ny1 = Math.min(height - 1, y + R);
+      const nx0 = Math.max(0, x - R), nx1 = Math.min(width  - 1, x + R);
+      for (let ny = ny0; ny <= ny1 && neighbors < DENSITY_MIN_NEIGHBORS; ny++) {
+        for (let nx = nx0; nx <= nx1; nx++) {
+          if (ny === y && nx === x) continue; // skip self
+          if (bright[ny * width + nx]) neighbors++;
+        }
+      }
+
+      if (neighbors >= DENSITY_MIN_NEIGHBORS) densePxCount++;
+    }
+  }
+
+  const rectArea = (rx1 - rx0 + 1) * (ry1 - ry0 + 1);
+  const coverage = rectArea > 0 ? densePxCount / rectArea : 0;
+
+  return { coverage, densePxCount, rectArea };
+}
+
+/**
+ * Check that the WebGL particle figure does not visibly overlap the beat's
+ * text element on every section of the homepage.
+ *
+ * Strategy:
+ *   1. Find all <section data-shape="..."> elements.
+ *   2. Per beat: scroll its centre into view, wait for the morph to settle,
+ *      screenshot the #scene canvas, decode the PNG, then measure the density
+ *      of figure pixels directly INSIDE the text rect.
+ *   3. Flag the beat when figure-pixel density inside the text rect exceeds
+ *      FIGURE_COVERAGE_THRESHOLD — i.e. when the figure mass actually lands
+ *      on the words, not just when bounding boxes happen to intersect.
+ *
+ * Why density-inside-rect (not bbox intersection): the scatter field + ambient
+ * starfield inflate the figure's bounding box to near-full-viewport, so bbox
+ * intersection flags every beat including hero and neste where the figure is
+ * clearly on the opposite side of the screen from the text. The density measure
+ * asks "are dense clusters of figure pixels actually on the text?" which is the
+ * real question. Lone ambient dots over text → too sparse → not counted.
+ *
+ * Runs in LIVE mode only (the scene doesn't animate in reduced-motion mode).
+ * Returns an array of overlap findings (empty = all clear).
+ */
+async function checkBeatCanvasOverlap(page, vp) {
+  const findings = [];
+
+  // Get all beat sections with their shape names and text-box selector.
+  const beats = await page.evaluate((selectors) => {
+    const sections = Array.from(document.querySelectorAll('[data-shape]'));
+    return sections.map((sec) => {
+      // Find the first text-box selector present in this section.
+      let textSel = null;
+      for (const sel of selectors) {
+        if (sec.querySelector(sel)) { textSel = sel; break; }
+      }
+      const textEl = textSel ? sec.querySelector(textSel) : null;
+      const textRect = textEl ? textEl.getBoundingClientRect() : null;
+      const secRect  = sec.getBoundingClientRect();
+      return {
+        shape:   sec.dataset.shape,
+        secTop:  secRect.top  + window.scrollY, // absolute doc-offset
+        secMid:  secRect.top  + window.scrollY + secRect.height / 2,
+        textRect: textRect ? {
+          left:   Math.round(textRect.left),
+          top:    Math.round(textRect.top),
+          right:  Math.round(textRect.right),
+          bottom: Math.round(textRect.bottom),
+        } : null,
+      };
+    });
+  }, BEAT_TEXT_SELECTORS);
+
+  for (const beat of beats) {
+    if (!beat.textRect) {
+      // No text box found for this beat — skip; can't assert without a reference.
+      findings.push({
+        shape: beat.shape,
+        skip: true,
+        reason: 'no text-box selector matched',
+      });
+      continue;
+    }
+
+    // Scroll the section centre to the middle of the viewport so the morph
+    // that fires when the section is "in view" has a chance to complete.
+    const targetScroll = Math.max(0, beat.secMid - vp.height / 2);
+    await page.evaluate(async (scrollY) => {
+      if (window.__lenis) {
+        window.__lenis.scrollTo(scrollY, { immediate: true });
+      } else {
+        window.scrollTo(0, scrollY);
+      }
+      // Two rAF ticks for GSAP/ScrollTrigger to process the new position.
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    }, targetScroll);
+
+    // Wait for the morph tween to settle onto the target figure.
+    await page.waitForTimeout(BEAT_MORPH_SETTLE_MS);
+
+    // Re-read the text rect at this scroll position (it's in CSS viewport px,
+    // so it shifts with scroll — we need the value AFTER the scroll settle).
+    // Wrapped in a single object because Playwright page.evaluate only accepts
+    // one argument besides the function itself.
+    const textRect = await page.evaluate(({ selectors, shape }) => {
+      const sec = document.querySelector(`[data-shape="${shape}"]`);
+      if (!sec) return null;
+      for (const sel of selectors) {
+        const el = sec.querySelector(sel);
+        if (el) {
+          const r = el.getBoundingClientRect();
+          return { left: Math.round(r.left), top: Math.round(r.top), right: Math.round(r.right), bottom: Math.round(r.bottom) };
+        }
+      }
+      return null;
+    }, { selectors: BEAT_TEXT_SELECTORS, shape: beat.shape });
+
+    if (!textRect) continue;
+
+    // Screenshot the #scene canvas (compositor path — captures WebGL content
+    // even without preserveDrawingBuffer, because the compositor reads the
+    // rendered frame buffer, not the WebGL back buffer directly).
+    const canvasEl = page.locator('#scene');
+    let pngBuf;
+    try {
+      pngBuf = await canvasEl.screenshot({ type: 'png' });
+    } catch {
+      findings.push({ shape: beat.shape, skip: true, reason: '#scene screenshot failed' });
+      continue;
+    }
+
+    // Measure locally-dense figure pixel coverage inside the text rect.
+    // Returns coverage fraction (0–1): how much of the text rect area is
+    // covered by pixels that are both bright AND part of a dense cluster.
+    // Lone ambient dots → near 0. Figure mass on text → above threshold.
+    const { coverage, densePxCount, rectArea } =
+      measureFigureDensityInRect(pngBuf, vp.width, vp.height, textRect);
+
+    // Always log the coverage number so the pass/fail gap is visible in output.
+    process.stdout.write(
+      `    beat="${beat.shape}"  coverage=${(coverage * 100).toFixed(3)}%  ` +
+      `densePx=${densePxCount}  rectArea=${rectArea}  ` +
+      `threshold=${(FIGURE_COVERAGE_THRESHOLD * 100).toFixed(3)}%\n`
+    );
+
+    if (coverage > FIGURE_COVERAGE_THRESHOLD) {
+      findings.push({
+        shape:        beat.shape,
+        overlap:      true,
+        coverage,
+        densePxCount,
+        rectArea,
+        textRect,
+      });
+    }
+  }
+
+  return findings;
+}
+
 // ── one route × viewport × mode pass ─────────────────────────────────────
 
 /**
@@ -530,6 +785,16 @@ async function runPass({ browser, baseUrl, axeJs, route, vp, mode }) {
   const extraSettle = isLive ? SCROLL_SETTLE_LIVE_MS : 0;
   const { collisions, horizOverflow } = await scrollWalk(page, vp, extraSettle);
 
+  // ── canvas / figure vs text overlap check (live mode only) ───────────────
+  // The scroll walk only catches DOM-vs-DOM text collisions; the WebGL figure
+  // is invisible to it. This check reads the actual canvas pixels after each
+  // beat's morph has settled and asserts the figure footprint clears the text.
+  // Skipped in reduced-motion mode because the scene doesn't run there.
+  let canvasOverlaps = [];
+  if (isLive) {
+    canvasOverlaps = await checkBeatCanvasOverlap(page, vp);
+  }
+
   await ctx.close();
 
   return {
@@ -541,6 +806,7 @@ async function runPass({ browser, baseUrl, axeJs, route, vp, mode }) {
     consoleErrors,
     failedRequests,
     heroCheck,
+    canvasOverlaps,
     axe: {
       critical: axeCritical.map(v => ({
         id:          v.id,
@@ -604,13 +870,17 @@ async function main() {
             ? (!entry.heroCheck.t1s.pass ? 1 : 0) + (!entry.heroCheck.t5s.pass ? 1 : 0)
             : 0;
 
+          // Canvas overlaps: only count entries where overlap:true (not skip entries)
+          const canvasOverlapFails = (entry.canvasOverlaps || []).filter(f => f.overlap).length;
+
           const failCount =
             entry.collisions.length +
             (entry.horizOverflow ? 1 : 0) +
             entry.consoleErrors.length +
             entry.failedRequests.length +
             entry.axe.critical.length +
-            heroFail;
+            heroFail +
+            canvasOverlapFails;
 
           if (failCount > 0) anyFail = true;
 
@@ -626,6 +896,17 @@ async function main() {
             if (entry.collisions.length > 3) console.log(`    … and ${entry.collisions.length - 3} more`);
           }
           if (entry.horizOverflow) console.log(`  horizontal overflow: YES`);
+          if (canvasOverlapFails > 0) {
+            console.log(`  canvas figure/text overlaps: ${canvasOverlapFails}`);
+            entry.canvasOverlaps.filter(f => f.overlap).forEach(f =>
+              console.log(`    beat="${f.shape}"  coverage=${(f.coverage * 100).toFixed(3)}%  densePx=${f.densePxCount}  text(l=${f.textRect.left} t=${f.textRect.top} r=${f.textRect.right} b=${f.textRect.bottom})`)
+            );
+          }
+          // Informational: beats where the canvas check was skipped (scene not ready, etc.)
+          const canvasSkipped = (entry.canvasOverlaps || []).filter(f => f.skip);
+          if (canvasSkipped.length) {
+            console.log(`  canvas check skipped for ${canvasSkipped.length} beat(s): ${canvasSkipped.map(f => `${f.shape}(${f.reason})`).join(', ')}`);
+          }
           if (entry.consoleErrors.length) {
             console.log(`  console errors: ${entry.consoleErrors.length}`);
             entry.consoleErrors.slice(0, 3).forEach(e => console.log(`    ${e.slice(0, 120)}`));
