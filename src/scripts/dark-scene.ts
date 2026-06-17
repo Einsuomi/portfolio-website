@@ -75,7 +75,7 @@ async function boot(canvas: HTMLCanvasElement) {
   camera.position.set(0, 0, 6.4);
 
   // Particle budget scales down on small / low-power devices.
-  const COUNT = isMobile ? 7000 : 14000;
+  const COUNT = isMobile ? 9000 : 16000;
   const RADIUS = 2.5;
 
   const TAU = Math.PI * 2;
@@ -550,7 +550,7 @@ async function boot(canvas: HTMLCanvasElement) {
     uAccentMix: { value: 1 },
     uMouse: { value: new THREE.Vector3() },
     uMouseStrength: { value: 0 },
-    uSize: { value: isMobile ? 21 : 28 },
+    uSize: { value: isMobile ? 15 : 20 },
     uPixelRatio: { value: Math.min(devicePixelRatio, 2) },
     uDrift: { value: reduceMotion ? 0 : 1 },
     // 0 = particles on the figure; 1 = flown out to the wide scatter field.
@@ -584,7 +584,7 @@ async function boot(canvas: HTMLCanvasElement) {
     uniforms,
     transparent: true,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
+    blending: THREE.NormalBlending,
     vertexShader: /* glsl */ `
       attribute vec3 aPosA;
       attribute vec3 aPosB;
@@ -666,9 +666,13 @@ async function boot(canvas: HTMLCanvasElement) {
         // repulsion void. prox is 1 at the cursor and eases to 0 at a wide soft
         // edge; it's reused below to bloom the dot size + alpha so the effect
         // lives entirely in the dots (no competing cursor ring).
-        vec2 d = pos.xy - uMouse.xy;
-        float prox = smoothstep(1.6, 0.0, length(d)) * uMouseStrength;
-        pos.z += prox * 0.6;                               // lift toward the camera (+z)
+        // Compare in the figure's LOCAL frame: pos is un-rotated object space, but
+        // uMouse is a world-space z=0 raycast and the cloud is spun by parallax +
+        // auto-spin. Map the cursor through uFigRotInv (same inverse used for the
+        // placement offset) so the swell tracks the pointer instead of drifting.
+        vec2 d = pos.xy - (uFigRotInv * uMouse).xy;
+        float prox = smoothstep(0.8, 0.0, length(d)) * uMouseStrength;  // tight, local hill
+        pos.z += prox * 0.5;                               // lift toward the camera (+z)
         pos.xy += normalize(d + 0.0001) * prox * 0.12;     // gentle outward bulge
 
         vec4 mv = modelViewMatrix * vec4(pos, 1.0);
@@ -679,12 +683,12 @@ async function boot(canvas: HTMLCanvasElement) {
         // dots small; the long tail gives the few big bright ones. Depth
         // (1/-mv.z) still carries the breathing. Ambient dots are pushed clearly
         // smaller so the figure reads bold and dense against them.
-        float sizeVar = mix(0.45, 4.2, pow(aRand, 2.4));
+        float sizeVar = mix(0.6, 2.0, pow(aRand, 2.1));
         float size = uSize * sizeVar;
         size *= mix(uDotScale, 1.0, aAmbient);     // per-beat figure dot size (Earth = finer); ambient unaffected
         size *= mix(1.0, 0.72, aAmbient);          // ambient dots a touch smaller (bigger than before, still faint)
         size *= 1.0 + 0.08 * sin(t * 1.6) * uDrift; // ≤0.1 amplitude size sine
-        size *= 1.0 + prox * 2.2;                   // usta swell: dots bloom near the cursor
+        size *= 1.0 + prox * 1.1;                   // usta swell: subtle bloom near the cursor
         gl_PointSize = size * uPixelRatio * (1.0 / -mv.z);
 
         // Figure dots brighter/bolder; ambient fainter and flickering (distant
@@ -698,7 +702,7 @@ async function boot(canvas: HTMLCanvasElement) {
         float facing = (modelViewMatrix * vec4(sphereN, 0.0)).z; // >0 → toward camera
         float front = smoothstep(-0.08, 0.5, facing);
         vAlpha *= mix(1.0, front, uBackFade * (1.0 - aAmbient));
-        vAlpha *= 1.0 + prox * 0.5;                 // brighter bloom under the cursor
+        vAlpha *= 1.0 + prox * 0.35;                // brighter bloom under the cursor
       }
     `,
     fragmentShader: /* glsl */ `
@@ -708,7 +712,7 @@ async function boot(canvas: HTMLCanvasElement) {
         vec2 c = gl_PointCoord - 0.5;
         float d = length(c);
         if (d > 0.5) discard;
-        float a = smoothstep(0.5, 0.06, d) * vAlpha;
+        float a = smoothstep(0.5, 0.4, d) * vAlpha;   // crisp disc + thin AA edge (was a soft foggy blob)
         gl_FragColor = vec4(vColor, a);
       }
     `,

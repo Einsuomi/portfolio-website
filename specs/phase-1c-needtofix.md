@@ -163,6 +163,64 @@ above (14" / 15.6" / 27" / ultrawide / phone). Tong's short laptop is just the s
       removed entirely (usta = one restrained cursor effect, not two). Needs a real pointer —
       can't be judged headlessly.
 
+================================================================================
+## NEW issues raised 2026-06-17 (live review after the usta-swell cursor landed)
+================================================================================
+
+Two faults Tong flagged comparing our hero live against https://usta.agency/. Both
+diagnosed by screenshot comparison (before/after stills in
+`reference/screenshots-2026-06-17-crisp-cursor/`), both fixed in `src/scripts/dark-scene.ts`.
+
+11. ✅ **Cursor swell — impact area too big AND drifting off the pointer.** Hovering the
+    *edge* of the figure swelled dots in the *middle* (and visibly up-and-right).
+    - **Root cause (drift):** the proximity test compared the dot's **local** (un-rotated)
+      `pos.xy` against the **world-space** `uMouse.xy`. The cloud is spun every frame by
+      parallax + auto-spin, so the swell centre was computed in the wrong frame → drifted.
+      Same class of bug as the placement-offset rotation coupling (item 7 above).
+    - **Fix:** map the cursor into the figure's local frame with the existing `uFigRotInv`:
+      `vec2 d = pos.xy - (uFigRotInv * uMouse).xy;`. Now the hill tracks the pointer.
+    - **Root cause (too big):** swell radius `smoothstep(1.6, 0.0, …)` was a large fraction
+      of the figure; size bloom `prox*2.2` grew dots 3.2×.
+    - **Fix:** radius `1.6 → 0.8`, size bloom `2.2 → 1.1`, z-lift `0.6 → 0.5`, alpha bloom
+      `0.5 → 0.35`. Local, restrained hill — one usta-style effect.
+
+12. ✅ **"雾蒙蒙" — figure foggy / not 通透 / not premium vs usta.** Our dots read as a milky
+    haze; usta's are crisp, dense, saturated on pure black. Three coupled causes, all in the
+    render setup:
+    - **`AdditiveBlending` (main culprit):** overlapping dots SUM their light → dense regions
+      blow out to white-gray haze and lose colour. **Fix:** `→ NormalBlending` so dots stay
+      distinct and saturated. Single biggest premium-vs-fog lever.
+    - **Soft sprite falloff** `smoothstep(0.5, 0.06, d)` made each dot a fuzzy gradient blob.
+      **Fix:** `→ smoothstep(0.5, 0.4, d)` = crisp disc + thin AA edge.
+    - **Extreme size tail** `mix(0.45, 4.2, pow(aRand,2.4))` let a few giant dots dominate and
+      blow out (noise, not figure). **Fix:** `→ mix(0.5, 2.2, pow(aRand,2.0))` = dense, even
+      dots that read as a solid clear figure.
+    - Note: this partly walks back the 2026-06-17 density pass (item 1 / scene-motion item 8)
+      — that widened the size tail and relied on additive glow for "bold." The fog was the
+      cost of that boldness; crispness chosen over glow per Tong's usta reference.
+    - **Verified:** white blow-out gone, dots distinct/colored/crisp (`after-crisp-hero.png`
+      vs `before-foggy-hero.png`). `astro check` 0 errors.
+
+### Pass 2 (same session) — "still not optimal" vs usta: fine + dense
+
+Tong put 5 stills side-by-side (3 ours, 2 usta — the blue+gold rocket and sphere+ring). The
+remaining gap vs usta: our dots were still **chunky** (too big / "made of pebbles") and the
+figure read **sparse** (black gaps through the mass), where usta is **fine + densely packed +
+saturated**. Changes (`dark-scene.ts`):
+- base `uSize` `28 → 20` desktop, `21 → 15` mobile — finer grains.
+- size variance `mix(0.5,2.2,pow(aRand,2.0)) → mix(0.6,2.0,pow(aRand,2.1))` — higher floor,
+  lower top = more even, fewer chunky outliers.
+- `COUNT` `14000 → 16000` desktop, `7000 → 9000` mobile — denser fill to compensate for the
+  smaller dots. **Perf note:** tried 20000 first; the headless screenshot capture consistently
+  timed out at that level (heavy frame) — backed down to 16000, which the harness captures
+  fine. 20k is the rough "too heavy for a smooth frame here" mark; revisit with real FPS/LCP
+  numbers before pushing count higher (CLAUDE.md: perf watched, not gated).
+- Verified `pass2-hero.jpeg` (refined Earth, continents clear) + `pass2-neste.jpeg` (fine dense
+  green stream). `astro check` 0 errors.
+- **Still open (Tong's dial — figure colour is his call):** saturation. The cream/white
+  figures (writes, hero land) read pale next to usta's punchy two-colour blue+gold. The
+  saturated beats (neste green, bot amber) already read closer. Left untouched pending Tong.
+
 ### Uncommitted code state (nothing committed this session)
 `src/scripts/dark-scene.ts`: rotation-decoupled placement (`uFigRotInv`); density pass
 (size/variance/ambient); **real-coastline Earth** (`isLand`/`buildLandMask` via world-atlas
@@ -170,4 +228,5 @@ above (14" / 15.6" / 27" / ultrawide / phone). Tong's short laptop is just the s
 **three pipeline figures** (`makeNesteStream`/`makePostnordNetwork`/`makeBaswareLedger`,
 `makeWordmark` removed). `src/pages/index.astro`: hero vertical-budget trim (#9).
 `package.json`: added `world-atlas`, `topojson-client`. The temporary `window.__dbg` hook was
-added for measurement and REMOVED. `astro check` = 0 errors.
+added for measurement and REMOVED. Plus items 11–12: cursor frame/radius fix and the
+crisp-dot render pass (NormalBlending, tight sprite, tamer size tail). `astro check` = 0 errors.
