@@ -25,9 +25,8 @@ deployed on Vercel.
 - **Public repo — never leak.** Site content enters only via `npm run sync` (strips every
   `/confidential/` path); inspect the diff and run `npm run check-leaks` before any push.
   Never hardcode secrets — `.env.local` + Vercel env vars only.
-- **Git discipline.** Never push to `main`; feature branch → PR, Tong merges. Small,
-  clear commits as checkpoints. No force-push, no rewriting shared history, no destructive
-  actions.
+- **Git discipline.** Follows the global rules (feature branch → PR, Tong merges, never
+  push `main`, no force-push or destructive actions). Project note: small, clear commits as checkpoints.
 - **The shipped page must actually work for a recruiter on a phone** (a delivery floor,
   not a constraint on exploration). Content lives in real HTML, not JS-injected; text stays
   readable over any background; the hero lands name + role + value within ~5s; reduced-motion
