@@ -14,8 +14,7 @@ deployed on Vercel.
 
 ## Website taste
 - **Attention is the mechanism.** The whole site should catch and hold a recruiter's
-  attention end to end (à la Anton Skvortsov — antonskvor.webflow.io) — a magnetic, scroll-driven pull where every
-  beat earns the next scroll, never a page you skim and bounce. This is the overall feeling.
+  attention end to end (à la Anton Skvortsov — antonskvor.webflow.io) — a magnetic, scroll-driven pull where every beat earns the next scroll, never a page you skim and bounce. This is the overall feeling.
 - Taste reference: https://usta.agency/ — study its restraint, dot system, and motion
   pacing; rebuild original. Never clone its code, assets, or fonts.
 - Built with Three.js + GSAP/ScrollTrigger + Lenis when applicable — the motion vehicle,

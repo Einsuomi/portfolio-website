@@ -28,7 +28,9 @@
     "lucide": "^1.17.0",
     "split-type": "^0.3.4",
     "three": "^0.161.0",
-    "typescript": "^6.0.3"
+    "topojson-client": "^3.1.0",
+    "typescript": "^6.0.3",
+    "world-atlas": "^2.0.2"
   },
   "devDependencies": {
     "axe-core": "^4.12.1",

@@ -157,17 +157,29 @@ Post-live-feedback rework. Gated by the new overlap assertion above.
    - **Test the cursor dot + ring first** (Tong's call) before deciding whether the
      repulsion void stays at all — usta uses one restrained cursor effect, not two.
 
-6. **Company figures → abstract forms (drop the wordmarks).** Confirmed: replace
-   `makeWordmark('NESTE'/'POSTNORD'/'BASWARE')` with three distinct abstract generators in
-   the style of the existing `makeConstellation` / `makeNeural`. The company name carries
-   entirely in the real HTML copy (`<h2>` + body already present), so the figure is mood,
-   not label. Proposed forms (designer may refine; Tong judges at the taste gate):
-   - **Neste** (renewable energy) — a flowing **torus / circulating ring** of particles.
-   - **PostNord** (Nordic logistics) — a **route-mesh**: cluster nodes joined by directional
-     particle streams.
-   - **Basware** (fintech / invoicing SaaS) — a **structured lattice / grid** (ledger feel).
-   Each keeps a themed accent colour (Neste green, PostNord blue, Basware amber — already
-   defined). Remove the now-unused `makeWordmark` text path if nothing else uses it.
+6. **Company figures → pipeline topologies (drop the wordmarks).** Replace
+   `makeWordmark('NESTE'/'POSTNORD'/'BASWARE')` with three distinct generators in the style
+   of the existing `makeConstellation` / `makeNeural`. The company name carries entirely in
+   the real HTML copy (`<h2>` + body already present), so the figure is mood, not label.
+
+   **APPROVED PLAN (Tong, 2026-06-16 — "sounds good, go for it"). This supersedes the earlier
+   torus / route-mesh / lattice proposal.** The site's core metaphor is the data pipeline, so
+   each role becomes a *pipeline topology* that maps to what Tong actually built there — and
+   the seven figures read as one continuous pipeline story:
+   **stream → network → ledger → constellation (projects) → lines (writes) → neural (talk).**
+   - **Neste** (energy; batch + streaming on Databricks) — a flowing **stream/current that
+     forks into two channels** (batch + stream); energy in motion. Accent: Neste green.
+   - **PostNord** (Nordic logistics; pipelines + BI) — a **routed network**: hub nodes with
+     directed particle streams shuttling between them; parcels through a logistics graph.
+     Accent: PostNord blue.
+   - **Basware** (fintech / invoicing SaaS) — particles **settling row-by-row into a ledger
+     grid**; transactions reconciling. Accent: Basware amber.
+
+   Why this beats both the wordmarks and the generic torus/lattice: each means something
+   *true* about the role, reads as its domain (flow / network / ledger) without spelling a
+   word, and is coherent with the site's bet that "the visual **is** the pipeline." Must be
+   **robust to the section text changing length** (Tong's note). Keep themed accents (already
+   defined); remove the now-unused `makeWordmark` text path if nothing else uses it.
 
 ## Hard constraints (CLAUDE.md design law still binding)
 
