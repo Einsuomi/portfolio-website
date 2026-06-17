@@ -19,6 +19,10 @@ import * as THREE from 'three';
 import gsap from 'gsap';
 import ScrollTrigger from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
+// @ts-ignore — topojson-client ships no type declarations.
+import { feature } from 'topojson-client';
+// @ts-ignore — JSON map asset (Natural Earth land), no type declaration needed.
+import landTopo from 'world-atlas/land-110m.json';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -81,20 +85,10 @@ async function boot(canvas: HTMLCanvasElement) {
   canvas.style.display = 'block';
   document.documentElement.classList.add('has-scene');
 
-  // Figure offset magnitude (world units). The figure sits opposite the text
-  // column; clamped smaller on mobile so it never leaves the viewport.
-  const OFFSET = isMobile ? 1.2 : 2.3;
-  // Per-beat figure offset: hero→right, neste→left, postnord→right,
-  // basware→left, projects→right, writes→left, bot→centre.
-  const OFFSETS: Record<string, number> = {
-    hero: OFFSET,
-    neste: -OFFSET,
-    postnord: OFFSET,
-    basware: -OFFSET,
-    projects: OFFSET,
-    writes: -OFFSET,
-    bot: 0,
-  };
+  // Figure placement (item 7) is derived at runtime from each beat's text rect
+  // — see recomputePlacements() below. No hand-picked offset map: the figure
+  // drops into the largest empty viewport region opposite the text, both axes,
+  // and self-corrects across desktop / mobile / resize.
 
   // ~13% of the budget are permanent wide-field "ambient" dots that never
   // join the figure — they keep a faint scattered target in every shape and
@@ -107,98 +101,213 @@ async function boot(canvas: HTMLCanvasElement) {
      specific particles (e.g. Luxembourg, wordmark glyphs).
      --------------------------------------------------------------- */
 
-  // Hero — rotating globe with Western Europe / Luxembourg lit.
-  // Luxembourg ≈ 49.6°N, 6.1°E. We light particles whose lat/lon land
-  // near that node, plus a soft band over Western Europe.
-  const LUX_LAT = (49.6 * Math.PI) / 180;
-  const LUX_LON = (6.1 * Math.PI) / 180;
-  const accentGlobe = new Float32Array(COUNT); // 0 = base, 1 = Luxembourg node, 0.5 = W. Europe
+  // Hero — a DOTTED EARTH: continents are dense dot clusters, the ocean a sparse
+  // scatter that holds the sphere's silhouette, oriented so Western Europe faces
+  // the camera with Luxembourg (≈49.6°N, 6.1°E) lit as a bright node.
+  const accentGlobe = new Float32Array(COUNT); // 0 = base land/ocean, 0.5 = W. Europe, 1 = Luxembourg
+
+  // Real coastline land mask: rasterize Natural Earth land (world-atlas TopoJSON)
+  // onto an equirectangular canvas once, then sample it as isLand(lat, lon). The
+  // canvas fill handles continent outlines + lake holes; far more recognizable
+  // than analytic blobs. Built lazily on first call, cached.
+  let landData: Uint8ClampedArray | null = null;
+  let landW = 0, landH = 0;
+  function buildLandMask() {
+    landW = 1024; landH = 512;
+    const cv = document.createElement('canvas');
+    cv.width = landW; cv.height = landH;
+    const ctx = cv.getContext('2d')!;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, landW, landH);
+    const land: any = feature(landTopo as any, (landTopo as any).objects.land);
+    // feature() yields a FeatureCollection (land is a GeometryCollection) or a
+    // single Feature — collect every Polygon/MultiPolygon ring from either.
+    const features: any[] = land.type === 'FeatureCollection' ? land.features : [land];
+    // equirectangular: lon[-180,180]→x[0,W], lat[90,-90]→y[0,H].
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    for (const f of features) {
+      const g = f.geometry;
+      if (!g) continue;
+      const polys: number[][][][] = g.type === 'MultiPolygon' ? g.coordinates : [g.coordinates];
+      for (const poly of polys) {
+        for (const ring of poly) {
+          ring.forEach(([lon, lat], i) => {
+            const x = ((lon + 180) / 360) * landW;
+            const y = ((90 - lat) / 180) * landH;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          });
+          ctx.closePath();
+        }
+      }
+    }
+    ctx.fill('evenodd'); // even-odd so inner rings (lakes) cut holes
+    landData = ctx.getImageData(0, 0, landW, landH).data;
+  }
+  function isLand(lat: number, lon: number): boolean {
+    if (!landData) buildLandMask();
+    let x = Math.floor(((lon + 180) / 360) * landW);
+    let y = Math.floor(((90 - lat) / 180) * landH);
+    x = Math.max(0, Math.min(landW - 1, x));
+    y = Math.max(0, Math.min(landH - 1, y));
+    return landData![(y * landW + x) * 4] > 128;
+  }
 
   function makeGlobe(): Float32Array {
     const a = new Float32Array(COUNT * 3);
     const k = RADIUS * 1.18;
-    // Luxembourg position on the unit sphere (for proximity lighting).
-    const lx = Math.cos(LUX_LAT) * Math.cos(LUX_LON);
-    const ly = Math.sin(LUX_LAT);
-    const lz = Math.cos(LUX_LAT) * Math.sin(LUX_LON);
-    for (let i = 0; i < COUNT; i++) {
-      // Even point distribution (fibonacci sphere).
-      const yv = 1 - (i / (COUNT - 1)) * 2;
-      const r = Math.sqrt(Math.max(0, 1 - yv * yv));
-      const th = GOLDEN * i;
-      const nx = Math.cos(th) * r;
-      const ny = yv;
-      const nz = Math.sin(th) * r;
-      a[i * 3] = nx * k;
-      a[i * 3 + 1] = ny * k;
-      a[i * 3 + 2] = nz * k;
+    const D2R = Math.PI / 180;
+    // Unit vector for a lat/lon (lon measured from +x toward +z).
+    const toVec = (la: number, lo: number): [number, number, number] => {
+      const a1 = la * D2R, o1 = lo * D2R;
+      return [Math.cos(a1) * Math.cos(o1), Math.sin(a1), Math.cos(a1) * Math.sin(o1)];
+    };
+    const dot = (x: number[], y: number[]) => x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
+    const norm = (v: number[]): [number, number, number] => {
+      const m = Math.hypot(v[0], v[1], v[2]) || 1;
+      return [v[0] / m, v[1] / m, v[2] / m];
+    };
+    const cross = (x: number[], y: number[]): [number, number, number] =>
+      [x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0]];
 
-      // Proximity to Luxembourg → bright node.
-      const dLux = (nx - lx) ** 2 + (ny - ly) ** 2 + (nz - lz) ** 2;
-      // Western Europe band: northern hemisphere, longitudes around 0–15°E.
-      const lon = Math.atan2(nz, nx);
-      const inEurope = ny > 0.35 && ny < 0.78 && lon > -0.25 && lon < 0.45;
-      if (dLux < 0.012) accentGlobe[i] = 1;
-      else if (inEurope) accentGlobe[i] = 0.5;
-      else accentGlobe[i] = 0;
+    // Orientation basis: Western Europe faces the camera (+z), north stays up.
+    // Centre on ~W. Europe so Europe sits middle with the Atlantic (ocean) framing
+    // it on the left — the contrast that makes the coastline read.
+    const f = norm(toVec(42, 4));                  // front → +z (toward camera)
+    const N = [0, 1, 0];
+    const u = norm([N[0] - dot(N, f) * f[0], N[1] - dot(N, f) * f[1], N[2] - dot(N, f) * f[2]]); // up → +y
+    const r = norm(cross(u, f));                   // right → +x
+    const orient = (p: number[]): [number, number, number] => [dot(p, r), dot(p, u), dot(p, f)];
+
+    // Gather land directions (with their lat/lon) from a dense fibonacci sample.
+    // Many candidates → fine coastlines (each gets only a couple of particles).
+    const land: { v: [number, number, number]; lat: number; lon: number }[] = [];
+    const M = 22000;
+    for (let j = 0; j < M; j++) {
+      const yv = 1 - (j / (M - 1)) * 2;
+      const rad = Math.sqrt(Math.max(0, 1 - yv * yv));
+      const th = GOLDEN * j;
+      const p = [Math.cos(th) * rad, yv, Math.sin(th) * rad];
+      const lat = Math.asin(p[1]) / D2R, lon = Math.atan2(p[2], p[0]) / D2R;
+      if (isLand(lat, lon)) land.push({ v: orient(p), lat, lon });
+    }
+
+    let li = 0;
+    for (let i = 0; i < COUNT; i++) {
+      // Almost all particles render the continents (dotted-map look); a thin ~3%
+      // ocean keeps a faint hint of the sphere's round edge. Empty ocean = the
+      // coastlines and inner seas read instead of a solid ball.
+      const onLand = land.length > 0 && i % 100 < 97;
+      let vx: number, vy: number, vz: number, acc = 0;
+      if (onLand) {
+        const c = land[li++ % land.length];
+        const j = 0.012; // small jitter so dots aren't stacked on candidates
+        vx = c.v[0] + (Math.random() - 0.5) * j;
+        vy = c.v[1] + (Math.random() - 0.5) * j;
+        vz = c.v[2] + (Math.random() - 0.5) * j;
+        // Light Western Europe; Luxembourg is the brightest node.
+        const dLux = Math.abs(c.lat - 49.6) + Math.abs(c.lon - 6.1);
+        if (dLux < 4) acc = 1;
+        else if (c.lat > 40 && c.lat < 60 && c.lon > -10 && c.lon < 22) acc = 0.5;
+      } else {
+        const yv = Math.random() * 2 - 1;
+        const rr = Math.sqrt(Math.max(0, 1 - yv * yv));
+        const th = Math.random() * TAU;
+        vx = Math.cos(th) * rr; vy = yv; vz = Math.sin(th) * rr;
+      }
+      a[i * 3] = vx * k;
+      a[i * 3 + 1] = vy * k;
+      a[i * 3 + 2] = vz * k;
+      accentGlobe[i] = acc;
     }
     return a;
   }
 
-  /* --- particle-text: render a word to an offscreen canvas, sample dark
-     pixels, scatter the rest behind so EVERY particle has a target. --- */
-  function makeWordmark(text: string): { pos: Float32Array; accent: Float32Array } {
+  /* --- Work-experience figures: pipeline TOPOLOGIES, not wordmarks (the company
+     name carries in the HTML copy). Each maps to what Tong built there, and the
+     seven figures read as one pipeline story: stream → network → ledger → … ---
+     Each returns positions + a themed-accent mask (1 = themed flow, 0 = cream). */
+
+  // Neste (energy; batch + streaming) — a flowing current that FORKS into two
+  // channels (batch + stream). Particles travel left→right; past the fork they
+  // split into an upper and lower ribbon.
+  function makeNesteStream(): { pos: Float32Array; accent: Float32Array } {
     const pos = new Float32Array(COUNT * 3);
     const accent = new Float32Array(COUNT);
-    const c = document.createElement('canvas');
-    const W = 600;
-    const H = 200;
-    c.width = W;
-    c.height = H;
-    const ctx = c.getContext('2d')!;
-    ctx.fillStyle = '#fff';
-    // Condensed display face matches the cream Anton wordmarks on the page.
-    let fontSize = 150;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    // Shrink the font until the word fits the canvas width.
-    do {
-      ctx.font = `700 ${fontSize}px Anton, "Arial Narrow", Impact, sans-serif`;
-      fontSize -= 4;
-    } while (ctx.measureText(text).width > W - 24 && fontSize > 20);
-    ctx.fillText(text, W / 2, H / 2 + 4);
+    const WIDTH = 5.0;
+    for (let i = 0; i < COUNT; i++) {
+      const t = Math.random();                       // 0..1 along the flow
+      const x = (t - 0.5) * WIDTH;                    // left → right
+      const fork = Math.max(0, (t - 0.45) / 0.55);    // 0 before split, →1 right
+      const side = i % 2 === 0 ? 1 : -1;              // upper / lower channel
+      const sep = side * Math.pow(fork, 1.4) * 1.3;   // channels ease apart
+      const thick = (0.55 - 0.34 * t) * (0.5 + 0.5 * Math.random()); // ribbon tapers
+      pos[i * 3] = x + (Math.random() - 0.5) * 0.06;
+      pos[i * 3 + 1] = sep + (Math.random() - 0.5) * thick;
+      pos[i * 3 + 2] = Math.sin(t * TAU + side) * 0.22 + (Math.random() - 0.5) * 0.3;
+      // The flowing core is themed (green); the looser edges stay cream.
+      accent[i] = Math.random() < 0.7 ? 1 : 0;
+    }
+    return { pos, accent };
+  }
 
-    const data = ctx.getImageData(0, 0, W, H).data;
-    // Collect glyph pixels (sampled on a grid to keep the count manageable).
-    const pts: { x: number; y: number }[] = [];
-    const step = 2;
-    for (let y = 0; y < H; y += step) {
-      for (let x = 0; x < W; x += step) {
-        if (data[(y * W + x) * 4 + 3] > 128) pts.push({ x, y });
+  // PostNord (logistics; pipelines + BI) — a ROUTED NETWORK: hub nodes joined by
+  // directed streams carrying discrete "packets" (parcels) between them.
+  function makePostnordNetwork(): { pos: Float32Array; accent: Float32Array } {
+    const pos = new Float32Array(COUNT * 3);
+    const accent = new Float32Array(COUNT);
+    const HUBS = 6;
+    const C: [number, number, number][] = [];
+    for (let n = 0; n < HUBS; n++) {
+      const ang = (n / HUBS) * TAU + 0.3;
+      const rad = 1.5 + (n % 2) * 0.8;
+      C.push([Math.cos(ang) * rad, Math.sin(ang * 1.1) * 1.3, Math.sin(ang) * rad * 0.5]);
+    }
+    const edges: [number, number][] = [];
+    for (let n = 0; n < HUBS; n++) { edges.push([n, (n + 1) % HUBS]); edges.push([n, (n + 2) % HUBS]); }
+    for (let i = 0; i < COUNT; i++) {
+      if (i % 3 === 0) {
+        // Hub: a tight cluster (a depot/node on the network).
+        const c = C[i % HUBS];
+        const rr = Math.pow(Math.random(), 1.7) * 0.42;
+        const ang = Math.random() * TAU, ph = Math.acos(2 * Math.random() - 1);
+        pos[i * 3] = c[0] + Math.sin(ph) * Math.cos(ang) * rr;
+        pos[i * 3 + 1] = c[1] + Math.sin(ph) * Math.sin(ang) * rr;
+        pos[i * 3 + 2] = c[2] + Math.cos(ph) * rr;
+        accent[i] = 0; // hubs read cream
+      } else {
+        // Route packet: particles bunch at discrete points along an edge so the
+        // links read as parcels moving, not a smooth line.
+        const e = edges[i % edges.length];
+        const c1 = C[e[0]], c2 = C[e[1]];
+        const tt = Math.floor(Math.random() * 4) / 4 + Math.random() * 0.12;
+        pos[i * 3] = c1[0] + (c2[0] - c1[0]) * tt + (Math.random() - 0.5) * 0.08;
+        pos[i * 3 + 1] = c1[1] + (c2[1] - c1[1]) * tt + (Math.random() - 0.5) * 0.08;
+        pos[i * 3 + 2] = c1[2] + (c2[2] - c1[2]) * tt + (Math.random() - 0.5) * 0.08;
+        accent[i] = 1; // moving packets are themed (blue)
       }
     }
+    return { pos, accent };
+  }
 
-    const scale = 0.012; // canvas px → world units
-    const ratio = pts.length ? Math.min(1, (COUNT * 0.82) / pts.length) : 0;
-    let gi = 0; // glyph particle cursor
+  // Basware (fintech / invoicing) — particles SETTLING ROW-BY-ROW into a ledger
+  // grid (transactions reconciling): top rows crisp/settled, lower rows still loose.
+  function makeBaswareLedger(): { pos: Float32Array; accent: Float32Array } {
+    const pos = new Float32Array(COUNT * 3);
+    const accent = new Float32Array(COUNT);
+    const COLS = 15, ROWS = 11;
+    const CW = 0.32, RH = 0.34;
+    const halfW = ((COLS - 1) * CW) / 2, halfH = ((ROWS - 1) * RH) / 2;
     for (let i = 0; i < COUNT; i++) {
-      // Assign ~82% of particles to glyph points, the rest to a faint field.
-      const useGlyph = pts.length > 0 && i / COUNT < 0.82 && Math.random() < (ratio || 1);
-      if (useGlyph) {
-        const p = pts[(gi++) % pts.length];
-        pos[i * 3] = (p.x - W / 2) * scale;
-        pos[i * 3 + 1] = -(p.y - H / 2) * scale;
-        pos[i * 3 + 2] = (Math.random() - 0.5) * 0.12;
-        accent[i] = 1; // glyph particle — themed accent color
-      } else {
-        // Diffuse backing field behind the word.
-        const ang = Math.random() * TAU;
-        const rad = Math.sqrt(Math.random()) * RADIUS * 1.7;
-        pos[i * 3] = Math.cos(ang) * rad;
-        pos[i * 3 + 1] = Math.sin(ang) * rad * 0.6;
-        pos[i * 3 + 2] = -1.4 - Math.random() * 1.2;
-        accent[i] = 0;
-      }
+      const col = i % COLS;
+      const row = Math.floor(i / COLS) % ROWS;
+      const settle = row / (ROWS - 1);               // 0 top (settled) .. 1 bottom (loose)
+      const jit = 0.03 + settle * 0.22;              // lower rows haven't settled yet
+      pos[i * 3] = col * CW - halfW + (Math.random() - 0.5) * jit;
+      pos[i * 3 + 1] = halfH - row * RH + (Math.random() - 0.5) * jit;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 0.25;
+      // Settled (upper) rows are themed amber; still-loose lower rows stay cream.
+      accent[i] = settle < 0.55 ? 1 : 0;
     }
     return { pos, accent };
   }
@@ -318,9 +427,9 @@ async function boot(canvas: HTMLCanvasElement) {
 
   // Build all morph targets once (Anton is guaranteed loaded at this point).
   const globe = makeGlobe();
-  const neste = makeWordmark('NESTE');
-  const postnord = makeWordmark('POSTNORD');
-  const basware = makeWordmark('BASWARE');
+  const neste = makeNesteStream();
+  const postnord = makePostnordNetwork();
+  const basware = makeBaswareLedger();
 
   type ShapeDef = { pos: Float32Array; accent: Float32Array | null; color: any };
   const cCream = new THREE.Color(0xece8de);
@@ -380,6 +489,21 @@ async function boot(canvas: HTMLCanvasElement) {
   // through all morphs (they never converge onto the figure).
   for (const key of Object.keys(SHAPES)) fillAmbient(SHAPES[key].pos);
 
+  // Natural figure half-extent (world units, xy) per shape, measured over the
+  // NON-ambient particles only — used to scale each figure to fit its empty
+  // region so it stays fully on-screen AND clear of the text (see #2 fix).
+  const figExtent: Record<string, { x: number; y: number }> = {};
+  for (const key of Object.keys(SHAPES)) {
+    const p = SHAPES[key].pos;
+    let mx = 0.001, my = 0.001;
+    for (let i = 0; i < COUNT; i++) {
+      if (ambient[i] === 1) continue;
+      mx = Math.max(mx, Math.abs(p[i * 3]));
+      my = Math.max(my, Math.abs(p[i * 3 + 1]));
+    }
+    figExtent[key] = { x: mx, y: my };
+  }
+
   // Accent color attribute — recomputed per morph so glyphs / nodes light up
   // in the beat's theme color. Tweened via uAccentMix for a smooth handoff.
   const accentColorsA = new Float32Array(COUNT * 3);
@@ -426,15 +550,32 @@ async function boot(canvas: HTMLCanvasElement) {
     uAccentMix: { value: 1 },
     uMouse: { value: new THREE.Vector3() },
     uMouseStrength: { value: 0 },
-    uSize: { value: isMobile ? 13 : 17 },
+    uSize: { value: isMobile ? 21 : 28 },
     uPixelRatio: { value: Math.min(devicePixelRatio, 2) },
     uDrift: { value: reduceMotion ? 0 : 1 },
     // 0 = particles on the figure; 1 = flown out to the wide scatter field.
     // Scrub-driven by ScrollTrigger across each section gap (reversible).
     uScatterMix: { value: 0 },
-    // Figure x-offset (world units), tweened on morph so the cloud sits
-    // opposite the text. Ambient + scatter ignore this (they fill the screen).
-    uOffsetX: { value: OFFSET },
+    // Figure offset (world units), tweened on morph so the cloud sits in the
+    // empty region opposite the text — BOTH axes. Ambient + scatter ignore it
+    // (they fill the screen). Set by recomputePlacements().
+    uOffsetX: { value: 0 },
+    uOffsetY: { value: 0 },
+    // Per-beat figure scale (xy), tweened on morph so the figure shrinks to fit
+    // the empty region beside the text — stays on-screen AND clear. Ambient = 1.
+    uFigureScale: { value: 1 },
+    // Per-beat dot-size multiplier (figure dots only). The Earth needs finer dots
+    // so continents resolve; the abstract figures stay bold. Tweened on morph.
+    uDotScale: { value: 1 },
+    // Back-face fade (1 = on, for the Earth): dims dots whose sphere normal points
+    // away from the camera so the back hemisphere stops bleeding through the front.
+    uBackFade: { value: 1 },
+    // Inverse of the cloud's object rotation (points.rotation), refreshed each
+    // frame. The placement offset (uOffsetX/Y) is a WORLD-space target, but the
+    // whole cloud is spun by points.rotation (scroll flourish). Pre-multiplying
+    // the offset by this inverse cancels that spin so the figure lands on its
+    // spot regardless of rotation — it spins in place, placement stays put.
+    uFigRotInv: { value: new THREE.Matrix3() },
     // Scatter field half-extents (world units) — a screen-filling starfield.
     uScatterExtent: { value: new THREE.Vector3(4.8, 3.0, 2.0) },
   };
@@ -461,6 +602,11 @@ async function boot(canvas: HTMLCanvasElement) {
       uniform float uDrift;
       uniform float uScatterMix;
       uniform float uOffsetX;
+      uniform float uOffsetY;
+      uniform float uFigureScale;
+      uniform float uDotScale;
+      uniform float uBackFade;
+      uniform mat3  uFigRotInv;
       uniform vec3  uScatterExtent;
       varying vec3 vColor;
       varying float vAlpha;
@@ -478,7 +624,19 @@ async function boot(canvas: HTMLCanvasElement) {
         // --- figure position: morph A→B, then shift opposite the text.
         // Ambient dots ignore the offset (they fill the whole screen).
         vec3 figurePos = mix(aPosA, aPosB, uMix);
-        figurePos.x += uOffsetX * (1.0 - aAmbient);
+        // Sphere normal for the Earth's back-face fade (globe is centred at origin,
+        // so the raw morph position doubles as the outward normal). Pre-scale.
+        vec3 sphereN = normalize(figurePos + vec3(0.0001));
+        // Scale the figure (not ambient) to fit its empty region, then shift it
+        // there — both axes (#2 fix + item 7). Scale about origin (figures are
+        // centred there); ambient stays full-size and screen-filling.
+        figurePos.xy *= mix(uFigureScale, 1.0, aAmbient);
+        // Shift the figure into its empty region (world-space target), but undo
+        // the cloud's spin first (uFigRotInv) so modelViewMatrix re-applying that
+        // rotation lands the figure exactly on the world offset — spins in place,
+        // placement holds. Ambient dots take no offset (they fill the screen).
+        vec3 worldOffset = vec3(uOffsetX, uOffsetY, 0.0) * (1.0 - aAmbient);
+        figurePos += uFigRotInv * worldOffset;
 
         // --- scatter target: a wide, screen-filling field derived from aRand.
         // No extra buffer — hashed into uScatterExtent so mid-gap reads as a
@@ -503,26 +661,44 @@ async function boot(canvas: HTMLCanvasElement) {
         pos.y += cos(t * 1.27) * amp;
         pos.z += sin(t * 0.71) * amp * 2.4;        // widened z → depth breathing
 
-        // cursor repulsion in the XY plane
+        // cursor swell (usta mechanism): dots near the pointer rise toward the
+        // camera and grow into a soft 3D hill that follows the mouse — NOT a
+        // repulsion void. prox is 1 at the cursor and eases to 0 at a wide soft
+        // edge; it's reused below to bloom the dot size + alpha so the effect
+        // lives entirely in the dots (no competing cursor ring).
         vec2 d = pos.xy - uMouse.xy;
-        float dist = length(d);
-        float radius = 1.4;
-        float push = smoothstep(radius, 0.0, dist) * uMouseStrength;
-        pos.xy += normalize(d + 0.0001) * push * 0.9;
+        float prox = smoothstep(1.6, 0.0, length(d)) * uMouseStrength;
+        pos.z += prox * 0.6;                               // lift toward the camera (+z)
+        pos.xy += normalize(d + 0.0001) * prox * 0.12;     // gentle outward bulge
 
         vec4 mv = modelViewMatrix * vec4(pos, 1.0);
         gl_Position = projectionMatrix * mv;
 
-        // Size: depth (1/-mv.z) carries the variation; tiny explicit sine only.
-        float size = uSize * (0.6 + aRand * 0.8);
-        size *= mix(1.0, 0.62, aAmbient);          // ambient dots smaller
+        // Size (item 8): power-curve variance so a MINORITY of dots are markedly
+        // larger (the usta look), not a uniform layer. pow(aRand,3) keeps most
+        // dots small; the long tail gives the few big bright ones. Depth
+        // (1/-mv.z) still carries the breathing. Ambient dots are pushed clearly
+        // smaller so the figure reads bold and dense against them.
+        float sizeVar = mix(0.45, 4.2, pow(aRand, 2.4));
+        float size = uSize * sizeVar;
+        size *= mix(uDotScale, 1.0, aAmbient);     // per-beat figure dot size (Earth = finer); ambient unaffected
+        size *= mix(1.0, 0.72, aAmbient);          // ambient dots a touch smaller (bigger than before, still faint)
         size *= 1.0 + 0.08 * sin(t * 1.6) * uDrift; // ≤0.1 amplitude size sine
+        size *= 1.0 + prox * 2.2;                   // usta swell: dots bloom near the cursor
         gl_PointSize = size * uPixelRatio * (1.0 / -mv.z);
 
-        // Ambient dots are fainter and flicker slightly (distant stars).
-        float baseA = 0.5 + aRand * 0.5;
-        float amb = 0.34 + 0.18 * sin(t * 1.9);
+        // Figure dots brighter/bolder; ambient fainter and flickering (distant
+        // stars) so the figure mass clearly dominates the field (item 8).
+        float baseA = 0.6 + aRand * 0.4;
+        float amb = 0.28 + 0.16 * sin(t * 1.9);
         vAlpha = mix(baseA, amb, aAmbient);
+
+        // Earth back-face fade: dim dots whose (rotated) sphere normal points away
+        // from the camera, so the far hemisphere stops bleeding through the near one.
+        float facing = (modelViewMatrix * vec4(sphereN, 0.0)).z; // >0 → toward camera
+        float front = smoothstep(-0.08, 0.5, facing);
+        vAlpha *= mix(1.0, front, uBackFade * (1.0 - aAmbient));
+        vAlpha *= 1.0 + prox * 0.5;                 // brighter bloom under the cursor
       }
     `,
     fragmentShader: /* glsl */ `
@@ -548,6 +724,96 @@ async function boot(canvas: HTMLCanvasElement) {
   let currentShape = 'hero';
   let accentTween: gsap.core.Tween | null = null;
   let offsetTween: gsap.core.Tween | null = null;
+  let offsetTweenY: gsap.core.Tween | null = null;
+  let scaleTween: gsap.core.Tween | null = null;
+  let dotTween: gsap.core.Tween | null = null;
+  // The Earth needs finer dots to read as a map; abstract figures stay bold.
+  const dotScaleFor = (name: string) => (name === 'hero' ? 0.5 : 1);
+
+  // Figure placement cache (#2 fix + item 7): shape → { x, y, scale } in world
+  // units. The figure is SCALED to fit the largest empty region opposite the
+  // beat's text and CENTRED in it — so it stays fully on-screen AND clear of the
+  // text (not edge-pushed off-screen). Populated once layout is ready + on resize.
+  // (camera/plane/figExtent referenced here exist by the first call, in initScroll.)
+  const placements: Record<string, { x: number; y: number; scale: number }> = {};
+  const placeRay = new THREE.Raycaster();
+  const FIT = 0.72;        // gap between the scaled figure and the text/edges
+  const SCALE_MIN = 0.3;   // hard floor — never shrink a figure to a speck. Low
+                           // enough that a tall figure (the globe) can still fit
+                           // a narrow mobile strip instead of being floored too
+                           // big and forced over the text.
+  function recomputePlacements() {
+    const secs = Array.from(document.querySelectorAll<HTMLElement>('[data-shape]'));
+    const W = innerWidth, H = innerHeight;
+    const margin = Math.min(W, H) * 0.05;
+    // World units per screen pixel at the z=0 plane, for gap → world sizing.
+    const worldH = 2 * camera.position.z * Math.tan((camera.fov * Math.PI) / 360);
+    const worldW = worldH * camera.aspect;
+    const wpx = worldW / W, wpy = worldH / H;
+    for (const sec of secs) {
+      const shape = sec.dataset.shape!;
+      let textEl: Element | null = null;
+      for (const s of ['.hero__inner', '.split__pad', '.bot__inner']) {
+        const el = sec.querySelector(s);
+        if (el) { textEl = el; break; }
+      }
+      if (!textEl) { placements[shape] = { x: 0, y: 0, scale: 1 }; continue; }
+      // Text rect as it sits when this beat is CENTRED (its scatter=0 rest
+      // state). x is scroll-independent; the vertical is derived from the
+      // document offset so the result is stable at any current scroll position.
+      const r = textEl.getBoundingClientRect();
+      const secRect = sec.getBoundingClientRect();
+      const secMid = secRect.top + scrollY + secRect.height / 2;
+      const top = (r.top + scrollY) - (secMid - H / 2);
+      const tr = { left: r.left, right: r.right, top, bottom: top + r.height };
+      // Four empty strips around the text; centre the figure in the LARGEST and
+      // scale it to fit. Desktop → a side strip wins (figure beside text); mobile
+      // (full-width text) → a top/bottom strip wins (figure above/below).
+      const gaps = [
+        { area: Math.max(0, tr.left) * H,      cx: Math.max(0, tr.left) / 2,         cy: H / 2,                            w: Math.max(0, tr.left),      h: H },
+        { area: Math.max(0, W - tr.right) * H, cx: (Math.min(W, tr.right) + W) / 2,  cy: H / 2,                            w: Math.max(0, W - tr.right), h: H },
+        { area: W * Math.max(0, tr.top),       cx: W / 2,                            cy: Math.max(0, tr.top) / 2,          w: W, h: Math.max(0, tr.top) },
+        { area: W * Math.max(0, H - tr.bottom),cx: W / 2,                            cy: (Math.min(H, tr.bottom) + H) / 2, w: W, h: Math.max(0, H - tr.bottom) },
+      ];
+      gaps.sort((a, b) => b.area - a.area);
+      const g = gaps[0];
+      const cx = Math.max(margin, Math.min(W - margin, g.cx));
+      const cy = Math.max(margin, Math.min(H - margin, g.cy));
+      // Scale so the figure's natural half-extent fits the gap's half-extent.
+      const ext = figExtent[shape] ?? { x: 2.5, y: 2.5 };
+      let scale = Math.max(
+        SCALE_MIN,
+        Math.min(1, ((g.w / 2) * wpx / ext.x) * FIT, ((g.h / 2) * wpy / ext.y) * FIT)
+      );
+      // Viewport-fit clamp (#8): keep the SCALED figure (+ a little dot bloom)
+      // inside the viewport on ANY aspect ratio. First shrink scale if the gap
+      // let the figure grow past the screen on either axis.
+      const halfW = worldW / 2, halfH = worldH / 2;
+      const mW = margin * wpx, pad = 0.4;
+      scale = Math.min(scale, Math.max(SCALE_MIN, (halfW - mW - pad) / ext.x));
+      scale = Math.min(scale, Math.max(SCALE_MIN, (halfH - mW - pad) / ext.y));
+      // Then clamp the CENTRE to the chosen empty STRIP — not symmetrically to the
+      // screen centre. A screen-centre clamp pulls a tall figure back over the text
+      // on a narrow portrait viewport: the mobile hero text is full-width, so the
+      // screen centre sits INSIDE the text rect and the old clamp dragged the globe
+      // onto the words. Constraining the centre to the gap box keeps the figure in
+      // the empty region by construction; the strip is itself within the screen, so
+      // this also satisfies the on-screen requirement. If the strip is smaller than
+      // the figure on an axis, leave it gap-centred (best effort).
+      const exXpx = (ext.x * scale + pad) / wpx;  // figure half-extent, screen px
+      const exYpx = (ext.y * scale + pad) / wpy;
+      const gx0 = Math.max(margin, g.cx - g.w / 2), gx1 = Math.min(W - margin, g.cx + g.w / 2);
+      const gy0 = Math.max(margin, g.cy - g.h / 2), gy1 = Math.min(H - margin, g.cy + g.h / 2);
+      let scx = cx, scy = cy;
+      if (gx1 - gx0 >= 2 * exXpx) scx = Math.min(gx1 - exXpx, Math.max(gx0 + exXpx, scx));
+      if (gy1 - gy0 >= 2 * exYpx) scy = Math.min(gy1 - exYpx, Math.max(gy0 + exYpx, scy));
+      // Clamped strip-centre screen point → world at z=0 (same plane the cursor uses).
+      placeRay.setFromCamera(new THREE.Vector2((scx / W) * 2 - 1, -(scy / H) * 2 + 1), camera);
+      const hit = new THREE.Vector3();
+      const ok = placeRay.ray.intersectPlane(plane, hit);
+      placements[shape] = { x: ok ? hit.x : 0, y: ok ? hit.y : 0, scale };
+    }
+  }
 
   // Swap the figure target to `name` WHILE the cloud is scattered. uMix is
   // snapped to 1 instantly (the figure is invisible behind the scatter field
@@ -576,13 +842,18 @@ async function boot(canvas: HTMLCanvasElement) {
 
     currentShape = name;
 
-    // Tween figure offset to the new beat's side (opposite its text column).
+    // Tween figure placement — scaled to fit and centred in the empty region
+    // opposite its text, both axes (#2 fix + item 7).
+    const pl = placements[name] ?? { x: 0, y: 0, scale: 1 };
     if (offsetTween) offsetTween.kill();
-    offsetTween = gsap.to(uniforms.uOffsetX, {
-      value: OFFSETS[name] ?? 0,
-      duration: 1.2,
-      ease: 'power2.inOut',
-    });
+    if (offsetTweenY) offsetTweenY.kill();
+    if (scaleTween) scaleTween.kill();
+    offsetTween  = gsap.to(uniforms.uOffsetX, { value: pl.x, duration: 1.2, ease: 'power2.inOut' });
+    offsetTweenY = gsap.to(uniforms.uOffsetY, { value: pl.y, duration: 1.2, ease: 'power2.inOut' });
+    scaleTween   = gsap.to(uniforms.uFigureScale, { value: pl.scale, duration: 1.2, ease: 'power2.inOut' });
+    if (dotTween) dotTween.kill();
+    dotTween     = gsap.to(uniforms.uDotScale, { value: dotScaleFor(name), duration: 1.2, ease: 'power2.inOut' });
+    gsap.to(uniforms.uBackFade, { value: name === 'hero' ? 1 : 0, duration: 1.2, ease: 'power2.inOut', overwrite: true });
     if (accentTween) accentTween.kill();
     accentTween = gsap.to(uniforms.uAccentMix, { value: 1, duration: 1.0, ease: 'power1.inOut' });
   }
@@ -621,6 +892,10 @@ async function boot(canvas: HTMLCanvasElement) {
     points.rotation.y += (targetRot.y - points.rotation.y) * 0.04 + (reduceMotion ? 0 : 0.0009);
     points.rotation.x += (targetRot.x - points.rotation.x) * 0.04;
     points.rotation.z = scrollSpin;
+    // Feed the shader the inverse of the cloud's current rotation so the
+    // world-space placement offset cancels the spin (figure stays pinned).
+    points.updateMatrix();
+    uniforms.uFigRotInv.value.setFromMatrix4(points.matrix).invert();
     renderer.render(scene, camera);
     requestAnimationFrame(tick);
   }
@@ -635,6 +910,12 @@ async function boot(canvas: HTMLCanvasElement) {
     renderer.setSize(innerWidth, innerHeight);
     uniforms.uPixelRatio.value = Math.min(devicePixelRatio, 2);
     ScrollTrigger.refresh();
+    // Re-derive placements for the new viewport and re-apply the current beat's.
+    recomputePlacements();
+    const pc = placements[currentShape] ?? { x: 0, y: 0, scale: 1 };
+    gsap.to(uniforms.uOffsetX, { value: pc.x, duration: 0.4 });
+    gsap.to(uniforms.uOffsetY, { value: pc.y, duration: 0.4 });
+    gsap.to(uniforms.uFigureScale, { value: pc.scale, duration: 0.4 });
   });
 
   /* ---------------------------------------------------------------
@@ -657,33 +938,6 @@ async function boot(canvas: HTMLCanvasElement) {
   }
 
   /* ---------------------------------------------------------------
-     CUSTOM CURSOR — swelling ring on data-cursor targets.
-     --------------------------------------------------------------- */
-  function initCursor() {
-    const cursor = document.querySelector('.cursor') as HTMLElement | null;
-    if (!cursor) return;
-    const cx = { x: innerWidth / 2, y: innerHeight / 2 };
-    addEventListener('pointermove', (e) => {
-      cx.x = e.clientX;
-      cx.y = e.clientY;
-    });
-    let lx = cx.x;
-    let ly = cx.y;
-    function loop() {
-      lx += (cx.x - lx) * 0.2;
-      ly += (cx.y - ly) * 0.2;
-      cursor!.style.left = lx + 'px';
-      cursor!.style.top = ly + 'px';
-      requestAnimationFrame(loop);
-    }
-    loop();
-    document.querySelectorAll('[data-cursor]').forEach((el) => {
-      el.addEventListener('pointerenter', () => cursor.classList.add('is-hover'));
-      el.addEventListener('pointerleave', () => cursor.classList.remove('is-hover'));
-    });
-  }
-
-  /* ---------------------------------------------------------------
      SMOOTH SCROLL (Lenis) driving GSAP's ticker.
      Exposed as window.__lenis for the verification harness.
      --------------------------------------------------------------- */
@@ -699,6 +953,16 @@ async function boot(canvas: HTMLCanvasElement) {
      SCROLL ORCHESTRATION — morph per beat + reveal copy.
      --------------------------------------------------------------- */
   function initScroll() {
+    // Derive every beat's figure placement from its text rect, then place the
+    // hero figure immediately (no tween) so it's correct from the first frame.
+    recomputePlacements();
+    const ph = placements['hero'] ?? { x: 0, y: 0, scale: 1 };
+    uniforms.uOffsetX.value = ph.x;
+    uniforms.uOffsetY.value = ph.y;
+    uniforms.uFigureScale.value = ph.scale;
+    uniforms.uDotScale.value = dotScaleFor('hero');
+    uniforms.uBackFade.value = 1;
+
     const sections = Array.from(
       document.querySelectorAll<HTMLElement>('[data-shape]')
     );
@@ -765,7 +1029,6 @@ async function boot(canvas: HTMLCanvasElement) {
 
   // Boot sequence.
   initLenis();
-  initCursor();
   initScroll();
   runLoader();
   window.__darkScene = true;
