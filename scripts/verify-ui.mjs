@@ -42,6 +42,9 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:net';
+// pngjs: decode canvas screenshots pixel-by-pixel to find the WebGL figure footprint.
+// devDependency only — not imported by any runtime/browser code.
+import { PNG } from 'pngjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const LOGS_DIR = join(ROOT, 'logs');
@@ -83,6 +86,58 @@ const AXE_CRITICAL_IMPACTS = new Set(['critical', 'serious']);
 // Hero check: minimum font-size (px) for a "visible headline" at t=1s / t=5s
 const HERO_MIN_FONT_SIZE_PX = 24;
 
+// ── canvas/figure vs text overlap constants ──────────────────────────────
+// How long to wait (ms) after scrolling a beat to its centre before sampling
+// the canvas. The uMix morph tween runs ~1.7s; 2200ms gives it a comfortable
+// margin to settle onto the target shape before we read pixels.
+const BEAT_MORPH_SETTLE_MS = 2200;
+
+// Pixel brightness threshold (0–255 per channel average) above which a pixel
+// is counted as "bright" (possibly figure or ambient dot). Background (#060606)
+// reads as ~6/255 ≈ 2%; isolated ambient dots land around 20–40; figure core 50+.
+const FIGURE_BRIGHTNESS_THRESHOLD = 40;
+
+// Figure-core isolation via a coarse density grid.
+//
+// Why a grid + baseline (not per-pixel local density): Round A added a wide,
+// screen-filling AMBIENT field, so "locally dense" bright pixels now appear
+// over the text on every beat — the old per-pixel measure flagged all 7 beats
+// (including hero/neste where the figure is plainly on the opposite side).
+// The fix: the ambient field is roughly UNIFORM across the canvas, while the
+// figure is a concentrated high-density SPIKE. So we tile the canvas into
+// coarse cells, take the median cell density as the ambient baseline, and call
+// a cell "figure" only when its density is a strong outlier above that baseline.
+// Ambient cells sit at the baseline and drop out; the figure cells are what
+// remain. Then we ask: do those figure cells land inside the text rect?
+
+// Cell edge length in screenshot px. 24px → a 1440-wide canvas tiles into 60
+// columns: coarse enough to average out ambient sparsity, fine enough to
+// localize the figure mass to a region of the screen.
+const GRID_CELL_PX = 24;
+
+// A cell counts as "figure" when its bright-pixel density exceeds the ambient
+// baseline by this fraction of the (p90 − median) spread, AND clears an absolute
+// floor (so a near-empty ambient frame still needs real mass to register).
+const FIGURE_OUTLIER_K = 0.5;
+const FIGURE_MIN_CELL_DENSITY = 0.15; // ≥15% of the cell's pixels must be bright
+
+// Overlap fires when this fraction of the text rect's cells are figure cells.
+// Ambient is excluded by the baseline step, so a clear beat → ~0; the figure
+// landing on the words → well above this line.
+//
+// Calibrated 2026-06-16 against the clean canvas (DOM hidden). Measured band:
+//   clear beats / minor edge-clips: 0–3.7% (e.g. postnord 2.7% = wordmark sits
+//     just above the text and clips the top edge; mobile projects 3.7%)
+//   true occlusion: bot 18.4% (centred figure on the centred chat input)
+// 7% sits in the wide gap — passes minor clips (which A2 placement clears
+// anyway) and fails dense, readability-harming occlusion. This is occlusion
+// detection, not "any figure pixel touching the rect".
+const FIGURE_OVERLAP_THRESHOLD = 0.07; // 7% of text-rect cells covered by figure
+
+// Text-box selectors checked per beat, in priority order. The first one found
+// in the section is used. Matches the actual HTML structure in index.astro.
+const BEAT_TEXT_SELECTORS = ['.hero__inner', '.split__pad', '.bot__inner'];
+
 // ── helpers ──────────────────────────────────────────────────────────────
 
 /** Find a free TCP port by briefly binding to port 0 */
@@ -102,7 +157,7 @@ function getFreePort() {
  * HTTP polling is more reliable than TCP connect for astro preview, which
  * may bind the port before it's ready to serve requests.
  */
-async function waitForHttp(url, timeoutMs = 60_000) {
+async function waitForHttp(url, timeoutMs = 120_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
@@ -419,6 +474,252 @@ async function scrollWalk(page, vp, settleLiveMs) {
   return { collisions, horizOverflow };
 }
 
+// ── canvas/figure vs text overlap check ──────────────────────────────────
+
+/**
+ * Decode a raw PNG buffer (from Playwright's canvas screenshot) and decide how
+ * much of the concentrated FIGURE mass falls inside the given text rect.
+ *
+ * Why a density grid + ambient baseline (see constants block for the full why):
+ * the ambient field is roughly uniform across the canvas, the figure is a
+ * concentrated high-density spike. We tile the canvas into coarse cells, take
+ * the median cell density as the ambient baseline, and mark a cell as "figure"
+ * only when it is a strong outlier above that baseline. Ambient cells sit at the
+ * baseline and drop out; figure cells remain. We then measure what fraction of
+ * the text rect's cells are figure cells.
+ *
+ * Returns diagnostics so thresholds can be calibrated from real numbers:
+ *   { overlapFrac, figCellsInRect, rectCells, figCellsTotal, median, p90, maxD, figThresh }
+ * overlapFrac (fig cells inside rect / rect cells) is the primary metric.
+ */
+function measureFigureOverlap(pngBuffer, vpWidth, vpHeight, cssTextRect) {
+  const img = PNG.sync.read(pngBuffer);
+  const { width, height, data } = img;
+
+  // Screenshot px per CSS px (Playwright headless defaults to DPR=1 → ~1).
+  const scaleX = width  / vpWidth;
+  const scaleY = height / vpHeight;
+
+  const cell = GRID_CELL_PX;
+  const cols = Math.ceil(width  / cell);
+  const rows = Math.ceil(height / cell);
+  const density = new Float32Array(cols * rows);
+
+  // Per-cell bright-pixel density. avg of RGB > threshold = "bright".
+  for (let cy = 0; cy < rows; cy++) {
+    for (let cx = 0; cx < cols; cx++) {
+      const x0 = cx * cell, x1 = Math.min(width,  x0 + cell);
+      const y0 = cy * cell, y1 = Math.min(height, y0 + cell);
+      let bright = 0;
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const idx = (y * width + x) * 4;
+          if ((data[idx] + data[idx + 1] + data[idx + 2]) / 3 > FIGURE_BRIGHTNESS_THRESHOLD) bright++;
+        }
+      }
+      const total = (x1 - x0) * (y1 - y0);
+      density[cy * cols + cx] = total ? bright / total : 0;
+    }
+  }
+
+  // Ambient baseline = median cell density; spread = p90 − median.
+  const sorted = Array.from(density).sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length * 0.5)] || 0;
+  const p90    = sorted[Math.floor(sorted.length * 0.9)] || 0;
+  const maxD   = sorted[sorted.length - 1] || 0;
+
+  // A cell is "figure" when it is a strong outlier above the ambient baseline
+  // AND clears the absolute floor (guards a near-empty ambient frame).
+  const figThresh = Math.max(
+    median + FIGURE_OUTLIER_K * Math.max(0, p90 - median),
+    FIGURE_MIN_CELL_DENSITY
+  );
+
+  // Text rect → cell coordinates.
+  const tx0 = Math.max(0, Math.floor(cssTextRect.left   * scaleX / cell));
+  const ty0 = Math.max(0, Math.floor(cssTextRect.top    * scaleY / cell));
+  const tx1 = Math.min(cols - 1, Math.floor(cssTextRect.right  * scaleX / cell));
+  const ty1 = Math.min(rows - 1, Math.floor(cssTextRect.bottom * scaleY / cell));
+
+  let figCellsInRect = 0, rectCells = 0, figCellsTotal = 0;
+  for (let cy = 0; cy < rows; cy++) {
+    for (let cx = 0; cx < cols; cx++) {
+      const isFig = density[cy * cols + cx] >= figThresh;
+      if (isFig) figCellsTotal++;
+      const inRect = cx >= tx0 && cx <= tx1 && cy >= ty0 && cy <= ty1;
+      if (inRect) {
+        rectCells++;
+        if (isFig) figCellsInRect++;
+      }
+    }
+  }
+
+  const overlapFrac = rectCells ? figCellsInRect / rectCells : 0;
+  return { overlapFrac, figCellsInRect, rectCells, figCellsTotal, median, p90, maxD, figThresh };
+}
+
+/**
+ * Check that the WebGL particle figure does not visibly overlap the beat's
+ * text element on every section of the homepage.
+ *
+ * Strategy:
+ *   1. Find all <section data-shape="..."> elements.
+ *   2. Per beat: scroll its centre into view, wait for the morph to settle,
+ *      screenshot the #scene canvas, decode the PNG, then isolate the figure
+ *      mass (density-grid cells that are outliers above the ambient baseline)
+ *      and measure what fraction of the text rect's cells it covers.
+ *   3. Flag the beat when that fraction exceeds FIGURE_OVERLAP_THRESHOLD — i.e.
+ *      when the concentrated figure mass actually lands on the words.
+ *
+ * Why grid + baseline (not bbox, not per-pixel local density): the scatter +
+ * ambient starfield inflate any bbox to near-full-viewport, and the wide ambient
+ * field makes "locally dense" pixels appear over the text on every beat — both
+ * flag hero/neste where the figure is plainly on the opposite side. The ambient
+ * field is roughly UNIFORM (sits at the median cell density) while the figure is
+ * a concentrated SPIKE; thresholding cells above the baseline keeps the figure
+ * and drops the ambient. See the constants block for the full rationale.
+ *
+ * Runs in LIVE mode only (the scene doesn't animate in reduced-motion mode).
+ * Returns an array of overlap findings (empty = all clear).
+ */
+async function checkBeatCanvasOverlap(page, vp) {
+  const findings = [];
+
+  // Get all beat sections with their shape names and text-box selector.
+  const beats = await page.evaluate((selectors) => {
+    const sections = Array.from(document.querySelectorAll('[data-shape]'));
+    return sections.map((sec) => {
+      // Find the first text-box selector present in this section.
+      let textSel = null;
+      for (const sel of selectors) {
+        if (sec.querySelector(sel)) { textSel = sel; break; }
+      }
+      const textEl = textSel ? sec.querySelector(textSel) : null;
+      const textRect = textEl ? textEl.getBoundingClientRect() : null;
+      const secRect  = sec.getBoundingClientRect();
+      return {
+        shape:   sec.dataset.shape,
+        secTop:  secRect.top  + window.scrollY, // absolute doc-offset
+        secMid:  secRect.top  + window.scrollY + secRect.height / 2,
+        textRect: textRect ? {
+          left:   Math.round(textRect.left),
+          top:    Math.round(textRect.top),
+          right:  Math.round(textRect.right),
+          bottom: Math.round(textRect.bottom),
+        } : null,
+      };
+    });
+  }, BEAT_TEXT_SELECTORS);
+
+  // CRITICAL: hide the overlay DOM before screenshotting the canvas.
+  // #scene is a full-viewport canvas with the real-HTML content (#main), the
+  // custom cursor and the grain layered ON TOP of it. Playwright's element
+  // screenshot captures the page region at the element's box — i.e. it
+  // composites those overlying DOM pixels in. Without hiding them, the bright
+  // display headings ("TONG NIE", "POSTNORD"…) get measured as figure mass, so
+  // every beat flags on its own text. visibility:hidden keeps layout intact, so
+  // scroll height and getBoundingClientRect still work for the text-rect reads.
+  const OVERLAY_HIDE_JS = (hide) => {
+    const v = hide ? 'hidden' : '';
+    const d = hide ? 'none' : '';
+    const main = document.querySelector('#main');   if (main) main.style.visibility = v;
+    const cur  = document.querySelector('.cursor'); if (cur)  cur.style.display = d;
+    const grn  = document.querySelector('.grain');  if (grn)  grn.style.display = d;
+    const ldr  = document.querySelector('#loader'); if (ldr)  ldr.style.display = d;
+  };
+  await page.evaluate(OVERLAY_HIDE_JS, true);
+
+  for (const beat of beats) {
+    if (!beat.textRect) {
+      // No text box found for this beat — skip; can't assert without a reference.
+      findings.push({
+        shape: beat.shape,
+        skip: true,
+        reason: 'no text-box selector matched',
+      });
+      continue;
+    }
+
+    // Scroll the section centre to the middle of the viewport so the morph
+    // that fires when the section is "in view" has a chance to complete.
+    const targetScroll = Math.max(0, beat.secMid - vp.height / 2);
+    await page.evaluate(async (scrollY) => {
+      if (window.__lenis) {
+        window.__lenis.scrollTo(scrollY, { immediate: true });
+      } else {
+        window.scrollTo(0, scrollY);
+      }
+      // Two rAF ticks for GSAP/ScrollTrigger to process the new position.
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    }, targetScroll);
+
+    // Wait for the morph tween to settle onto the target figure.
+    await page.waitForTimeout(BEAT_MORPH_SETTLE_MS);
+
+    // Re-read the text rect at this scroll position (it's in CSS viewport px,
+    // so it shifts with scroll — we need the value AFTER the scroll settle).
+    // Wrapped in a single object because Playwright page.evaluate only accepts
+    // one argument besides the function itself.
+    const textRect = await page.evaluate(({ selectors, shape }) => {
+      const sec = document.querySelector(`[data-shape="${shape}"]`);
+      if (!sec) return null;
+      for (const sel of selectors) {
+        const el = sec.querySelector(sel);
+        if (el) {
+          const r = el.getBoundingClientRect();
+          return { left: Math.round(r.left), top: Math.round(r.top), right: Math.round(r.right), bottom: Math.round(r.bottom) };
+        }
+      }
+      return null;
+    }, { selectors: BEAT_TEXT_SELECTORS, shape: beat.shape });
+
+    if (!textRect) continue;
+
+    // Screenshot the #scene canvas (compositor path — captures WebGL content
+    // even without preserveDrawingBuffer, because the compositor reads the
+    // rendered frame buffer, not the WebGL back buffer directly).
+    const canvasEl = page.locator('#scene');
+    let pngBuf;
+    try {
+      pngBuf = await canvasEl.screenshot({ type: 'png' });
+    } catch {
+      findings.push({ shape: beat.shape, skip: true, reason: '#scene screenshot failed' });
+      continue;
+    }
+
+    // Isolate the figure mass (density-grid outliers above the ambient baseline)
+    // and measure what fraction of the text rect's cells it covers. Ambient is
+    // excluded by the baseline step → clear beat ≈ 0; figure on text → above.
+    const m = measureFigureOverlap(pngBuf, vp.width, vp.height, textRect);
+
+    // Log rich diagnostics so the pass/fail gap (and the baseline maths) is
+    // visible in output for calibration.
+    process.stdout.write(
+      `    beat="${beat.shape}"  overlap=${(m.overlapFrac * 100).toFixed(2)}%  ` +
+      `figInRect=${m.figCellsInRect}/${m.rectCells}  figTotal=${m.figCellsTotal}  ` +
+      `median=${(m.median * 100).toFixed(1)}% p90=${(m.p90 * 100).toFixed(1)}% max=${(m.maxD * 100).toFixed(1)}% ` +
+      `figThresh=${(m.figThresh * 100).toFixed(1)}%  ` +
+      `gate=${(FIGURE_OVERLAP_THRESHOLD * 100).toFixed(1)}%\n`
+    );
+
+    if (m.overlapFrac > FIGURE_OVERLAP_THRESHOLD) {
+      findings.push({
+        shape:          beat.shape,
+        overlap:        true,
+        overlapFrac:    m.overlapFrac,
+        figCellsInRect: m.figCellsInRect,
+        rectCells:      m.rectCells,
+        textRect,
+      });
+    }
+  }
+
+  // Restore the overlay DOM for any later checks on this page.
+  await page.evaluate(OVERLAY_HIDE_JS, false);
+
+  return findings;
+}
+
 // ── one route × viewport × mode pass ─────────────────────────────────────
 
 /**
@@ -530,6 +831,16 @@ async function runPass({ browser, baseUrl, axeJs, route, vp, mode }) {
   const extraSettle = isLive ? SCROLL_SETTLE_LIVE_MS : 0;
   const { collisions, horizOverflow } = await scrollWalk(page, vp, extraSettle);
 
+  // ── canvas / figure vs text overlap check (live mode only) ───────────────
+  // The scroll walk only catches DOM-vs-DOM text collisions; the WebGL figure
+  // is invisible to it. This check reads the actual canvas pixels after each
+  // beat's morph has settled and asserts the figure footprint clears the text.
+  // Skipped in reduced-motion mode because the scene doesn't run there.
+  let canvasOverlaps = [];
+  if (isLive) {
+    canvasOverlaps = await checkBeatCanvasOverlap(page, vp);
+  }
+
   await ctx.close();
 
   return {
@@ -541,6 +852,7 @@ async function runPass({ browser, baseUrl, axeJs, route, vp, mode }) {
     consoleErrors,
     failedRequests,
     heroCheck,
+    canvasOverlaps,
     axe: {
       critical: axeCritical.map(v => ({
         id:          v.id,
@@ -604,13 +916,17 @@ async function main() {
             ? (!entry.heroCheck.t1s.pass ? 1 : 0) + (!entry.heroCheck.t5s.pass ? 1 : 0)
             : 0;
 
+          // Canvas overlaps: only count entries where overlap:true (not skip entries)
+          const canvasOverlapFails = (entry.canvasOverlaps || []).filter(f => f.overlap).length;
+
           const failCount =
             entry.collisions.length +
             (entry.horizOverflow ? 1 : 0) +
             entry.consoleErrors.length +
             entry.failedRequests.length +
             entry.axe.critical.length +
-            heroFail;
+            heroFail +
+            canvasOverlapFails;
 
           if (failCount > 0) anyFail = true;
 
@@ -626,6 +942,17 @@ async function main() {
             if (entry.collisions.length > 3) console.log(`    … and ${entry.collisions.length - 3} more`);
           }
           if (entry.horizOverflow) console.log(`  horizontal overflow: YES`);
+          if (canvasOverlapFails > 0) {
+            console.log(`  canvas figure/text overlaps: ${canvasOverlapFails}`);
+            entry.canvasOverlaps.filter(f => f.overlap).forEach(f =>
+              console.log(`    beat="${f.shape}"  overlap=${(f.overlapFrac * 100).toFixed(2)}%  figInRect=${f.figCellsInRect}/${f.rectCells}  text(l=${f.textRect.left} t=${f.textRect.top} r=${f.textRect.right} b=${f.textRect.bottom})`)
+            );
+          }
+          // Informational: beats where the canvas check was skipped (scene not ready, etc.)
+          const canvasSkipped = (entry.canvasOverlaps || []).filter(f => f.skip);
+          if (canvasSkipped.length) {
+            console.log(`  canvas check skipped for ${canvasSkipped.length} beat(s): ${canvasSkipped.map(f => `${f.shape}(${f.reason})`).join(', ')}`);
+          }
           if (entry.consoleErrors.length) {
             console.log(`  console errors: ${entry.consoleErrors.length}`);
             entry.consoleErrors.slice(0, 3).forEach(e => console.log(`    ${e.slice(0, 120)}`));
