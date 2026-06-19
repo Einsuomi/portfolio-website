@@ -30,7 +30,7 @@ const colB = EXPERIENCE.filter((_, i) => i % 2 === 1); // 2023, 2025
     <div class="ladder">
       <div class="ladder__col">
         {colA.map((b) => (
-          <article class="rung" data-reveal>
+          <article class="rung" data-reveal data-spotlight>
             <p class="rung__year">{b.year}</p>
             <h3 class="rung__kw" set:html={b.keyword} />
             <p class="rung__role">{b.role}</p>
@@ -43,7 +43,7 @@ const colB = EXPERIENCE.filter((_, i) => i % 2 === 1); // 2023, 2025
       </div>
       <div class="ladder__col ladder__col--drop">
         {colB.map((b) => (
-          <article class="rung" data-reveal>
+          <article class="rung" data-reveal data-spotlight>
             <p class="rung__year">{b.year}</p>
             <h3 class="rung__kw" set:html={b.keyword} />
             <p class="rung__role">{b.role}</p>

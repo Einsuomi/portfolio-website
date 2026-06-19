@@ -115,3 +115,80 @@
 @media (prefers-reduced-motion: reduce) {
   [data-reveal] { opacity: 1 !important; transform: none !important; }
 }
+
+/* ── Pointer spotlight + hover micro-interaction ─────────────────────
+   Shared treatment for the Experience rungs and Project cards. A gold ring
+   rides the card's border: while hovered it BOTH flows continuously around the
+   edge (a rotating conic sweep) AND brightens under the cursor (a radial hotspot
+   fed by pointer.ts's --x/--y). The card lifts and plays a single wiggle on
+   enter, and holds lifted while hovered. All gated to fine-pointer +
+   motion-allowed, so touch and reduced-motion users get the plain resting card. */
+[data-spotlight] { position: relative; --x: 50; --y: 50; }
+
+/* Animatable angle for the rotating conic sweep (the "flow around the card"). */
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes spotlight-spin { to { --angle: 360deg; } }
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  /* Gold border ring, masked to just the edge so it never fogs the card text.
+     Two layers: a bright radial hotspot under the cursor + a rotating conic
+     sweep that keeps flowing around the border the whole time the card is held. */
+  [data-spotlight]::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    padding: 2px; /* ring thickness — bolder, more obvious */
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    background:
+      radial-gradient(
+        240px 240px at calc(var(--x) * 1px) calc(var(--y) * 1px),
+        rgba(244, 198, 110, 1), rgba(224, 163, 62, 0) 60%
+      ),
+      conic-gradient(
+        from var(--angle),
+        rgba(224, 163, 62, 0) 0deg,
+        rgba(224, 163, 62, 0.95) 60deg,
+        rgba(224, 163, 62, 0) 130deg,
+        rgba(224, 163, 62, 0) 210deg,
+        rgba(224, 163, 62, 0.8) 285deg,
+        rgba(224, 163, 62, 0) 360deg
+      );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+  /* On hold: ring shows and keeps spinning continuously under the cursor. */
+  [data-spotlight]:hover::after {
+    opacity: 1;
+    animation: spotlight-spin 4s linear infinite;
+  }
+
+  /* Lift + one-shot wiggle. Independent translate/rotate props so they compose
+     with GSAP's transform-matrix reveal without clashing. The lift HOLDS while
+     hovered; the wiggle plays once on enter. */
+  [data-spotlight] {
+    transition: translate 0.25s ease, box-shadow 0.25s ease;
+    will-change: translate;
+  }
+  [data-spotlight]:hover {
+    translate: 0 -5px;
+    /* dark depth shadow + a faint warm gold halo so the lift reads as "alive". */
+    box-shadow: 0 20px 46px rgba(0, 0, 0, 0.52), 0 0 28px rgba(224, 163, 62, 0.16);
+    animation: card-wiggle 0.42s ease;
+  }
+  @keyframes card-wiggle {
+    0%   { rotate: 0deg; }
+    35%  { rotate: -1.6deg; }
+    70%  { rotate: 1.2deg; }
+    100% { rotate: 0deg; }
+  }
+}

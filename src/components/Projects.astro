@@ -16,7 +16,7 @@ import { PROJECTS } from '../lib/timeline';
   <!-- The strip is the only thing that scrolls horizontally; the page never does. -->
   <ul class="proj__strip" data-reveal>
     {PROJECTS.map((p, i) => (
-      <li class="card">
+      <li class="card" data-spotlight>
         <div class="card__top" aria-hidden="true">
           <span class="card__num">{String(i + 1).padStart(2, '0')}</span>
         </div>
