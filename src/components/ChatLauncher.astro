@@ -7,12 +7,12 @@
  */
 ---
 
-<a class="launcher" href="#chatbot" aria-label="Ask the assistant about Tong">
+<a class="launcher" href="#chatbot" aria-label="Talk to the assistant about Tong">
   <svg class="launcher__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none">
     <path d="M4 5h16v11H8l-4 4V5z" stroke="currentColor" stroke-width="1.6"
           stroke-linejoin="round" />
   </svg>
-  <span class="launcher__label">Ask</span>
+  <span class="launcher__label">Talk</span>
 </a>
 
 <style>
@@ -24,6 +24,7 @@
     padding: 0.7rem 1.05rem 0.7rem 0.85rem;
     background: var(--gold); color: #1a1206;
     border-radius: 999px; text-decoration: none;
+    overflow: hidden; /* clip the shimmer sweep to the pill */
     font-family: var(--font-mono); font-size: 0.82rem; font-weight: 500;
     letter-spacing: 0.04em;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
@@ -33,7 +34,38 @@
     transform: translateY(-2px);
     box-shadow: 0 14px 38px rgba(0, 0, 0, 0.55);
   }
+  /* Keep the icon + label above the shimmer sweep. */
+  .launcher__icon, .launcher__label { position: relative; z-index: 1; }
   .launcher__icon { width: 19px; height: 19px; flex: none; }
+
+  /* A bright sheen sweeping across the gold pill, plus a soft attention pulse,
+     so the launcher draws the eye. Motion-allowed only — under reduced motion
+     it stays a plain gold pill (the sheen never renders, the pulse never plays). */
+  @media (prefers-reduced-motion: no-preference) {
+    .launcher { animation: launcher-pulse 3.4s ease-in-out infinite; }
+    .launcher::before {
+      content: '';
+      position: absolute; inset: 0; z-index: 0;
+      pointer-events: none;
+      background: linear-gradient(
+        120deg,
+        transparent 35%,
+        rgba(255, 246, 228, 0.6) 50%,
+        transparent 65%
+      );
+      background-size: 250% 100%;
+      animation: launcher-shimmer 3.6s linear infinite;
+    }
+  }
+  @keyframes launcher-shimmer {
+    from { background-position: 150% 0; }
+    to   { background-position: -50% 0; }
+  }
+  @keyframes launcher-pulse {
+    0%, 100% { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); }
+    50%      { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45),
+                           0 0 0 5px rgba(224, 163, 62, 0.16); }
+  }
 
   /* Tighten to an icon-only pill on small screens to avoid covering content. */
   @media (max-width: 30rem) {

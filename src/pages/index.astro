@@ -15,6 +15,7 @@ import Writes from '../components/Writes.astro';
 import Chatbot from '../components/Chatbot.astro';
 import HeroBar from '../components/HeroBar.astro';
 import ChatLauncher from '../components/ChatLauncher.astro';
+import Preloader from '../components/Preloader.astro';
 
 // Single swap point: flip 'B' -> 'A' to A/B the two grades in the real layout.
 // B = graded (moody, default), A = natural dusk.
@@ -29,6 +30,9 @@ const { video, still } = PAIRS[HERO_PAIR];
 ---
 
 <Base version="dark">
+  <!-- Refresh intro: percentage curtain that lifts to reveal the hero. -->
+  <Preloader />
+
   <main>
     <section class="hero">
       <!-- Background layer: poster (still) shows first and stays whenever the
@@ -184,28 +188,57 @@ const { video, still } = PAIRS[HERO_PAIR];
 
   <script>
     import gsap from 'gsap';
+    import SplitType from 'split-type';
 
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const video = document.querySelector<HTMLVideoElement>('.hero__media video');
 
     // Play only when motion is allowed; a blocked autoplay just leaves the
-    // poster (still) in place — the documented fallback path.
+    // poster (still) in place — the documented fallback path. Starts behind the
+    // preloader curtain so the scene is already moving when it lifts.
     if (!reduce && video) {
       video.play().catch(() => { /* autoplay blocked → poster stays */ });
     }
 
-    // Staggered reveal: eyebrow → name → line. Skipped under reduced-motion,
-    // where the CSS above never hid the elements in the first place.
+    // Cinematic entrance: the name wipes in left→right while sliding from the
+    // left (the big beat), the eyebrow slides in, and the tagline rises line by
+    // line. Skipped under reduced-motion, where the CSS never hid the copy.
+    function playHeroIntro() {
+      // Split the tagline into lines so they can stagger up independently.
+      const split = new SplitType('.hero__line', { types: 'lines' });
+      const lines = split.lines && split.lines.length ? split.lines : ['.hero__line'];
+
+      // Explicit start states (override the CSS hide) so .to() never lands on 0.
+      gsap.set('.hero__eyebrow', { x: -32, opacity: 0, y: 0 });
+      gsap.set('.hero__name', { opacity: 1, x: -60, y: 0, clipPath: 'inset(0 100% 0 0)' });
+      gsap.set('.hero__line', { opacity: 1, y: 0 });
+      gsap.set(lines, { yPercent: 90, opacity: 0 });
+
+      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+      tl.to('.hero__eyebrow', { x: 0, opacity: 1, duration: 0.6 })
+        .to('.hero__name',
+          { clipPath: 'inset(0 0% 0 0)', x: 0, duration: 1.0, ease: 'power4.out' }, '-=0.25')
+        .to(lines, { yPercent: 0, opacity: 1, duration: 0.7, stagger: 0.12 }, '-=0.5');
+    }
+
     if (!reduce) {
-      gsap.to('[data-anim]', {
-        opacity: 1, y: 0,
-        duration: 0.7, stagger: 0.12, ease: 'power3.out', delay: 0.1,
-      });
+      let played = false;
+      const go = () => { if (!played) { played = true; playHeroIntro(); } };
+      // The preloader hands off as its curtain starts to lift, so the entrance
+      // overlaps the reveal. The timeout is a fallback if the preloader is
+      // absent or never fires, so the hero copy always appears.
+      window.addEventListener('preloader:done', go, { once: true });
+      window.setTimeout(go, 3200);
     }
   </script>
 
   <!-- Body scroll engine: Lenis smooth scroll + ScrollTrigger reveals. -->
   <script>
     import '../scripts/scroll.ts';
+  </script>
+
+  <!-- Pointer spotlight: one shared listener feeds the card glow CSS vars. -->
+  <script>
+    import '../scripts/pointer.ts';
   </script>
 </Base>

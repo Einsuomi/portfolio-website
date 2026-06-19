@@ -11,6 +11,8 @@ const ITEMS = [...CERTS, ...CERTS]; // doubled for a seamless -50% loop
 ---
 
 <div class="bar" role="presentation">
+  <!-- Gold flow glow drifting behind the names — marks the seam as intentional. -->
+  <div class="bar__flow" aria-hidden="true"></div>
   <div class="bar__track">
     <span class="bar__lead">Certified</span>
     {ITEMS.map((c) => (
@@ -32,6 +34,8 @@ const ITEMS = [...CERTS, ...CERTS]; // doubled for a seamless -50% loop
     padding-block: 0.85rem;
   }
   .bar__track {
+    position: relative;
+    z-index: 1; /* names sit above the gold flow glow */
     display: inline-flex;
     align-items: center;
     gap: 1.4rem;
@@ -39,6 +43,30 @@ const ITEMS = [...CERTS, ...CERTS]; // doubled for a seamless -50% loop
     will-change: transform;
     /* Slow drift to the right. */
     animation: bar-marquee 38s linear infinite;
+  }
+
+  /* Gold gradient flow drifting behind the names — the Banner "flow" effect in
+     our warm gold theme (not rainbow), masked to fade toward the strip edges so
+     it reads as a glow, not a band. Purely presentational, never interactive. */
+  .bar__flow {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: repeating-linear-gradient(
+      70deg,
+      rgba(224, 163, 62, 0) 0%,
+      rgba(224, 163, 62, 0.42) 14%,
+      rgba(224, 163, 62, 0) 30%,
+      rgba(224, 163, 62, 0.26) 44%,
+      rgba(224, 163, 62, 0) 60%
+    );
+    background-size: 200% 100%;
+    /* Soft top-anchored fade across the full strip width (the slim bar is too
+       short for a radial spot — that would shrink the glow to a dot). */
+    -webkit-mask: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.15) 100%);
+    mask: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.15) 100%);
+    animation: bar-flow 20s linear infinite;
   }
   .bar__lead {
     font-family: var(--font-mono); font-size: 0.72rem;
@@ -55,10 +83,15 @@ const ITEMS = [...CERTS, ...CERTS]; // doubled for a seamless -50% loop
     from { transform: translateX(-50%); }
     to   { transform: translateX(0); }
   }
+  @keyframes bar-flow {
+    from { background-position: 0% 0; }
+    to   { background-position: 200% 0; }
+  }
 
-  /* No drift under reduced motion — let it sit and scroll natively if needed. */
+  /* No drift under reduced motion — names sit still, the glow holds static. */
   @media (prefers-reduced-motion: reduce) {
     .bar { overflow-x: auto; }
     .bar__track { animation: none; }
+    .bar__flow { animation: none; }
   }
 </style>

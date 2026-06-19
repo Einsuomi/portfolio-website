@@ -1,0 +1,128 @@
+---
+/**
+ * Refresh intro — a full-screen percentage preloader over the warm near-black,
+ * counting 0→100 with a gold fill bar, then lifting away to reveal the hero. It
+ * fires a `preloader:done` event as it starts lifting so the hero entrance can
+ * overlap the reveal.
+ *
+ * Safety: hidden by default in CSS and only shown when JS is present AND motion
+ * is allowed (the script also tears it down). No-JS and reduced-motion visitors
+ * never see it and land straight on the hero — no overlay can ever trap them.
+ */
+---
+
+<div class="preloader" id="preloader" aria-hidden="true">
+  <div class="preloader__inner">
+    <span class="preloader__label">Loading the experience</span>
+    <span class="preloader__count">
+      <span class="preloader__num">0</span><span class="preloader__pct">%</span>
+    </span>
+  </div>
+  <div class="preloader__bar"><span class="preloader__fill"></span></div>
+</div>
+
+<style>
+  .preloader {
+    /* Hidden by default → no-JS and reduced-motion users never see it. */
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 200; /* above the launcher (50), menu (10), everything */
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: var(--bg, #0a0908);
+    will-change: transform;
+  }
+
+  /* Shown only with JS present and motion allowed. */
+  @media (prefers-reduced-motion: no-preference) {
+    html.js .preloader { display: flex; }
+  }
+
+  .preloader__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(0.8rem, 2vh, 1.4rem);
+    will-change: opacity, transform;
+  }
+  .preloader__label {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: clamp(0.66rem, 1.6vw, 0.8rem);
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--gold, #e0a33e);
+  }
+  .preloader__count {
+    display: flex;
+    align-items: flex-start;
+    font-family: var(--font-display, 'Anton', sans-serif);
+    line-height: 0.9;
+    color: var(--ink, #f5efe3);
+  }
+  .preloader__num {
+    font-size: clamp(5rem, 22vw, 16rem);
+    font-variant-numeric: tabular-nums;
+  }
+  .preloader__pct {
+    font-size: clamp(1.6rem, 6vw, 4rem);
+    color: var(--gold, #e0a33e);
+    margin-top: 0.4em;
+    margin-left: 0.1em;
+  }
+
+  /* Thin gold progress line anchored at the bottom of the screen. */
+  .preloader__bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: rgba(245, 239, 227, 0.12);
+  }
+  .preloader__fill {
+    display: block;
+    height: 100%;
+    width: 100%;
+    transform: scaleX(0);
+    transform-origin: left center;
+    background: var(--gold, #e0a33e);
+    box-shadow: 0 0 18px rgba(224, 163, 62, 0.7);
+  }
+</style>
+
+<script>
+  import gsap from 'gsap';
+
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const el = document.getElementById('preloader');
+
+  // Only run the intro when motion is allowed and the overlay exists; otherwise
+  // it stays display:none and the hero is shown immediately.
+  if (!reduce && el) {
+    const num = el.querySelector<HTMLElement>('.preloader__num')!;
+    const fill = el.querySelector<HTMLElement>('.preloader__fill')!;
+    const inner = el.querySelector<HTMLElement>('.preloader__inner')!;
+    const state = { v: 0 };
+
+    const tl = gsap.timeline();
+    // Count 0→100 while the gold bar fills underneath.
+    tl.to(state, {
+      v: 100,
+      duration: 1.9,
+      ease: 'power1.inOut',
+      onUpdate() {
+        num.textContent = String(Math.round(state.v));
+        fill.style.transform = `scaleX(${state.v / 100})`;
+      },
+    })
+      // Settle, then let the count fade just before the curtain lifts.
+      .to(inner, { opacity: 0, y: -12, duration: 0.3, ease: 'power2.in' }, '+=0.12')
+      // Hand off to the hero entrance exactly as the curtain starts to lift.
+      .add(() => window.dispatchEvent(new Event('preloader:done')))
+      .to(el, { yPercent: -100, duration: 0.9, ease: 'power4.inOut' }, '-=0.05')
+      // Remove from the layout so it can never intercept clicks afterwards.
+      .set(el, { display: 'none' });
+  }
+</script>
