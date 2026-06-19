@@ -20,6 +20,7 @@
     "@fontsource-variable/space-grotesk": "^5.2.10",
     "@fontsource/anton": "^5.2.7",
     "@fontsource/archivo": "^5.2.8",
+    "@fontsource/instrument-serif": "^5.2.8",
     "@fontsource/inter": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "astro": "^6.4.5",
