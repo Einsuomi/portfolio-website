@@ -1,0 +1,104 @@
+---
+/**
+ * Shared layout. Handles: fonts, SEO meta, analytics beacon, slot.
+ * The `version` prop drives data-version on <html> and the background
+ * flash-prevention colour set inline below. Only 'dark' ships today; the
+ * light theme will be rebuilt as a colour variant over this same scaffold.
+ */
+import TrackBeacon from '../components/TrackBeacon.astro';
+
+// Self-hosted fonts — no gstatic at runtime (GDPR requirement).
+// Anton is already in package.json; the rest were added this phase.
+import '@fontsource/anton/index.css';
+import '@fontsource/archivo/800.css';
+import '@fontsource/archivo/900.css';
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource-variable/space-grotesk/index.css';
+import '@fontsource/jetbrains-mono/400.css';
+import '@fontsource/jetbrains-mono/500.css';
+// Instrument Serif — refined editorial serif for the hero day/night line.
+import '@fontsource/instrument-serif/400.css';
+
+export interface Props {
+  version: 'dark' | 'light';
+}
+
+const { version } = Astro.props;
+
+// Base background per version prevents a flash before the first CSS paint.
+const BG = version === 'dark' ? '#060606' : '#eaf0f7';
+
+// These OG/meta values are the same regardless of version.
+const TITLE       = 'Tong Nie — Data Engineer & Builder';
+const DESCRIPTION = 'Enterprise data pipelines on Azure, AWS and Databricks. Three years in, lakehouse-deep, building in public from Western Europe.';
+// SITE: real deploy origin for absolute canonical/OG URLs. tongnie.dev is NOT registered
+// yet — leave '' until the production origin (e.g. https://<project>.vercel.app) is known;
+// canonical/OG then fall back to a relative path rather than asserting a dead domain.
+const SITE        = 'https://portfolio-website-umber-one-98.vercel.app';
+const PATH        = version === 'dark' ? '/' : '/light';
+const CANONICAL   = SITE ? SITE + PATH : PATH;
+---
+
+<!doctype html>
+<!--
+  data-version lets per-version CSS selectors scope styles without specificity fights.
+  html.js is added immediately by the inline script below so CSS can gate
+  JS-dependent UI on that class (animated chapters, canvas, etc.).
+-->
+<html lang="en" data-version={version}>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>{TITLE}</title>
+  <meta name="description" content={DESCRIPTION} />
+
+  <!-- Canonical URL differentiates the two routes for crawlers. -->
+  <link rel="canonical" href={CANONICAL} />
+
+  <!-- Open Graph -->
+  <meta property="og:type"        content="website" />
+  <meta property="og:title"       content={TITLE} />
+  <meta property="og:description" content={DESCRIPTION} />
+  <meta property="og:url"         content={CANONICAL} />
+
+  <!-- Twitter card -->
+  <meta name="twitter:card"        content="summary" />
+  <meta name="twitter:title"       content={TITLE} />
+  <meta name="twitter:description" content={DESCRIPTION} />
+
+  <!-- Favicons -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" href="/favicon.ico" />
+
+  <meta name="generator" content={Astro.generator} />
+
+  <!--
+    Inline script: add `js` class to <html> as early as possible so CSS
+    that gates JS-dependent UI on `html.js` works without flicker.
+    Also set the background inline to prevent a flash before the stylesheet loads.
+  -->
+  <script is:inline define:vars={{ BG }}>
+    document.documentElement.classList.add('js');
+    document.documentElement.style.background = BG;
+    document.body && (document.body.style.background = BG);
+  </script>
+
+  <style define:vars={{ BG }}>
+    /* Base reset and background — scoped per version via data-version. */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { background: var(--BG); }
+    body { background: var(--BG); }
+    :focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+  </style>
+</head>
+
+<body>
+  <!-- Analytics fires on every page load; silently absent with no JS. -->
+  <TrackBeacon />
+
+  <!-- Page body provided by each route. -->
+  <slot />
+</body>
+</html>

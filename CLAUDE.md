@@ -7,16 +7,15 @@ deployed on Vercel.
 
 - **Tong** — product owner. Approves specs, judges visuals, reviews and merges every PR.
 - **You** (main session, Opus by default) — You are the single main agent and sole owner of planning, implementation, and final quality.
-- **Workflow** — from **Phase 2 onward**, big/normal features follow the OpenSpec workflow
-  (`openspec init` → propose → apply → archive). Phase 1 work (incl. the in-flight 1c)
-  stays on the existing `specs/*.md` narrative specs; do not introduce OpenSpec there.
-  Small/quick changes and fixes can skip the workflow entirely.
+- **Workflow** — big/normal features follow the OpenSpec workflow
+  (propose → apply → archive). Small/quick changes and fixes skip the workflow entirely.
+  OpenSpec: https://github.com/Fission-AI/OpenSpec
 
 ## Website taste
 - **Attention is the mechanism.** The whole site should catch and hold a recruiter's
   attention end to end (à la Anton Skvortsov — antonskvor.webflow.io) — a magnetic, scroll-driven pull where every beat earns the next scroll, never a page you skim and bounce. This is the overall feeling.
-- Taste reference: https://usta.agency/ — study its restraint, dot system, and motion
-  pacing; rebuild original. Never clone its code, assets, or fonts.
+- Hero direction: a cinematic video/3D hero scene (current exploration: doorway-monolith
+  lake). Backbone theme not yet locked.
 - Built with Three.js + GSAP/ScrollTrigger + Lenis when applicable — the motion vehicle,
   not a cage.
 
@@ -33,7 +32,7 @@ deployed on Vercel.
   and WebGL-fail fallbacks give a static, fully usable page. No *accidental* page-level
   horizontal overflow — but intentional horizontal-scroll sections (e.g. a projects or
   writes gallery) are welcome when they're touch-friendly.
-- **Heavy WebGL is welcome.** The dot/particle homepage can be as ambitious as the taste
+- **Heavy WebGL is welcome.** The hero scene can be as ambitious as the taste
   demands; performance (LCP, JS weight) is a target we watch and report, not a gate.
 
 

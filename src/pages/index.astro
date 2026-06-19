@@ -1,21 +1,184 @@
 ---
-// Home (/) — clean start (2026-06-18). Rebuilding the whole site from zero
-// around a cinematic video hero (Pair B = graded/moody default).
-// Previous implementation snapshotted intact in backups/site-v1-dark-dot/.
+/**
+ * Home (/) — cinematic video hero.
+ * Full-bleed background video (Pair B / graded by default) with the matching
+ * still as poster + reduced-motion / autoplay-fail fallback. Warm off-white
+ * type + a single gold accent sampled from the doorway glow, over a gradient
+ * scrim that guarantees legibility on any frame. No top nav bar — just a
+ * top-right menu icon placeholder (panel + animation come in a later change).
+ */
+import Base from '../layouts/Base.astro';
+
+// Single swap point: flip 'B' -> 'A' to A/B the two grades in the real layout.
+// B = graded (moody, default), A = natural dusk.
+const HERO_PAIR: 'A' | 'B' = 'B';
+const PAIRS = {
+  A: { video: '/hero/final_10s.mp4',    still: '/hero/7330final.png'    },
+  // B uses the crossfade-looped graded clip (seam dissolved, breathing kept)
+  // with a compressed still exported from the loop's first frame.
+  B: { video: '/hero/graded_loop.mp4',  still: '/hero/graded-loop.jpg'  },
+};
+const { video, still } = PAIRS[HERO_PAIR];
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tong Nie — Data Engineer &amp; Builder</title>
-  </head>
-  <body>
-    <!-- TODO: build the video hero + page from scratch. -->
-    <main>
-      <h1>Tong Nie</h1>
-      <p>Data Engineer &amp; Builder</p>
-    </main>
-  </body>
-</html>
+<Base version="dark">
+  <main>
+    <section class="hero">
+      <!-- Background layer: poster (still) shows first and stays whenever the
+           video doesn't play (reduced-motion, autoplay blocked, or no JS). -->
+      <div class="hero__media" aria-hidden="true">
+        <video
+          poster={still}
+          muted
+          loop
+          playsinline
+          preload="auto"
+          disablepictureinpicture
+        >
+          <source src={video} type="video/mp4" />
+        </video>
+      </div>
+
+      <!-- Scrim: bottom-anchored gradient keeps text ≥4.5:1 on any frame. -->
+      <div class="hero__scrim" aria-hidden="true"></div>
+
+      <!-- Top-right menu icon — placeholder affordance, nothing to open yet. -->
+      <button class="menu" type="button" aria-label="Menu">
+        <span></span><span></span>
+      </button>
+
+      <!-- Hero copy lives in real HTML so it's present without/before JS. -->
+      <div class="hero__inner">
+        <p class="hero__eyebrow" data-anim>
+          <span class="hero__rule" aria-hidden="true"></span>
+          Building in public — Western Europe
+        </p>
+        <h1 class="hero__name" data-anim>Tong Nie</h1>
+        <p class="hero__line" data-anim>
+          By day, I orchestrate data.<br />
+          By night, I ship ideas.<br />
+          Same machine, different rules.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <style>
+    /* ── Hero design tokens (scoped to this page) ───────────────── */
+    .hero {
+      --hero-ink:   #f5efe3; /* warm off-white — never pure white over warm footage */
+      --hero-gold:  #e0a33e; /* accent sampled from the doorway sunset glow */
+      --hero-scrim: #0c0a09; /* warm near-black, used only in the gradient */
+
+      position: relative;
+      width: 100%;
+      min-height: 100svh;
+      overflow: hidden;
+      display: flex;
+      align-items: flex-end; /* cinematic: copy anchored to the lower-left */
+    }
+
+    /* ── Background video / still ───────────────────────────────── */
+    .hero__media { position: absolute; inset: 0; z-index: 0; }
+    .hero__media video {
+      width: 100%; height: 100%;
+      object-fit: cover; object-position: center;
+      display: block;
+    }
+
+    /* ── Legibility scrim ───────────────────────────────────────── */
+    .hero__scrim {
+      position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      /* Faint top wash + heavier bottom anchor where the copy sits. */
+      background:
+        linear-gradient(to top, rgba(12,10,9,0.78) 0%, rgba(12,10,9,0.35) 32%, rgba(12,10,9,0) 60%),
+        linear-gradient(to bottom, rgba(12,10,9,0.28) 0%, rgba(12,10,9,0) 22%);
+    }
+
+    /* ── Top-right menu icon (no top bar) ───────────────────────── */
+    .menu {
+      position: fixed; z-index: 10;
+      top: clamp(1.1rem, 2.5vw, 1.8rem);
+      right: clamp(1.1rem, 4vw, 2.5rem);
+      width: 46px; height: 46px;
+      display: flex; flex-direction: column; align-items: flex-end;
+      justify-content: center; gap: 6px;
+      background: none; border: none; cursor: pointer;
+      padding: 8px;
+    }
+    .menu span {
+      display: block; height: 2px; background: var(--hero-ink);
+      transition: width 0.25s ease, background 0.25s ease;
+    }
+    .menu span:nth-child(1) { width: 26px; }
+    .menu span:nth-child(2) { width: 18px; }
+    .menu:hover span,
+    .menu:focus-visible span { background: var(--hero-gold); width: 26px; }
+
+    /* ── Copy block ─────────────────────────────────────────────── */
+    .hero__inner {
+      position: relative; z-index: 2;
+      padding: 0 clamp(1.5rem, 5.5vw, 5rem) clamp(2.5rem, 8vh, 6rem);
+      max-width: 60rem;
+    }
+
+    .hero__eyebrow {
+      display: flex; align-items: center; gap: 0.75rem;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: clamp(0.7rem, 1.6vw, 0.82rem);
+      font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--hero-gold);
+      margin-bottom: clamp(0.9rem, 2vh, 1.4rem);
+    }
+    .hero__rule {
+      display: block; width: clamp(28px, 6vw, 52px); height: 1px;
+      background: var(--hero-gold); flex: none;
+    }
+
+    .hero__name {
+      font-family: 'Anton', 'Arial Narrow', sans-serif; font-weight: 400;
+      font-size: clamp(3.5rem, 14vw, 11rem);
+      line-height: 0.9; letter-spacing: 0.01em; text-transform: uppercase;
+      color: var(--hero-ink);
+      text-shadow: 0 2px 40px rgba(0,0,0,0.35); /* extra safety over bright frames */
+    }
+
+    .hero__line {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-weight: 400;
+      font-size: clamp(1.35rem, 3vw, 2.1rem);
+      line-height: 1.28; max-width: 30ch;
+      color: var(--hero-ink);
+      margin-top: clamp(1rem, 2.5vh, 1.6rem);
+    }
+
+    /* ── Entrance animation ─────────────────────────────────────────
+       Only hide elements up-front when JS is present AND motion is allowed,
+       so reduced-motion and no-JS visitors always see the copy immediately. */
+    @media (prefers-reduced-motion: no-preference) {
+      html.js .hero [data-anim] { opacity: 0; transform: translateY(14px); }
+    }
+  </style>
+
+  <script>
+    import gsap from 'gsap';
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const video = document.querySelector<HTMLVideoElement>('.hero__media video');
+
+    // Play only when motion is allowed; a blocked autoplay just leaves the
+    // poster (still) in place — the documented fallback path.
+    if (!reduce && video) {
+      video.play().catch(() => { /* autoplay blocked → poster stays */ });
+    }
+
+    // Staggered reveal: eyebrow → name → line. Skipped under reduced-motion,
+    // where the CSS above never hid the elements in the first place.
+    if (!reduce) {
+      gsap.to('[data-anim]', {
+        opacity: 1, y: 0,
+        duration: 0.7, stagger: 0.12, ease: 'power3.out', delay: 0.1,
+      });
+    }
+  </script>
+</Base>
