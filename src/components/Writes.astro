@@ -1,0 +1,73 @@
+---
+/**
+ * Writes — vertical editorial list of case-study pieces. Text-forward and
+ * deliberately distinct from the horizontal Projects gallery. Pieces without a
+ * published URL render a non-deceptive "soon" label rather than a dead link.
+ * The list is extensible — add entries to WRITES, the layout is unchanged.
+ */
+import { WRITES } from '../lib/timeline';
+---
+
+<section class="section section--scene section--stack writes" id="writes" aria-label="Writes">
+  <div class="section__inner">
+    <p class="kicker" data-reveal>Writes · decisions in prose</p>
+
+    <ol class="writes__list">
+      {WRITES.map((w) => (
+        <li class="write" data-reveal>
+          <h3 class="write__title">{w.title}</h3>
+          <p class="write__summary">{w.summary}</p>
+          {w.url && w.url !== '#' ? (
+            <a class="write__link" href={w.url}>Read <span aria-hidden="true">→</span></a>
+          ) : (
+            <span class="write__soon">Publishing soon</span>
+          )}
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>
+
+<style>
+  .writes { display: flex; flex-direction: column; justify-content: center; }
+  /* Translucent panel keeps the editorial text crisp over the scene. */
+  .writes .section__inner {
+    background: rgba(10, 9, 8, 0.5);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: clamp(1.5rem, 4vw, 3rem);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .writes__list { list-style: none; counter-reset: w; }
+  .write {
+    counter-increment: w;
+    padding-block: clamp(2rem, 5vh, 3.2rem);
+    border-top: 1px solid var(--line);
+    position: relative;
+  }
+  .write:last-child { border-bottom: 1px solid var(--line); }
+  .write::before {
+    content: counter(w, decimal-leading-zero);
+    font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.1em;
+    color: var(--gold); display: block; margin-bottom: 0.8rem;
+  }
+  .write__title {
+    font-family: var(--font-serif); font-weight: 400;
+    font-size: clamp(1.6rem, 4vw, 2.6rem); line-height: 1.15;
+    color: var(--ink); max-width: 24ch; margin-bottom: 0.8rem;
+  }
+  .write__summary {
+    font-family: var(--font-body); font-size: clamp(0.98rem, 2vw, 1.08rem);
+    line-height: 1.55; color: var(--ink-dim); max-width: 60ch;
+  }
+  .write__link, .write__soon {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.05em;
+    margin-top: 1.1rem;
+  }
+  .write__link { color: var(--gold); text-decoration: none; }
+  .write__link span { transition: transform 0.25s ease; }
+  .write__link:hover span { transform: translateX(4px); }
+  .write__soon { color: var(--ink-faint); }
+</style>

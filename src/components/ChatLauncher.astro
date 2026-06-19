@@ -1,0 +1,43 @@
+---
+/**
+ * Persistent chatbot launcher — fixed bottom-right, present from the hero down so
+ * the differentiator is never missed. It's an anchor to the chatbot climax section,
+ * so it always does something real and degrades perfectly without JS (no dead control).
+ * Becomes a real chat toggle when the backend lands.
+ */
+---
+
+<a class="launcher" href="#chatbot" aria-label="Ask the assistant about Tong">
+  <svg class="launcher__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none">
+    <path d="M4 5h16v11H8l-4 4V5z" stroke="currentColor" stroke-width="1.6"
+          stroke-linejoin="round" />
+  </svg>
+  <span class="launcher__label">Ask</span>
+</a>
+
+<style>
+  .launcher {
+    position: fixed; z-index: 50;
+    right: clamp(1rem, 3vw, 1.8rem);
+    bottom: clamp(1rem, 3vw, 1.8rem);
+    display: inline-flex; align-items: center; gap: 0.55rem;
+    padding: 0.7rem 1.05rem 0.7rem 0.85rem;
+    background: var(--gold); color: #1a1206;
+    border-radius: 999px; text-decoration: none;
+    font-family: var(--font-mono); font-size: 0.82rem; font-weight: 500;
+    letter-spacing: 0.04em;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .launcher:hover, .launcher:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 38px rgba(0, 0, 0, 0.55);
+  }
+  .launcher__icon { width: 19px; height: 19px; flex: none; }
+
+  /* Tighten to an icon-only pill on small screens to avoid covering content. */
+  @media (max-width: 30rem) {
+    .launcher__label { display: none; }
+    .launcher { padding: 0.7rem; }
+  }
+</style>
