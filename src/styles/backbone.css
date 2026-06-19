@@ -1,0 +1,117 @@
+/*
+ * Backbone theme — the whole body rides on the SAME hero still as a continuous
+ * cinematic backdrop (the doorway-monolith lake), echoing the hero palette
+ * (deep dark + the golden edge-rim accent). Each section carries the still as a
+ * viewport-fixed background so the scene stays put while content panels slide
+ * over it (the section-level sticky-stack), and a baked scrim keeps text legible.
+ */
+
+:root {
+  --ink:      #f5efe3;                 /* warm off-white — matches the hero */
+  --ink-dim:  rgba(245, 239, 227, 0.66);
+  --ink-faint:rgba(245, 239, 227, 0.40);
+  --gold:     #e0a33e;                 /* accent sampled from the doorway glow */
+  --bg:       #0a0908;                 /* warm near-black, used behind the scene */
+  --bg-raise: rgba(10, 9, 8, 0.55);    /* translucent dark panel over the scene */
+  --line:     rgba(245, 239, 227, 0.16);
+
+  /* Single swap point for the backdrop — matches the hero's Pair B still. */
+  --scene-still: url('/hero/graded-loop.jpg');
+  /* Lightened so the still body matches the brightness of the video hero;
+     legibility is carried by the card panels and text-shadow, not a heavy scrim. */
+  --scene-scrim: linear-gradient(180deg, rgba(8, 7, 6, 0.30) 0%, rgba(8, 7, 6, 0.46) 100%);
+
+  --pad-x:    clamp(1.5rem, 5.5vw, 5rem);
+  --maxw:     72rem;
+
+  --font-display: 'Anton', 'Arial Narrow', sans-serif;
+  --font-serif:   'Instrument Serif', Georgia, serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  --font-body:    'Inter', system-ui, sans-serif;
+}
+
+.backbone {
+  position: relative;
+  background: var(--bg);             /* shows only in the seams behind the scene */
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+/* Shared section shell. */
+.section {
+  position: relative;
+  padding-block: clamp(4.5rem, 12vh, 9rem);
+  padding-inline: var(--pad-x);
+}
+.section__inner { max-width: var(--maxw); margin-inline: auto; }
+
+/* ── Continuous scene backdrop ───────────────────────────────────────
+   Every section paints the same still, viewport-fixed, so the scene reads as
+   one constant backdrop while panels slide over it. The image is opaque, so a
+   stacked section cleanly occludes the one it slides over. */
+.section--scene {
+  background-image: var(--scrim, var(--scene-scrim)), var(--scene-still);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-color: var(--bg);
+}
+
+/* Graded backdrop — the same scene deepens section by section so each panel
+   visibly slides over a darker one (the seam reads), and legibility improves
+   toward the bottom. Lightest at Experience, near-black by the Chatbot.
+   To revert to a single flat backdrop, delete these four overrides. */
+#experience { --scrim: linear-gradient(180deg, rgba(8, 7, 6, 0.30), rgba(8, 7, 6, 0.40)); }
+#projects   { --scrim: linear-gradient(180deg, rgba(8, 7, 6, 0.44), rgba(8, 7, 6, 0.54)); }
+#writes     { --scrim: linear-gradient(180deg, rgba(8, 7, 6, 0.58), rgba(8, 7, 6, 0.68)); }
+#chatbot    { --scrim: linear-gradient(180deg, rgba(6, 5, 4, 0.72), rgba(6, 5, 4, 0.82)); }
+
+/* ── Section-level sticky-stack ──────────────────────────────────────
+   Pinned panels: each holds at the top while the next slides up over it
+   (experience → projects → writes → chatbot). Desktop + motion only;
+   on phones and under reduced motion the sections simply stack and scroll. */
+.section--stack { position: relative; }
+
+@media (min-width: 48rem) and (prefers-reduced-motion: no-preference) {
+  html.js .section--stack {
+    position: sticky;
+    top: 0;
+    min-height: 100svh;
+    box-shadow: 0 -40px 80px rgba(0, 0, 0, 0.55);
+  }
+}
+
+/* iOS ignores fixed attachment and it can jank — use scroll on small screens. */
+@media (max-width: 48rem) {
+  .section--scene { background-attachment: scroll; }
+}
+
+/* Section eyebrow — mono kicker with the gold rule, reused across sections. */
+.kicker {
+  display: flex; align-items: center; gap: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: clamp(0.7rem, 1.6vw, 0.82rem);
+  font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: clamp(1.4rem, 3.5vh, 2.4rem);
+}
+.kicker::before {
+  content: ''; display: block; flex: none;
+  width: clamp(28px, 6vw, 52px); height: 1px; background: var(--gold);
+}
+
+/* Legibility safety: a soft shadow on content sitting over the scene. Harmless
+   inside the dark cards, essential for text placed directly on the still. */
+.section--scene :where(h1, h2, h3, p, a, li) { text-shadow: 0 1px 16px rgba(0, 0, 0, 0.45); }
+
+/* Reveal-on-enter: hidden up-front ONLY when JS is present and motion allowed,
+   so reduced-motion and no-JS visitors always see content immediately. */
+@media (prefers-reduced-motion: no-preference) {
+  html.js [data-reveal] { opacity: 0; transform: translateY(18px); }
+}
+
+/* Reduced-motion safety: never hold anything hidden. */
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] { opacity: 1 !important; transform: none !important; }
+}

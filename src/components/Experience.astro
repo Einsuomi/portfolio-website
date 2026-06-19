@@ -1,0 +1,141 @@
+---
+/**
+ * Experience — intro held at the left while a staggered "ladder" of year rungs
+ * cascades on the right (à la the Tres Mares numbers): two columns, the right
+ * one dropped half a step so the rungs alternate upper-left / lower-right. This
+ * leaves room for more years over time. Rides the continuous scene backdrop and
+ * reveals rung-by-rung; on phones it flattens to a plain readable stack.
+ */
+import { EXPERIENCE } from '../lib/timeline';
+
+// Split into the two alternating columns by chronological position.
+const colA = EXPERIENCE.filter((_, i) => i % 2 === 0); // 2021, 2024, 2026
+const colB = EXPERIENCE.filter((_, i) => i % 2 === 1); // 2023, 2025
+---
+
+<section class="section section--scene exp" id="experience" aria-label="Experience">
+  <div class="exp__grid">
+    <!-- Left: intro, held centered while the ladder scrolls past. -->
+    <div class="exp__intro-col">
+      <div>
+        <p class="kicker" data-reveal>Experience</p>
+        <p class="exp__intro" data-reveal>
+          From a data-governance master's to governance across 1,000+ pipelines —
+          five years, each one compounding on the last.
+        </p>
+      </div>
+    </div>
+
+    <!-- Right: the alternating ladder, two columns, the second dropped down. -->
+    <div class="ladder">
+      <div class="ladder__col">
+        {colA.map((b) => (
+          <article class="rung" data-reveal>
+            <p class="rung__year">{b.year}</p>
+            <h3 class="rung__kw" set:html={b.keyword} />
+            <p class="rung__role">{b.role}</p>
+            <p class="rung__outcome" set:html={b.outcome} />
+            <ul class="rung__stack" aria-label="Stack">
+              {b.stack.map((s) => <li>{s}</li>)}
+            </ul>
+          </article>
+        ))}
+      </div>
+      <div class="ladder__col ladder__col--drop">
+        {colB.map((b) => (
+          <article class="rung" data-reveal>
+            <p class="rung__year">{b.year}</p>
+            <h3 class="rung__kw" set:html={b.keyword} />
+            <p class="rung__role">{b.role}</p>
+            <p class="rung__outcome" set:html={b.outcome} />
+            <ul class="rung__stack" aria-label="Stack">
+              {b.stack.map((s) => <li>{s}</li>)}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .exp__grid {
+    display: grid;
+    grid-template-columns: 0.8fr 1.5fr;
+    gap: clamp(1.5rem, 4vw, 4rem);
+    max-width: var(--maxw);
+    margin-inline: auto;
+    align-items: start;
+  }
+
+  /* Left intro stays centered in view while the ladder scrolls. */
+  .exp__intro-col {
+    position: sticky; top: 0;
+    min-height: 100svh;
+    display: flex; align-items: center;
+  }
+  .exp__intro {
+    font-family: var(--font-serif);
+    font-size: clamp(1.4rem, 2.6vw, 2.1rem); line-height: 1.3;
+    color: var(--ink); max-width: 22ch; margin-top: 0.6rem;
+  }
+
+  /* Two alternating columns; the second is dropped half a rung. */
+  .ladder {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(1rem, 2vw, 1.6rem);
+    padding-block: clamp(3rem, 10vh, 7rem);
+  }
+  .ladder__col { display: flex; flex-direction: column; gap: clamp(1rem, 2vw, 1.6rem); }
+  .ladder__col--drop { margin-top: clamp(4rem, 16vh, 11rem); }
+
+  /* Each rung: a translucent dark card over the scene, bordered like the ref. */
+  .rung {
+    padding: clamp(1.3rem, 2.5vw, 2rem) clamp(1.4rem, 2.6vw, 2.2rem);
+    background: var(--bg-raise);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .rung__year {
+    font-family: var(--font-serif);
+    font-size: clamp(2.4rem, 5vw, 3.8rem); line-height: 0.9;
+    color: var(--gold); margin-bottom: 0.4rem;
+  }
+  .rung__kw {
+    font-family: var(--font-display); font-weight: 400;
+    font-size: clamp(1.3rem, 2.6vw, 1.9rem); line-height: 1;
+    text-transform: uppercase; letter-spacing: 0.01em;
+    color: var(--ink); margin-bottom: 0.8rem;
+  }
+  .rung__role {
+    font-family: var(--font-mono);
+    font-size: clamp(0.72rem, 1.3vw, 0.82rem); letter-spacing: 0.03em;
+    color: var(--ink-dim); margin-bottom: 0.6rem;
+  }
+  .rung__outcome {
+    font-family: var(--font-serif);
+    font-size: clamp(1.05rem, 1.9vw, 1.35rem); line-height: 1.32;
+    color: var(--ink);
+  }
+  .rung__outcome :global(strong) { color: var(--gold); font-weight: 400; }
+  .rung__stack {
+    list-style: none; display: flex; flex-wrap: wrap; gap: 0.4rem;
+    margin-top: 1rem;
+  }
+  .rung__stack li {
+    font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.05em;
+    color: var(--ink-dim); padding: 0.28rem 0.6rem;
+    border: 1px solid var(--line); border-radius: 999px;
+  }
+
+  /* Phones: single readable column, intro on top, no stagger, no sticky. */
+  @media (max-width: 48rem) {
+    .exp__grid { grid-template-columns: 1fr; gap: 2rem; }
+    .exp__intro-col { position: static; min-height: 0; display: block; }
+    .ladder { grid-template-columns: 1fr; padding-block: 1rem; }
+    .ladder__col--drop { margin-top: 0; }
+  }
+</style>

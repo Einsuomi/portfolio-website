@@ -1,0 +1,55 @@
+---
+/**
+ * Chatbot climax — the differentiator's payoff, placed late (before Contact) after
+ * the persistent launcher has been inviting all the way down. Shell + invitation
+ * only: the conversational backend is a future change, so this shows an explicit
+ * "coming soon" state, never a broken or erroring conversation UI.
+ */
+---
+
+<section class="section section--scene section--stack bot" id="chatbot" aria-label="Ask the assistant">
+  <div class="section__inner bot__inner">
+    <p class="kicker" data-reveal>The differentiator</p>
+    <h2 class="bot__head" data-reveal>Don't just read — <em>ask.</em></h2>
+    <p class="bot__sub" data-reveal>
+      An assistant trained on my work — pipelines, stack, the decisions behind them.
+      Ask it anything about how I build.
+    </p>
+
+    <!-- Faux composer: clearly inert, labelled coming soon (no dead/erroring UI). -->
+    <div class="bot__composer" data-reveal aria-hidden="true">
+      <span class="bot__placeholder">Ask about my Databricks work…</span>
+      <span class="bot__badge">Coming soon</span>
+    </div>
+  </div>
+</section>
+
+<style>
+  .bot { text-align: left; display: flex; flex-direction: column; justify-content: center; }
+  .bot__inner { max-width: 52rem; }
+  .bot__head {
+    font-family: var(--font-display); font-weight: 400;
+    font-size: clamp(2.6rem, 9vw, 6rem); line-height: 0.95;
+    text-transform: uppercase; color: var(--ink); margin-bottom: 1.2rem;
+  }
+  .bot__head em { color: var(--gold); font-style: normal; }
+  .bot__sub {
+    font-family: var(--font-serif);
+    font-size: clamp(1.2rem, 2.6vw, 1.7rem); line-height: 1.35;
+    color: var(--ink-dim); max-width: 34ch; margin-bottom: clamp(1.8rem, 4vh, 2.6rem);
+  }
+
+  .bot__composer {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding: 1.1rem 1.3rem;
+    border: 1px solid var(--line); border-radius: 999px;
+    background: var(--bg-raise); max-width: 34rem;
+  }
+  .bot__placeholder { font-family: var(--font-body); color: var(--ink-faint); }
+  .bot__badge {
+    font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--gold);
+    padding: 0.3rem 0.7rem; border: 1px solid var(--line); border-radius: 999px;
+    flex: none;
+  }
+</style>

@@ -8,6 +8,13 @@
  * top-right menu icon placeholder (panel + animation come in a later change).
  */
 import Base from '../layouts/Base.astro';
+import '../styles/backbone.css';
+import Experience from '../components/Experience.astro';
+import Projects from '../components/Projects.astro';
+import Writes from '../components/Writes.astro';
+import Chatbot from '../components/Chatbot.astro';
+import HeroBar from '../components/HeroBar.astro';
+import ChatLauncher from '../components/ChatLauncher.astro';
 
 // Single swap point: flip 'B' -> 'A' to A/B the two grades in the real layout.
 // B = graded (moody, default), A = natural dusk.
@@ -61,7 +68,22 @@ const { video, still } = PAIRS[HERO_PAIR];
         </p>
       </div>
     </section>
+
+    <!-- Boundary marquee: the seam between the video hero and the still body. -->
+    <HeroBar />
+
+    <!-- Body rides the same hero still as a continuous backdrop; sections stack
+         and slide over the fixed scene. -->
+    <div class="backbone">
+      <Experience />
+      <Projects />
+      <Writes />
+      <Chatbot />
+    </div>
   </main>
+
+  <!-- Persistent chatbot launcher — present from the hero down. -->
+  <ChatLauncher />
 
   <style>
     /* ── Hero design tokens (scoped to this page) ───────────────── */
@@ -180,5 +202,10 @@ const { video, still } = PAIRS[HERO_PAIR];
         duration: 0.7, stagger: 0.12, ease: 'power3.out', delay: 0.1,
       });
     }
+  </script>
+
+  <!-- Body scroll engine: Lenis smooth scroll + ScrollTrigger reveals. -->
+  <script>
+    import '../scripts/scroll.ts';
   </script>
 </Base>

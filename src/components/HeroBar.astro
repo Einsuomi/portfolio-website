@@ -1,0 +1,64 @@
+---
+/**
+ * Hero boundary bar — a slim marquee strip that sits where the video hero ends
+ * and the still-background body begins, so the change of backdrop reads as an
+ * intentional seam, not a brightness jump. Carries the certifications by name,
+ * scrolling slowly to the right. Under reduced motion it sits still and scrolls
+ * natively. Content is duplicated once so the loop is seamless.
+ */
+import { CERTS } from '../lib/timeline';
+const ITEMS = [...CERTS, ...CERTS]; // doubled for a seamless -50% loop
+---
+
+<div class="bar" role="presentation">
+  <div class="bar__track">
+    <span class="bar__lead">Certified</span>
+    {ITEMS.map((c) => (
+      <>
+        <span class="bar__dot" aria-hidden="true">✦</span>
+        <span class="bar__item">{c}</span>
+      </>
+    ))}
+    <span class="bar__dot" aria-hidden="true">✦</span>
+  </div>
+</div>
+
+<style>
+  .bar {
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+    border-block: 1px solid var(--line);
+    padding-block: 0.85rem;
+  }
+  .bar__track {
+    display: inline-flex;
+    align-items: center;
+    gap: 1.4rem;
+    white-space: nowrap;
+    will-change: transform;
+    /* Slow drift to the right. */
+    animation: bar-marquee 38s linear infinite;
+  }
+  .bar__lead {
+    font-family: var(--font-mono); font-size: 0.72rem;
+    letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold);
+    padding-right: 0.6rem;
+  }
+  .bar__item {
+    font-family: var(--font-mono); font-size: 0.82rem;
+    letter-spacing: 0.04em; color: var(--ink-dim);
+  }
+  .bar__dot { color: var(--gold); font-size: 0.6rem; opacity: 0.8; }
+
+  @keyframes bar-marquee {
+    from { transform: translateX(-50%); }
+    to   { transform: translateX(0); }
+  }
+
+  /* No drift under reduced motion — let it sit and scroll natively if needed. */
+  @media (prefers-reduced-motion: reduce) {
+    .bar { overflow-x: auto; }
+    .bar__track { animation: none; }
+  }
+</style>
