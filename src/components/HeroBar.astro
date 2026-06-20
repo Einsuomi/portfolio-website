@@ -3,25 +3,29 @@
  * Hero boundary bar — a slim marquee strip that sits where the video hero ends
  * and the still-background body begins, so the change of backdrop reads as an
  * intentional seam, not a brightness jump. Carries the certifications by name,
- * scrolling slowly to the right. Under reduced motion it sits still and scrolls
- * natively. Content is duplicated once so the loop is seamless.
+ * each cycle led by a gold "CERTIFIED —" token and drifting slowly right→left.
+ * Under reduced motion it sits still and scrolls natively. The cycle is rendered
+ * twice so the -50% loop is seamless.
  */
 import { CERTS } from '../lib/timeline';
-const ITEMS = [...CERTS, ...CERTS]; // doubled for a seamless -50% loop
 ---
 
 <div class="bar" role="presentation">
   <!-- Gold flow glow drifting behind the names — marks the seam as intentional. -->
   <div class="bar__flow" aria-hidden="true"></div>
   <div class="bar__track">
-    <span class="bar__lead">Certified</span>
-    {ITEMS.map((c) => (
+    {[0, 1].map(() => (
       <>
+        <span class="bar__lead">Certified —</span>
+        {CERTS.map((c, i) => (
+          <>
+            {i > 0 && <span class="bar__dot" aria-hidden="true">✦</span>}
+            <span class="bar__item">{c}</span>
+          </>
+        ))}
         <span class="bar__dot" aria-hidden="true">✦</span>
-        <span class="bar__item">{c}</span>
       </>
     ))}
-    <span class="bar__dot" aria-hidden="true">✦</span>
   </div>
 </div>
 
@@ -41,7 +45,7 @@ const ITEMS = [...CERTS, ...CERTS]; // doubled for a seamless -50% loop
     gap: 1.4rem;
     white-space: nowrap;
     will-change: transform;
-    /* Slow drift to the right. */
+    /* Slow drift right → left. */
     animation: bar-marquee 38s linear infinite;
   }
 
@@ -80,8 +84,8 @@ const ITEMS = [...CERTS, ...CERTS]; // doubled for a seamless -50% loop
   .bar__dot { color: var(--gold); font-size: 0.6rem; opacity: 0.8; }
 
   @keyframes bar-marquee {
-    from { transform: translateX(-50%); }
-    to   { transform: translateX(0); }
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
   }
   @keyframes bar-flow {
     from { background-position: 0% 0; }

@@ -28,6 +28,19 @@
   --font-serif:   'Instrument Serif', Georgia, serif;
   --font-mono:    'JetBrains Mono', ui-monospace, monospace;
   --font-body:    'Inter', system-ui, sans-serif;
+  /* Luxury "identity" serif — hero wordmark + Experience numerals. The duality:
+     this serif = the person; Anton (--font-display) = the machine. */
+  --font-luxe:    'Fraunces Variable', 'Instrument Serif', Georgia, serif;
+
+  /* Crystal-glass surface — a bright top-left sheen over a LIGHT local dim, so a
+     card reads as clear, lively glass yet keeps its text ≥4.5:1 over ANY patch of
+     the scene (carried by the dim + text-shadow + the section scrim, not blur
+     alone). Applied inline by the cards and via the .glass utility below. */
+  --glass-dim:   rgba(8, 7, 6, 0.42);          /* lighter floor = clearer glass */
+  --glass-edge:  rgba(245, 239, 227, 0.30);    /* brighter hairline = crystal edge */
+  --glass-blur:  16px;
+  /* Luminous sheen — brighter at the top-left corner, fading out, = the "crystal". */
+  --glass-sheen: linear-gradient(150deg, rgba(245, 239, 227, 0.14), rgba(245, 239, 227, 0.02) 46%);
 }
 
 .backbone {
@@ -44,6 +57,20 @@
   padding-inline: var(--pad-x);
 }
 .section__inner { max-width: var(--maxw); margin-inline: auto; }
+
+/* ── Crystal-glass surface ───────────────────────────────────────────
+   Frost film + bright edge for the "clear glass" look, riding a local dim
+   that guarantees text contrast over the scene. The dim paints ON the card
+   (above the blurred backdrop), so it doubles as the fallback when
+   backdrop-filter is unsupported. Pair with [data-spotlight] for the gold flow. */
+.glass {
+  background:
+    var(--glass-sheen),
+    linear-gradient(var(--glass-dim), var(--glass-dim));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.05);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.05);
+  border: 1px solid var(--glass-edge);
+}
 
 /* ── Continuous scene backdrop ───────────────────────────────────────
    Every section paints the same still, viewport-fixed, so the scene reads as

@@ -9,11 +9,11 @@
 
 <section class="section section--scene section--stack bot" id="chatbot" aria-label="Ask the assistant">
   <div class="section__inner bot__inner">
-    <p class="kicker" data-reveal>The differentiator</p>
-    <h2 class="bot__head" data-reveal>Don't just read — <em>ask.</em></h2>
+    <p class="kicker" data-reveal>Beyond the CV</p>
+    <h2 class="bot__head" data-reveal>Don't just read — <em>talk.</em></h2>
     <p class="bot__sub" data-reveal>
-      An assistant trained on my work — pipelines, stack, the decisions behind them.
-      Ask it anything about how I build.
+      An assistant that knows the reasoning, not just the résumé — my pipelines, my
+      architecture, the trade-offs behind each decision. Ask it what a CV can't tell you.
     </p>
 
     <!-- Faux composer: clearly inert, labelled coming soon (no dead/erroring UI). -->
@@ -26,29 +26,46 @@
 
 <style>
   .bot { text-align: left; display: flex; flex-direction: column; justify-content: center; }
-  .bot__inner { max-width: 52rem; }
+  /* Wider block so the copy breathes (the sub-line reads as ~2 lines, not a
+     cramped column). The scene now sits more behind the text — by design. */
+  .bot__inner { max-width: 62rem; }
   .bot__head {
     font-family: var(--font-display); font-weight: 400;
-    font-size: clamp(2.6rem, 9vw, 6rem); line-height: 0.95;
-    text-transform: uppercase; color: var(--ink); margin-bottom: 1.2rem;
+    /* Bumped up a step; still one line on desktop within the wider block. */
+    font-size: clamp(2.3rem, 5.8vw, 4.6rem); line-height: 0.95;
+    text-transform: uppercase; color: var(--ink-dim); margin-bottom: 1.2rem;
   }
+  @media (min-width: 40rem) { .bot__head { white-space: nowrap; } }
+  /* "talk." carries the gold accent (the CTA word), tying it to the Talk launcher. */
   .bot__head em { color: var(--gold); font-style: normal; }
   .bot__sub {
     font-family: var(--font-serif);
     font-size: clamp(1.2rem, 2.6vw, 1.7rem); line-height: 1.35;
-    color: var(--ink-dim); max-width: 34ch; margin-bottom: clamp(1.8rem, 4vh, 2.6rem);
+    color: var(--ink-dim); max-width: 58rem; margin-bottom: clamp(1.8rem, 4vh, 2.6rem);
   }
 
+  /* Glass input bar — THE single gold beat of this section: a clear-glass pill
+     ringed and lit in gold so the eye lands on the invitation, not the copy. */
   .bot__composer {
+    box-sizing: border-box; /* so max-width is the TOTAL width (aligns the right edge) */
     display: flex; align-items: center; justify-content: space-between; gap: 1rem;
     padding: 1.1rem 1.3rem;
-    border: 1px solid var(--line); border-radius: 999px;
-    background: var(--bg-raise); max-width: 34rem;
+    border: 1px solid var(--gold); border-radius: 999px;
+    background:
+      var(--glass-sheen),
+      linear-gradient(var(--glass-dim), var(--glass-dim));
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.05);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.05);
+    /* Stronger gold glow — the moody ghost-button feel from the ref. */
+    box-shadow: 0 0 38px rgba(224, 163, 62, 0.40), inset 0 0 16px rgba(224, 163, 62, 0.14);
+    /* Match the widest text line above so their right edges align. */
+    max-width: 54.5rem;
   }
   .bot__placeholder { font-family: var(--font-body); color: var(--ink-faint); }
+  /* Quiet "coming soon" — no gold (scarcity rule); a plain ink/line chip. */
   .bot__badge {
     font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--gold);
+    text-transform: uppercase; color: var(--ink-dim);
     padding: 0.3rem 0.7rem; border: 1px solid var(--line); border-radius: 999px;
     flex: none;
   }
