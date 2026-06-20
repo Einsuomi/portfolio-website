@@ -27,11 +27,12 @@ deployed on Vercel.
 - **Git discipline.** Follows the global rules (feature branch → PR, Tong merges, never
   push `main`, no force-push or destructive actions). Project note: small, clear commits as checkpoints.
 - **The shipped page must actually work for a recruiter on a phone** (a delivery floor,
-  not a constraint on exploration). Content lives in real HTML, not JS-injected; text stays
-  readable over any background; the hero lands name + role + value within ~5s; reduced-motion
-  and WebGL-fail fallbacks give a static, fully usable page. No *accidental* page-level
-  horizontal overflow — but intentional horizontal-scroll sections (e.g. a projects or
-  writes gallery) are welcome when they're touch-friendly.
+  not a constraint on exploration). Content lives in real HTML, not JS-injected *by default* —
+  relax this only when a JS-driven approach clearly delivers a better result, and flag the
+  trade-off when you do; text stays readable over any background; the hero lands name + role +
+  value within ~5s; reduced-motion and WebGL-fail fallbacks give a static, fully usable page.
+  No *accidental* page-level horizontal overflow — but intentional horizontal-scroll sections
+  (e.g. a projects or writes gallery) are welcome when they're touch-friendly.
 - **Heavy WebGL is welcome.** The hero scene can be as ambitious as the taste
   demands; performance (LCP, JS weight) is a target we watch and report, not a gate.
 

@@ -1,0 +1,204 @@
+---
+/**
+ * Native CI/CD delivery diagram for the AWS DLT pipeline page (Fig 02) — a
+ * promotion rail that makes the *process* legible, the piece the data-flow
+ * diagram doesn't show: a push/PR triggers GitHub Actions, which builds one
+ * Databricks Asset Bundle and promotes it across three isolated environments
+ * (dev → test → prod). Each environment is the same two steps — `terraform
+ * apply` then `bundle deploy` — landing on its own S3 + Unity Catalog +
+ * workspace, with a manual approval gate before production.
+ *
+ * Matched visual language with DltArchitecture (cards, gold accents, chevrons),
+ * built from real HTML/SVG (no runtime JS). Reflows from a horizontal rail
+ * (wide) to a stacked column (narrow) via a container query, so it never
+ * produces horizontal overflow.
+ */
+---
+
+<div class="cicd">
+  <!-- ── Trigger → CI ── -->
+  <div class="cicd__lead">
+    <article class="cicd__node">
+      <span class="cicd__tag">Trigger</span>
+      <p class="cicd__node-name">push / PR merge</p>
+    </article>
+
+    <span class="cicd__arrow" aria-hidden="true">
+      <svg class="cicd__chev" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+
+    <article class="cicd__node cicd__node--ci">
+      <span class="cicd__tag">CI</span>
+      <p class="cicd__node-name">GitHub Actions</p>
+      <p class="cicd__node-note">builds the Databricks Asset Bundle</p>
+    </article>
+  </div>
+
+  <!-- connector down into the promotion rail -->
+  <span class="cicd__down" aria-hidden="true">
+    <svg class="cicd__chev cicd__chev--down" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+
+  <!-- ── Promote across isolated environments ── -->
+  <div class="cicd__track">
+    <span class="cicd__track-label">Promote the same bundle across isolated environments</span>
+    <ol class="cicd__envs">
+      <li class="cicd__env">
+        <span class="cicd__env-name">dev</span>
+        <ul class="cicd__steps">
+          <li><strong>terraform apply</strong><span>provision S3 &amp; infra</span></li>
+          <li><strong>bundle deploy</strong><span>job + DLT pipeline</span></li>
+        </ul>
+        <span class="cicd__infra">w_dev · dev S3 · dev workspace</span>
+      </li>
+
+      <span class="cicd__arrow" aria-hidden="true">
+        <svg class="cicd__chev" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+
+      <li class="cicd__env">
+        <span class="cicd__env-name">test</span>
+        <ul class="cicd__steps">
+          <li><strong>terraform apply</strong><span>provision S3 &amp; infra</span></li>
+          <li><strong>bundle deploy</strong><span>job + DLT pipeline</span></li>
+        </ul>
+        <span class="cicd__infra">w_test · test S3 · test workspace</span>
+      </li>
+
+      <!-- approval gate before prod -->
+      <span class="cicd__gate" aria-hidden="true">
+        <svg class="cicd__lock" viewBox="0 0 24 24" focusable="false"><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="5.5" y="11" width="13" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        <span class="cicd__gate-label">approval</span>
+        <svg class="cicd__chev cicd__chev--gate" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+
+      <li class="cicd__env cicd__env--prod">
+        <span class="cicd__env-name">prod</span>
+        <ul class="cicd__steps">
+          <li><strong>terraform apply</strong><span>provision S3 &amp; infra</span></li>
+          <li><strong>bundle deploy</strong><span>job + DLT pipeline</span></li>
+        </ul>
+        <span class="cicd__infra">w_prod · prod S3 · prod workspace</span>
+      </li>
+    </ol>
+  </div>
+</div>
+
+<style>
+  .cicd {
+    display: flex; flex-direction: column;
+    gap: clamp(0.6rem, 1.8vw, 1rem);
+    container-type: inline-size;
+  }
+
+  /* ── Shared node / card ── */
+  .cicd__node,
+  .cicd__env {
+    background: rgba(245, 239, 227, 0.035);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: clamp(0.85rem, 2.1vw, 1.1rem);
+  }
+  .cicd__tag {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 0.4rem;
+  }
+  .cicd__node-name {
+    font-family: var(--font-serif);
+    font-size: clamp(1rem, 2.1vw, 1.18rem);
+    line-height: 1.2; color: var(--ink); margin: 0;
+  }
+  .cicd__node-note {
+    font-family: var(--font-body);
+    font-size: 0.78rem; line-height: 1.4; color: var(--ink-dim);
+    margin: 0.3rem 0 0;
+  }
+
+  /* ── Trigger → CI lead row ── */
+  .cicd__lead {
+    display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem;
+  }
+  .cicd__node--ci { flex: 1; }
+
+  /* ── Connectors ── */
+  .cicd__arrow, .cicd__down {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gold); flex: 0 0 auto;
+  }
+  .cicd__chev { width: 20px; height: 20px; opacity: 0.85; transform: rotate(90deg); }
+  .cicd__chev--down { transform: rotate(90deg); }
+  .cicd__down { padding: 0.1rem 0; }
+
+  /* ── Promotion rail ── */
+  .cicd__track {
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    padding: clamp(0.85rem, 2.1vw, 1.15rem);
+    display: flex; flex-direction: column; gap: 0.7rem;
+  }
+  .cicd__track-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .cicd__envs {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem;
+  }
+  .cicd__env { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; }
+  .cicd__env--prod { border-color: rgba(224, 163, 62, 0.5); }
+  .cicd__env-name {
+    font-family: var(--font-mono);
+    font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink);
+  }
+  .cicd__env--prod .cicd__env-name { color: var(--gold); }
+
+  /* steps within an env */
+  .cicd__steps {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: 0.35rem;
+  }
+  .cicd__steps li {
+    border-left: 2px solid rgba(224, 163, 62, 0.4);
+    padding-left: 0.6rem;
+    display: flex; flex-direction: column; gap: 0.05rem;
+  }
+  .cicd__steps strong {
+    font-family: var(--font-mono); font-weight: 500;
+    font-size: 0.72rem; letter-spacing: 0.02em; color: var(--ink);
+  }
+  .cicd__steps span {
+    font-family: var(--font-body); font-size: 0.72rem; color: var(--ink-dim);
+  }
+  .cicd__infra {
+    font-family: var(--font-mono);
+    font-size: 0.64rem; letter-spacing: 0.02em; color: var(--ink-faint);
+    padding-top: 0.15rem; border-top: 1px solid var(--line);
+  }
+
+  /* ── Approval gate ── */
+  .cicd__gate {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0.35rem; flex: 0 0 auto; color: var(--gold);
+  }
+  .cicd__lock { width: 18px; height: 18px; }
+  .cicd__gate-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--gold);
+  }
+  .cicd__chev--gate { width: 18px; height: 18px; transform: rotate(90deg); opacity: 0.85; }
+
+  /* ── Horizontal rail once the container is wide enough ── */
+  @container (min-width: 46rem) {
+    .cicd__lead { flex-direction: row; align-items: stretch; }
+    .cicd__envs { flex-direction: row; align-items: stretch; }
+    .cicd__chev { transform: none; }              /* point right in the rail */
+    .cicd__chev--gate { transform: none; }
+    .cicd__chev--down { transform: rotate(90deg); } /* the lead→rail link stays vertical */
+    .cicd__gate { flex-direction: column; gap: 0.2rem; }
+  }
+</style>

@@ -1,0 +1,236 @@
+---
+/**
+ * Native architecture diagram for the AWS DLT pipeline page — one unified
+ * left-to-right flow built from real HTML/CSS (no runtime JS, no image): a
+ * recruiter (or a screen reader via the parent's aria-label) reads the whole
+ * pipeline at a glance. Grounded in the actual repo: a control-table-driven
+ * incremental ingestion job → S3 landing → a Delta Live Tables medallion
+ * (bronze → silver → gold) → gold star schema → Power BI, all on a platform
+ * of Terraform + Asset Bundles + GitHub Actions + Unity Catalog.
+ *
+ * Reflows from a 4-column horizontal flow (desktop) to a single stacked column
+ * (mobile), so it never produces horizontal overflow. Themed to the site tokens.
+ *
+ * Connectors are inlined as real <svg> markup (not set:html) so the scoped styles
+ * reach them — CSS points the chevron right in the row layout, down when stacked.
+ */
+---
+
+<div class="dlt">
+  <div class="dlt__flow">
+    <!-- 01 · Ingest -->
+    <article class="dlt__stage">
+      <header class="dlt__head">
+        <span class="dlt__idx">01</span>
+        <h3 class="dlt__title">Ingest</h3>
+      </header>
+      <p class="dlt__node">Fingrid Open API</p>
+      <p class="dlt__detail">A control table drives an incremental, per-dataset loop — paginated and rate-limit aware — pulling only each source's new time-window.</p>
+    </article>
+
+    <span class="dlt__arrow" aria-hidden="true">
+      <svg class="dlt__chev" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+
+    <!-- 02 · Land -->
+    <article class="dlt__stage">
+      <header class="dlt__head">
+        <span class="dlt__idx">02</span>
+        <h3 class="dlt__title">Land</h3>
+      </header>
+      <p class="dlt__node">S3 landing zone</p>
+      <p class="dlt__detail">Raw JSON lands per dataset on S3, picked up downstream by Databricks Auto Loader.</p>
+    </article>
+
+    <span class="dlt__arrow" aria-hidden="true">
+      <svg class="dlt__chev" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+
+    <!-- 03 · Transform — the DLT medallion (the heart) -->
+    <article class="dlt__stage dlt__stage--medallion">
+      <header class="dlt__head">
+        <span class="dlt__idx">03</span>
+        <h3 class="dlt__title">Transform</h3>
+      </header>
+      <p class="dlt__node">Delta Live Tables medallion</p>
+      <ol class="dlt__layers">
+        <li class="dlt__layer dlt__layer--bronze">
+          <span class="dlt__layer-name">Bronze</span>
+          <span class="dlt__layer-note">Auto Loader · dynamic per-dataset tables · quality expectations</span>
+        </li>
+        <li class="dlt__layer dlt__layer--silver">
+          <span class="dlt__layer-name">Silver</span>
+          <span class="dlt__layer-note">Cleanse · flatten JSON · typecast — per-dataset logic map</span>
+        </li>
+        <li class="dlt__layer dlt__layer--gold">
+          <span class="dlt__layer-name">Gold</span>
+          <span class="dlt__layer-note">Auto CDC (SCD-1) into a star schema</span>
+        </li>
+      </ol>
+    </article>
+
+    <span class="dlt__arrow" aria-hidden="true">
+      <svg class="dlt__chev" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+
+    <!-- 04 · Serve -->
+    <article class="dlt__stage">
+      <header class="dlt__head">
+        <span class="dlt__idx">04</span>
+        <h3 class="dlt__title">Serve</h3>
+      </header>
+      <p class="dlt__node">Gold star schema</p>
+      <p class="dlt__detail">Conformed facts &amp; dimensions feed Power BI.</p>
+      <ul class="dlt__schema">
+        <li>fact_consumption</li>
+        <li>fact_generation_forecast</li>
+        <li>dim_date · dim_time</li>
+        <li>dim_customer_type</li>
+      </ul>
+      <p class="dlt__serve">→ Power BI</p>
+    </article>
+  </div>
+
+  <!-- Governance footnote — spans the whole flow underneath. Delivery/CI-CD has
+       its own diagram (Fig 02); here we note only the runtime governance. -->
+  <div class="dlt__platform">
+    <span class="dlt__platform-label">Governance</span>
+    <p class="dlt__platform-note"><strong>Unity Catalog</strong> governs access and lineage across every layer — bronze, silver, and gold.</p>
+  </div>
+</div>
+
+<style>
+  .dlt {
+    --bronze: #c08a4e;
+    --silver: #aab6c4;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1.1rem, 2.6vw, 1.8rem);
+    container-type: inline-size;
+  }
+
+  /* ── Flow: stacked column by default, horizontal row when wide enough ── */
+  .dlt__flow {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+
+  .dlt__stage {
+    flex: 1;
+    background: rgba(245, 239, 227, 0.035);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: clamp(0.9rem, 2.2vw, 1.15rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .dlt__head { display: flex; align-items: baseline; gap: 0.55rem; }
+  .dlt__idx {
+    font-family: var(--font-mono);
+    font-size: 0.62rem; letter-spacing: 0.18em;
+    color: var(--gold);
+  }
+  .dlt__title {
+    font-family: var(--font-display); font-weight: 400;
+    font-size: clamp(1.05rem, 2.4vw, 1.3rem);
+    text-transform: uppercase; letter-spacing: 0.02em;
+    color: var(--ink); margin: 0;
+  }
+  .dlt__node {
+    font-family: var(--font-serif);
+    font-size: clamp(1rem, 2.1vw, 1.15rem);
+    line-height: 1.25; color: var(--ink); margin: 0;
+  }
+  .dlt__detail {
+    font-family: var(--font-body);
+    font-size: 0.82rem; line-height: 1.45;
+    color: var(--ink-dim); margin: 0;
+  }
+
+  /* ── Connectors ── */
+  .dlt__arrow {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gold); flex: 0 0 auto;
+  }
+  .dlt__chev {
+    width: 22px; height: 22px;
+    transform: rotate(90deg);              /* points down in the stacked layout */
+    opacity: 0.85;
+  }
+
+  /* ── Medallion: three tinted layers, each with a left accent rule ── */
+  .dlt__layers {
+    list-style: none; margin: 0.1rem 0 0; padding: 0;
+    display: flex; flex-direction: column; gap: 0.4rem;
+  }
+  .dlt__layer {
+    border-left: 2.5px solid var(--line);
+    padding: 0.4rem 0 0.4rem 0.7rem;
+    display: flex; flex-direction: column; gap: 0.1rem;
+  }
+  .dlt__layer--bronze { border-left-color: var(--bronze); }
+  .dlt__layer--silver { border-left-color: var(--silver); }
+  .dlt__layer--gold   { border-left-color: var(--gold); }
+  .dlt__layer-name {
+    font-family: var(--font-mono);
+    font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink);
+  }
+  .dlt__layer--bronze .dlt__layer-name { color: var(--bronze); }
+  .dlt__layer--silver .dlt__layer-name { color: var(--silver); }
+  .dlt__layer--gold   .dlt__layer-name { color: var(--gold); }
+  .dlt__layer-note {
+    font-family: var(--font-body);
+    font-size: 0.76rem; line-height: 1.4; color: var(--ink-dim);
+  }
+
+  /* ── Serve: schema list + Power BI hand-off ── */
+  .dlt__schema {
+    list-style: none; margin: 0.1rem 0 0; padding: 0;
+    display: flex; flex-direction: column; gap: 0.18rem;
+  }
+  .dlt__schema li {
+    font-family: var(--font-mono);
+    font-size: 0.68rem; letter-spacing: 0.02em;
+    color: var(--ink-dim);
+  }
+  .dlt__serve {
+    font-family: var(--font-mono);
+    font-size: 0.74rem; letter-spacing: 0.04em;
+    color: var(--gold); margin: 0.25rem 0 0;
+  }
+
+  /* ── Governing platform band ── */
+  .dlt__platform {
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    padding: clamp(0.85rem, 2.2vw, 1.1rem);
+    display: flex; flex-direction: column; gap: 0.7rem;
+  }
+  .dlt__platform-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .dlt__platform-note {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 0.8rem; line-height: 1.5; color: var(--ink-dim);
+  }
+  .dlt__platform-note strong {
+    font-family: var(--font-mono); font-weight: 500;
+    font-size: 0.78rem; letter-spacing: 0.03em; color: var(--gold);
+  }
+
+  /* ── Horizontal layout once the container is wide enough ──
+       Container query: the diagram cares about its plate's width, not the
+       viewport — so it stays correct regardless of where it's embedded. */
+  @container (min-width: 46rem) {
+    .dlt__flow { flex-direction: row; align-items: stretch; gap: 0.4rem; }
+    .dlt__chev { transform: none; }        /* points right in the row layout */
+  }
+</style>

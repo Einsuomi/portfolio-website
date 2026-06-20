@@ -79,7 +79,7 @@ export const PROJECTS: Project[] = [
     name: 'AWS DLT Pipeline',
     summary: 'Terraform-provisioned Databricks on AWS running Delta Live Tables under centralized governance.',
     stack: ['Databricks DLT', 'Terraform', 'S3', 'Unity Catalog'],
-    url: 'https://github.com/Einsuomi/AWS-data-engineering-demo',
+    slug: 'aws-dlt-pipeline',   // has an on-site case study → links to its detail page
   },
   {
     name: 'J&D Power BI CI/CD',
