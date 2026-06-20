@@ -1,0 +1,80 @@
+---
+/**
+ * Write detail — "Dropping Security Code Because the Threat Didn't Exist".
+ * Bespoke per-topic body. Different structure from the first write on purpose:
+ * a threat-model framing → a callout on the actual input path → the principle.
+ * Grounded in the homepage summary; deepen with real specifics anytime.
+ */
+import WriteLayout from '../../layouts/WriteLayout.astro';
+---
+
+<WriteLayout
+  slug="dropping-security-code"
+  title="Dropping Security Code Because the Threat Didn't Exist"
+  dek="Defensive code that protected against nothing."
+  description="An engineering-judgment case study: cutting SQL-escaping defensive code after finding every input came from typed config models, not users — the threat surface did not exist."
+>
+  <p class="lead" data-reveal>
+    There was a block of SQL-escaping code wearing the costume of caution. It looked
+    responsible — the kind of thing nobody removes because removing security code
+    feels like the wrong direction. So I did the unglamorous part first: I traced
+    where its inputs actually came from.
+  </p>
+
+  <div class="frame" data-reveal>
+    <span class="frame__label">The input path</span>
+    <p class="frame__text">
+      Every value reaching that query originated in typed configuration models —
+      not user input, not a request body, nothing crossing a trust boundary. The
+      strings the escaping defended against could never arrive.
+    </p>
+  </div>
+
+  <p data-reveal>
+    A defense is only worth its complexity if there's a threat for it to absorb.
+    Here the threat surface didn't exist. The escaping code wasn't a safety margin;
+    it was a misread of where danger lived. Keeping it would have signalled a
+    protection that wasn't real — the worst kind, because it invites you to relax.
+  </p>
+
+  <p class="principle" data-reveal>
+    So it went. The principle I carry out of it: security code earns its keep by
+    matching a real threat model, not by looking defensive. Model the input path
+    before you harden it — and when the threat isn't there, the most secure move
+    is to delete the code that pretended it was.
+  </p>
+</WriteLayout>
+
+<style>
+  .lead {
+    font-family: var(--font-serif);
+    font-size: clamp(1.3rem, 2.8vw, 1.7rem); line-height: 1.45;
+    color: var(--ink); margin-bottom: 1.4rem;
+  }
+  p {
+    font-family: var(--font-body);
+    font-size: clamp(1rem, 2.1vw, 1.12rem); line-height: 1.65;
+    color: var(--ink-dim);
+  }
+  p + p { margin-top: 1.2rem; }
+
+  /* Framed callout — the finding that flips the piece, in a glass plate. */
+  .frame {
+    margin: clamp(2rem, 5vh, 3rem) 0;
+    padding: clamp(1.2rem, 3.5vw, 1.8rem);
+    border: 1px solid var(--glass-edge); border-radius: 14px;
+    background: var(--glass-sheen), linear-gradient(var(--glass-dim), var(--glass-dim));
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.05);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.05);
+  }
+  .frame__label {
+    display: block; font-family: var(--font-mono);
+    font-size: 0.64rem; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 0.7rem;
+  }
+  .frame__text {
+    font-family: var(--font-serif); font-style: italic;
+    font-size: clamp(1.15rem, 2.6vw, 1.5rem); line-height: 1.4; color: var(--ink);
+  }
+  .principle { color: var(--ink); margin-top: clamp(1.6rem, 4vh, 2.4rem); }
+</style>

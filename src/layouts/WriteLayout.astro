@@ -1,0 +1,114 @@
+---
+/**
+ * Thin shell for a write detail page. Unlike the Projects template, this imposes
+ * NO fixed body anatomy — each write authors freeform per-topic HTML into the
+ * default slot. The layout carries only the shared shell: the hero band on the
+ * continuous scene (morphing in from its homepage card), a back-link to the
+ * Writes section, the site fonts + visual language, a constrained reading width,
+ * the scroll + pointer engines, View Transitions, and page meta.
+ */
+import Base from './Base.astro';
+import '../styles/backbone.css';
+
+export interface Props {
+  slug: string;          // morph target — shares transition:name with the homepage card
+  title: string;         // the page wordmark
+  dek?: string;          // optional one-line standfirst under the title
+  description?: string;  // SEO meta; falls back to the dek
+}
+
+const { slug, title, dek, description } = Astro.props;
+---
+
+<Base version="dark" title={`${title} — Tong Nie`} description={description ?? dek} path={`/writes/${slug}`}>
+  <main class="wl">
+    <!-- Hero band: rides the same continuous scene as the whole site and shares a
+         transition:name with its homepage card so the card morphs in. -->
+    <header class="wl__hero section--scene" transition:name={`write-${slug}`}>
+      <div class="wl__hero-inner">
+        <a class="wl__back" href="/#writes"><span aria-hidden="true">←</span> Writes</a>
+        <h1 class="wl__title">{title}</h1>
+        {dek && <p class="wl__dek">{dek}</p>}
+      </div>
+    </header>
+
+    <!-- Bespoke per-topic body. The reading width is constrained here so each
+         write only worries about its content, not the measure. -->
+    <article class="wl__body section--scene">
+      <div class="wl__measure">
+        <slot />
+      </div>
+    </article>
+
+    <!-- Shared close affordance back to the section. -->
+    <footer class="wl__foot section--scene">
+      <div class="wl__measure">
+        <a class="wl__back wl__back--end" href="/#writes"><span aria-hidden="true">←</span> Back to Writes</a>
+      </div>
+    </footer>
+  </main>
+</Base>
+
+<!-- Same scroll engine + reveals as the homepage body; re-inits on every
+     astro:page-load (incl. after a view transition). -->
+<script>
+  import '../scripts/scroll.ts';
+</script>
+<!-- Pointer spotlight (delegated; harmless where there are no spotlight cards). -->
+<script>
+  import '../scripts/pointer.ts';
+</script>
+
+<style>
+  .wl { display: block; color: var(--ink); }
+
+  /* ── Hero band ── heavier local scrim so the title stays legible over the scene. */
+  .wl__hero {
+    --scrim: linear-gradient(to top, rgba(8,7,6,0.93) 0%, rgba(8,7,6,0.5) 44%, rgba(8,7,6,0.62) 100%);
+    position: relative;
+    min-height: 60svh;
+    display: flex; align-items: flex-end;
+    overflow: hidden;
+  }
+  .wl__hero-inner {
+    position: relative; z-index: 2;
+    width: 100%; max-width: var(--maxw); margin-inline: auto;
+    padding: 0 var(--pad-x) clamp(2.5rem, 7vh, 5rem);
+  }
+
+  /* Back link — quiet mono affordance. */
+  .wl__back {
+    display: inline-flex; align-items: center; gap: 0.45rem;
+    font-family: var(--font-mono);
+    font-size: clamp(0.7rem, 1.6vw, 0.8rem);
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-dim); text-decoration: none;
+    margin-bottom: clamp(1.2rem, 3vh, 2rem);
+  }
+  .wl__back:hover { color: var(--gold); }
+  .wl__back span { transition: transform 0.25s ease; }
+  .wl__back:hover span { transform: translateX(-3px); }
+
+  /* Title — the luxury serif identity voice. */
+  .wl__title {
+    font-family: var(--font-luxe); font-weight: 380;
+    font-optical-sizing: auto;
+    font-size: clamp(2.2rem, 6vw, 4.6rem);
+    line-height: 1.04; letter-spacing: 0.01em;
+    color: var(--ink); max-width: 20ch;
+    text-shadow: 0 2px 40px rgba(0,0,0,0.4);
+  }
+  .wl__dek {
+    font-family: var(--font-serif);
+    font-size: clamp(1.2rem, 2.6vw, 1.7rem);
+    line-height: 1.4; max-width: 46ch; color: var(--ink-dim);
+    margin-top: clamp(0.9rem, 2.2vh, 1.4rem);
+  }
+
+  /* ── Body ── constrained reading measure, centered over the scene. */
+  .wl__body { padding-block: clamp(3rem, 8vh, 6rem); }
+  .wl__measure { max-width: 44rem; margin-inline: auto; }
+
+  .wl__foot { padding-block: clamp(2.5rem, 7vh, 5rem); }
+  .wl__back--end { margin-bottom: 0; }
+</style>

@@ -23,6 +23,9 @@
 
   --pad-x:    clamp(1.5rem, 5.5vw, 5rem);
   --maxw:     72rem;
+  /* Shared width for the two aligned late-page blocks: the chatbot composer and
+     the Writes card stack reference this so their right edges stay matched. */
+  --composer-width: 54.5rem;
 
   --font-display: 'Anton', 'Arial Narrow', sans-serif;
   --font-serif:   'Instrument Serif', Georgia, serif;
