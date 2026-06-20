@@ -94,11 +94,11 @@ export const PROJECTS: Project[] = [
   },
 ];
 
-/** One writing piece in the vertical editorial Writes list. */
+/** One writing piece. Each write links to its own on-site detail page at /writes/<slug>. */
 export interface Write {
   title: string;
   summary: string;
-  url?: string;        // omitted/"#" while the piece is not yet published
+  slug: string;        // on-site detail page route (/writes/<slug>)
 }
 
 /** Two engineering-judgment case studies. Extensible — add entries, layout is unchanged. */
@@ -106,10 +106,12 @@ export const WRITES: Write[] = [
   {
     title: 'Deleting a Dependency Instead of Duplicating It',
     summary: 'A cleanup ticket that ended in removing an SDK entirely — a 30-second observability test showed the only feature justifying it was observable nowhere.',
+    slug: 'deleting-a-dependency',
   },
   {
     title: "Dropping Security Code Because the Threat Didn't Exist",
     summary: 'Cut SQL-escaping defensive code after finding every input comes from typed config models, not users. The threat surface did not exist; the code would have protected nothing.',
+    slug: 'dropping-security-code',
   },
 ];
 

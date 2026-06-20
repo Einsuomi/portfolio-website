@@ -1,14 +1,4 @@
-# Writes List
-
-## Purpose
-
-The Writes section — Tong's engineering-judgment case studies presented as ONE transparent-glass
-card holding a numbered list of pieces, sharing the Projects card treatment yet deliberately
-distinct from the horizontal Projects gallery, width-matched to the chatbot composer, and
-extensible (the list scrolls inside the card) as more pieces are written. Each entry links to its
-own on-site detail page.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Single-card numbered list
 The Writes section SHALL present Tong's writing as ONE card containing a numbered list (01, 02,
@@ -51,6 +41,8 @@ SHALL be contained so that scrolling through the list does not scroll the Writes
 #### Scenario: Scroll stays inside the card
 - **WHEN** a recruiter scrolls within the writes list
 - **THEN** the list scrolls inside the card without scrolling the Writes section out of view
+
+## ADDED Requirements
 
 ### Requirement: Glass spotlight card
 The Writes section's single card SHALL render as a transparent glass card consistent with the

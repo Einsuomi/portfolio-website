@@ -1,9 +1,10 @@
 ---
 /**
- * Writes — vertical editorial list of case-study pieces. Text-forward and
- * deliberately distinct from the horizontal Projects gallery. Pieces without a
- * published URL render a non-deceptive "soon" label rather than a dead link.
- * The list is extensible — add entries to WRITES, the layout is unchanged.
+ * Writes — ONE tall transparent-glass card (chatbot-width, the shared
+ * [data-spotlight] card treatment) holding every write as a numbered list
+ * (01, 02, 03…). The list scrolls INSIDE the card only — the scroll is captured
+ * there (overscroll-behavior: contain) so paging through writes never scrolls the
+ * section. Each numbered row links to its own on-site detail page (/writes/<slug>).
  */
 import { WRITES } from '../lib/timeline';
 ---
@@ -12,62 +13,103 @@ import { WRITES } from '../lib/timeline';
   <div class="section__inner">
     <p class="kicker" data-reveal>Writes · decisions in prose</p>
 
-    <ol class="writes__list">
-      {WRITES.map((w) => (
-        <li class="write" data-reveal>
-          <h3 class="write__title">{w.title}</h3>
-          <p class="write__summary">{w.summary}</p>
-          {w.url && w.url !== '#' ? (
-            <a class="write__link" href={w.url}>Read <span aria-hidden="true">→</span></a>
-          ) : (
-            <span class="write__soon">Publishing soon</span>
-          )}
-        </li>
-      ))}
-    </ol>
+    <!-- The single card carries the glass + spotlight treatment; the inner list
+         is the only scroll surface. -->
+    <div class="writes__card" data-spotlight data-reveal>
+      <ol class="writes__list">
+        {WRITES.map((w, i) => (
+          <li class="wrow" transition:name={`write-${w.slug}`}>
+            <a class="wrow__link" href={`/writes/${w.slug}`}>
+              <span class="wrow__num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+              <span class="wrow__text">
+                <span class="wrow__title">{w.title}</span>
+                <span class="wrow__summary">{w.summary}</span>
+              </span>
+              <span class="wrow__arrow" aria-hidden="true">→</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </div>
   </div>
 </section>
 
 <style>
   .writes { display: flex; flex-direction: column; justify-content: center; }
-  /* Translucent panel keeps the editorial text crisp over the scene. */
-  .writes .section__inner {
-    background: rgba(10, 9, 8, 0.5);
-    border: 1px solid var(--line);
+  /* Nudge the whole block (kicker + card) up a little from dead-center. The
+     transform sits on the inner wrapper (no data-reveal) so it never clashes
+     with the reveal animation on the kicker/card. */
+  .writes .section__inner { transform: translateY(clamp(-4rem, -8vh, -1.5rem)); }
+
+  /* The one card — transparent glass over the scene, width-matched to the chatbot
+     composer. overflow: hidden keeps the spotlight ring on its own border (the
+     inner list, not this box, is what scrolls). Caps at a max height, then the
+     list inside scrolls. */
+  .writes__card {
+    width: 100%;
+    max-width: var(--composer-width);
+    background: transparent;
+    border: 1px solid var(--glass-edge);
     border-radius: 18px;
-    padding: clamp(1.5rem, 4vw, 3rem);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.05);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.05);
+    overflow: hidden;
+    /* Tall card; the list within scrolls once content exceeds this. */
+    max-height: min(62vh, 36rem);
+    display: flex;
   }
-  .writes__list { list-style: none; counter-reset: w; }
-  .write {
-    counter-increment: w;
-    padding-block: clamp(2rem, 5vh, 3.2rem);
-    border-top: 1px solid var(--line);
-    position: relative;
+
+  /* The only scroll surface. Scroll is contained so it never bubbles to the page
+     / sticky section while you page through the writes. */
+  .writes__list {
+    list-style: none;
+    width: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: clamp(0.5rem, 2vw, 1rem) clamp(0.75rem, 2.5vw, 1.5rem);
+    scrollbar-width: thin;
   }
-  .write:last-child { border-bottom: 1px solid var(--line); }
-  .write::before {
-    content: counter(w, decimal-leading-zero);
-    font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.1em;
-    color: var(--gold); display: block; margin-bottom: 0.8rem;
+  .writes__list::-webkit-scrollbar { width: 6px; }
+  .writes__list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+
+  /* Each write is a numbered row; a hairline separates them. */
+  .wrow + .wrow .wrow__link { border-top: 1px solid var(--line); }
+  .wrow__link {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: start;
+    gap: clamp(0.9rem, 2.5vw, 1.6rem);
+    padding: clamp(1.3rem, 3.2vw, 1.9rem) clamp(0.4rem, 1.5vw, 0.9rem);
+    color: inherit; text-decoration: none;
+    transition: background 0.2s ease;
   }
-  .write__title {
+  .wrow__link:hover { background: rgba(245, 239, 227, 0.04); }
+
+  /* Index — mono gold numeral, the "01 / 02 / 03" list marker. */
+  .wrow__num {
+    font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.1em;
+    color: var(--gold); padding-top: 0.5rem; line-height: 1;
+  }
+
+  .wrow__text { display: block; }
+  .wrow__title {
+    display: block;
     font-family: var(--font-serif); font-weight: 400;
-    font-size: clamp(1.6rem, 4vw, 2.6rem); line-height: 1.15;
-    color: var(--ink); max-width: 24ch; margin-bottom: 0.8rem;
+    font-size: clamp(1.3rem, 3vw, 1.9rem); line-height: 1.18;
+    color: var(--ink); margin-bottom: 0.5rem;
   }
-  .write__summary {
-    font-family: var(--font-body); font-size: clamp(0.98rem, 2vw, 1.08rem);
-    line-height: 1.55; color: var(--ink-dim); max-width: 60ch;
+  .wrow__summary {
+    display: block;
+    font-family: var(--font-body); font-size: clamp(0.94rem, 2vw, 1.04rem);
+    line-height: 1.55; color: var(--ink-dim);
   }
-  .write__link, .write__soon {
-    display: inline-flex; align-items: center; gap: 0.4rem;
-    font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.05em;
-    margin-top: 1.1rem;
+
+  /* Arrow advances on row hover — the clickable affordance. */
+  .wrow__arrow {
+    font-family: var(--font-mono); color: var(--gold);
+    padding-top: 0.4rem; transition: transform 0.25s ease;
   }
-  .write__link { color: var(--gold); text-decoration: none; }
-  .write__link span { transition: transform 0.25s ease; }
-  .write__link:hover span { transform: translateX(4px); }
-  .write__soon { color: var(--ink-faint); }
+  .wrow__link:hover .wrow__title { color: var(--ink); }
+  .wrow__link:hover .wrow__arrow { transform: translateX(4px); }
 </style>

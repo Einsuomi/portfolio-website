@@ -58,8 +58,9 @@
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.05);
     /* Stronger gold glow — the moody ghost-button feel from the ref. */
     box-shadow: 0 0 38px rgba(224, 163, 62, 0.40), inset 0 0 16px rgba(224, 163, 62, 0.14);
-    /* Match the widest text line above so their right edges align. */
-    max-width: 54.5rem;
+    /* Match the widest text line above so their right edges align — and shared
+       with the Writes card stack via the token so the two blocks line up. */
+    max-width: var(--composer-width);
   }
   .bot__placeholder { font-family: var(--font-body); color: var(--ink-faint); }
   /* Quiet "coming soon" — no gold (scarcity rule); a plain ink/line chip. */

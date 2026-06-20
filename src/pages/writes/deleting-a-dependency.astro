@@ -1,0 +1,70 @@
+---
+/**
+ * Write detail — "Deleting a Dependency Instead of Duplicating It".
+ * Bespoke per-topic body. Structure here: lead → the test → the call → the lesson.
+ * Grounded in the homepage summary; deepen the prose with the real specifics anytime.
+ */
+import WriteLayout from '../../layouts/WriteLayout.astro';
+---
+
+<WriteLayout
+  slug="deleting-a-dependency"
+  title="Deleting a Dependency Instead of Duplicating It"
+  dek="A cleanup ticket that ended in removing an SDK entirely."
+  description="An engineering-judgment case study: a cleanup ticket that ended in removing an SDK entirely — because a 30-second observability test showed the only feature justifying it was observable nowhere."
+>
+  <p class="lead" data-reveal>
+    The ticket asked for the small thing: tidy up a dependency that two services
+    leaned on in slightly different ways. The obvious move was to duplicate the
+    glue so each side owned its copy and the coupling went away.
+  </p>
+
+  <p data-reveal>
+    Before duplicating, I ran a cheaper check first — what does this SDK actually
+    earn its place doing? The case for keeping it rested on a single feature. So I
+    spent thirty seconds asking the only question that mattered: where does that
+    feature show up in production?
+  </p>
+
+  <blockquote class="pull" data-reveal>
+    The one feature justifying the dependency was observable nowhere.
+  </blockquote>
+
+  <p data-reveal>
+    No traces, no logs, no metric moved when it ran. The thing the whole dependency
+    existed to provide left no evidence it was ever used. Duplicating the glue would
+    have carried that dead weight into two places instead of one.
+  </p>
+
+  <p class="lesson" data-reveal>
+    So the cleanup got smaller and more honest: delete the dependency, not duplicate
+    it. The lesson I keep: before you split a thing to make it easier to live with,
+    test whether it should live at all. A 30-second observability check beats a
+    careful refactor of code that earns nothing.
+  </p>
+</WriteLayout>
+
+<style>
+  .lead {
+    font-family: var(--font-serif);
+    font-size: clamp(1.3rem, 2.8vw, 1.7rem); line-height: 1.45;
+    color: var(--ink); margin-bottom: 1.4rem;
+  }
+  p {
+    font-family: var(--font-body);
+    font-size: clamp(1rem, 2.1vw, 1.12rem); line-height: 1.65;
+    color: var(--ink-dim);
+  }
+  p + p { margin-top: 1.2rem; }
+
+  /* Pull-quote — the pivot of the piece, in the gold-rule editorial treatment. */
+  .pull {
+    margin: clamp(2rem, 5vh, 3rem) 0;
+    padding-left: clamp(1rem, 3vw, 1.5rem);
+    border-left: 2px solid var(--gold);
+    font-family: var(--font-serif); font-style: italic;
+    font-size: clamp(1.3rem, 3vw, 1.9rem); line-height: 1.35;
+    color: var(--ink);
+  }
+  .lesson { color: var(--ink); margin-top: clamp(1.6rem, 4vh, 2.4rem); }
+</style>
