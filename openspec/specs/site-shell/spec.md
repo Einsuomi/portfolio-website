@@ -106,3 +106,28 @@ The shell SHALL load the site's typeface families and expose them as design toke
 #### Scenario: Architecture unchanged by the token addition
 - **WHEN** the typeface token is added
 - **THEN** the continuous scene backdrop, the fixed section order, and the scroll engine behave exactly as before
+
+### Requirement: Cross-page view transitions
+The shell SHALL enable client-side View Transitions for same-origin navigation between the
+homepage and project detail pages, so navigation is a seamless animated transition rather than a
+full page reload with a white flash. The continuous scene backdrop SHALL stay visually continuous
+across navigation (it SHALL NOT re-initialize). The scroll/transition engine SHALL re-initialize
+cleanly after a client-side navigation without duplicating or leaking listeners. The refresh intro
+(preloader curtain + hero entrance) SHALL play only on a true page load and SHALL NOT re-trigger on
+in-site navigation, so it can never re-appear and trap the visitor.
+
+#### Scenario: Navigating between homepage and a detail page
+- **WHEN** the recruiter moves from the homepage to a project detail page (or back)
+- **THEN** the transition is animated with no white-flash reload and the scene stays continuous rather than re-initializing
+
+#### Scenario: Scroll engine after navigation
+- **WHEN** a detail page is reached via client-side navigation
+- **THEN** smooth scroll and reveal animations work on the new page without duplicated or broken scroll behavior
+
+#### Scenario: Refresh intro does not re-trap
+- **WHEN** the recruiter navigates back to the homepage from a detail page
+- **THEN** the preloader curtain does not re-appear and the hero copy is visible, with no refresh required
+
+#### Scenario: Transitions are enhancement only
+- **WHEN** the browser does not support view transitions, JavaScript is disabled, or `prefers-reduced-motion: reduce` is set
+- **THEN** navigation falls back to ordinary instant page loads and every page remains fully usable
