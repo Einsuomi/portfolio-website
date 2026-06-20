@@ -41,7 +41,7 @@
 - [x] 7.1 `npm run build` + `astro check` pass
 - [x] 7.2 Manual check on desktop and 390px: legibility (4.5:1 on glass), no accidental horizontal overflow, reduced-motion + autoplay-blocked + no-JS fallbacks intact
 - [x] 7.3 Confirm LCP/JS weight impact of Fraunces is acceptable; report the numbers (68KB latin subset, font-display: swap, non-blocking)
-- [ ] 7.4 Open a PR from `feat/premium-restyle` for Tong to review and merge (awaiting Tong's go-ahead to commit + push)
+- [x] 7.4 Open a PR from `feat/premium-restyle` for Tong to review and merge — PR #12
 
 ## 8. Review revisions (2026-06-20)
 
