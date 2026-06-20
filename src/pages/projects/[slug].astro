@@ -1,0 +1,39 @@
+---
+/**
+ * Project detail route — one static page per project that has detail content.
+ * Static HTML (SSG): the case study is present without client JS; transitions
+ * and reveals are progressive enhancement.
+ */
+import Base from '../../layouts/Base.astro';
+import '../../styles/backbone.css';
+import ProjectDetail from '../../components/ProjectDetail.astro';
+import { PROJECT_DETAILS } from '../../lib/projects';
+
+export function getStaticPaths() {
+  return Object.values(PROJECT_DETAILS).map((detail) => ({
+    params: { slug: detail.slug },
+    props: { detail },
+  }));
+}
+
+const { detail } = Astro.props;
+---
+
+<Base
+  version="dark"
+  title={`${detail.name} — Tong Nie`}
+  description={detail.value}
+  path={`/projects/${detail.slug}`}
+>
+  <ProjectDetail detail={detail} />
+</Base>
+
+<!-- Same scroll engine as the homepage body: smooth scroll + reveal-on-enter.
+     scroll.ts re-initializes on every astro:page-load (incl. after navigation). -->
+<script>
+  import '../../scripts/scroll.ts';
+</script>
+<!-- Pointer spotlight (delegated; harmless where there are no spotlight cards). -->
+<script>
+  import '../../scripts/pointer.ts';
+</script>

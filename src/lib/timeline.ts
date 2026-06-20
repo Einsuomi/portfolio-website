@@ -63,16 +63,17 @@ export interface Project {
   name: string;
   summary: string;
   stack: string[];
-  url?: string;        // detail/repo link where one exists
+  slug?: string;       // on-site detail page route (/projects/<slug>) where one exists
+  url?: string;        // external repo link — only used when there is no detail page
 }
 
 /** Four curated projects — quality over quantity, strongest signal first. */
 export const PROJECTS: Project[] = [
   {
     name: 'Fingrid Data Platform',
-    summary: 'End-to-end Medallion lakehouse with declarative ETL — scalable ingestion to analytics-ready delivery.',
-    stack: ['Databricks', 'DABs', 'Delta Lake', 'Unity Catalog', 'Terraform'],
-    url: 'https://github.com/Einsuomi/Data_Engineering_Fingrid',
+    summary: "Azure lakehouse turning Finland's national grid API into governed, analytics-ready data.",
+    stack: ['Azure Data Factory', 'Databricks', 'Delta Lake', 'Power BI'],
+    slug: 'fingrid-data-platform',   // has an on-site case study → links to its detail page
   },
   {
     name: 'AWS DLT Pipeline',

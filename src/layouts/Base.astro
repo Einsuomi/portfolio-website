@@ -6,6 +6,9 @@
  * light theme will be rebuilt as a colour variant over this same scaffold.
  */
 import TrackBeacon from '../components/TrackBeacon.astro';
+// Client-side View Transitions: same-origin navigation animates instead of a
+// hard reload, so moving home ⇄ project page keeps the scene continuous.
+import { ClientRouter } from 'astro:transitions';
 
 // Self-hosted fonts — no gstatic at runtime (GDPR requirement).
 // Anton is already in package.json; the rest were added this phase.
@@ -26,21 +29,25 @@ import '@fontsource-variable/fraunces/opsz.css';
 
 export interface Props {
   version: 'dark' | 'light';
+  // Per-page SEO overrides (detail pages set these so each URL is indexable).
+  title?: string;
+  description?: string;
+  path?: string;
 }
 
-const { version } = Astro.props;
+const { version, title, description, path } = Astro.props;
 
 // Base background per version prevents a flash before the first CSS paint.
 const BG = version === 'dark' ? '#060606' : '#eaf0f7';
 
-// These OG/meta values are the same regardless of version.
-const TITLE       = 'Tong Nie — Data Engineer & Builder';
-const DESCRIPTION = 'Enterprise data pipelines on Azure, AWS and Databricks. Three years in, lakehouse-deep, building in public from Western Europe.';
+// Page meta — defaults to the home identity, overridable per route.
+const TITLE       = title ?? 'Tong Nie — Data Engineer & Builder';
+const DESCRIPTION = description ?? 'Enterprise data pipelines on Azure, AWS and Databricks. Three years in, lakehouse-deep, building in public from Western Europe.';
 // SITE: real deploy origin for absolute canonical/OG URLs. tongnie.dev is NOT registered
 // yet — leave '' until the production origin (e.g. https://<project>.vercel.app) is known;
 // canonical/OG then fall back to a relative path rather than asserting a dead domain.
 const SITE        = 'https://portfolio-website-umber-one-98.vercel.app';
-const PATH        = version === 'dark' ? '/' : '/light';
+const PATH        = path ?? (version === 'dark' ? '/' : '/light');
 const CANONICAL   = SITE ? SITE + PATH : PATH;
 ---
 
@@ -76,6 +83,10 @@ const CANONICAL   = SITE ? SITE + PATH : PATH;
   <link rel="icon" href="/favicon.ico" />
 
   <meta name="generator" content={Astro.generator} />
+
+  <!-- Animate same-origin navigation (home ⇄ project pages). Degrades to plain
+       navigation where unsupported or under reduced motion. -->
+  <ClientRouter />
 
   <!--
     Inline script: add `js` class to <html> as early as possible so CSS

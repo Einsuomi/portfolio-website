@@ -211,14 +211,10 @@ const { video, still } = PAIRS[HERO_PAIR];
     import SplitType from 'split-type';
 
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const video = document.querySelector<HTMLVideoElement>('.hero__media video');
-
-    // Play only when motion is allowed; a blocked autoplay just leaves the
-    // poster (still) in place — the documented fallback path. Starts behind the
-    // preloader curtain so the scene is already moving when it lifts.
-    if (!reduce && video) {
-      video.play().catch(() => { /* autoplay blocked → poster stays */ });
-    }
+    // Track refresh vs. in-site navigation: the cinematic entrance only plays on
+    // a true page load. With View Transitions this module runs once but fires on
+    // every astro:page-load, so the flag (held in the closure) tells them apart.
+    let firstLoad = true;
 
     // Cinematic entrance: the name wipes in left→right while sliding from the
     // left (the big beat), the eyebrow slides in, and the tagline rises line by
@@ -241,15 +237,38 @@ const { video, still } = PAIRS[HERO_PAIR];
         .to(lines, { yPercent: 0, opacity: 1, duration: 0.7, stagger: 0.12 }, '-=0.5');
     }
 
-    if (!reduce) {
-      let played = false;
-      const go = () => { if (!played) { played = true; playHeroIntro(); } };
-      // The preloader hands off as its curtain starts to lift, so the entrance
-      // overlaps the reveal. The timeout is a fallback if the preloader is
-      // absent or never fires, so the hero copy always appears.
-      window.addEventListener('preloader:done', go, { once: true });
-      window.setTimeout(go, 3200);
+    // Reveal the hero copy instantly, with no entrance — used when arriving via
+    // in-site navigation (no preloader curtain to hand off from).
+    function revealHeroNow() {
+      gsap.set('.hero__eyebrow, .hero__name, .hero__line', { clearProps: 'transform,opacity', opacity: 1 });
     }
+
+    function onPageLoad() {
+      // This listener persists across View Transitions, so it also fires on other
+      // routes (e.g. project pages) where there is no hero — bail in that case.
+      if (!document.querySelector('.hero__name')) return;
+
+      // (Re)start the background video; a blocked autoplay just leaves the poster.
+      const video = document.querySelector<HTMLVideoElement>('.hero__media video');
+      if (!reduce && video) video.play().catch(() => { /* autoplay blocked → poster stays */ });
+
+      // Reduced motion never hid the copy — nothing to reveal.
+      if (reduce) { firstLoad = false; return; }
+
+      if (firstLoad) {
+        // True refresh: overlap the entrance with the preloader curtain lift.
+        let played = false;
+        const go = () => { if (!played) { played = true; playHeroIntro(); } };
+        window.addEventListener('preloader:done', go, { once: true });
+        window.setTimeout(go, 3200); // fallback if the preloader never fires
+      } else {
+        // Back/forward in-site: no curtain, so just show the copy immediately.
+        revealHeroNow();
+      }
+      firstLoad = false;
+    }
+
+    document.addEventListener('astro:page-load', onPageLoad);
   </script>
 
   <!-- Body scroll engine: Lenis smooth scroll + ScrollTrigger reveals. -->
