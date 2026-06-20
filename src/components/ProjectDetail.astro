@@ -7,10 +7,22 @@
  * and screenshots sit in light "schematic plates" so they stay crisp over the dark scene.
  */
 import { Image } from 'astro:assets';
-import type { ProjectDetail } from '../lib/projects';
+import type { ProjectDetail, ArchitectureDiagramId } from '../lib/projects';
+import DltArchitecture from './diagrams/DltArchitecture.astro';
+import DltCicd from './diagrams/DltCicd.astro';
 
 interface Props { detail: ProjectDetail; }
 const { detail } = Astro.props;
+
+// Native architecture diagrams, keyed by id. A page that lists `architectureDiagrams`
+// renders the matching components here, in order; image-only pages skip this entirely.
+const DIAGRAMS: Record<ArchitectureDiagramId, typeof DltArchitecture> = {
+  dlt: DltArchitecture,
+  'dlt-cicd': DltCicd,
+};
+const nativeDiagrams = detail.architectureDiagrams ?? [];
+// Figure numbering spans native diagrams + image diagrams, so the gallery continues it.
+const archCount = detail.architecture.length + nativeDiagrams.length;
 ---
 
 <main class="pd">
@@ -45,11 +57,25 @@ const { detail } = Astro.props;
   <section class="section section--scene pd__section">
     <div class="section__inner">
       <p class="kicker">Architecture</p>
+      {nativeDiagrams.map((diag, i) => {
+        const Diagram = DIAGRAMS[diag.id];
+        return (
+          <figure class="pd__figure" data-reveal>
+            <div class="pd__plate pd__plate--diagram" role="img" aria-label={diag.alt}>
+              <Diagram />
+            </div>
+            <figcaption class="pd__caption">
+              <span class="pd__fig-label">Fig. {String(i + 1).padStart(2, '0')}</span>
+              <span class="pd__fig-text">{diag.caption}</span>
+            </figcaption>
+          </figure>
+        );
+      })}
       {detail.architecture.map((fig, i) => (
         <figure class="pd__figure" data-reveal>
           <div class="pd__plate"><Image src={fig.image} alt={fig.alt} loading="lazy" /></div>
           <figcaption class="pd__caption">
-            <span class="pd__fig-label">Fig. {String(i + 1).padStart(2, '0')}</span>
+            <span class="pd__fig-label">Fig. {String(nativeDiagrams.length + i + 1).padStart(2, '0')}</span>
             <span class="pd__fig-text">{fig.caption}</span>
           </figcaption>
         </figure>
@@ -80,7 +106,7 @@ const { detail } = Astro.props;
         <figure class="pd__figure" data-reveal>
           <div class="pd__plate"><Image src={fig.image} alt={fig.alt} loading="lazy" /></div>
           <figcaption class="pd__caption">
-            <span class="pd__fig-label">Fig. {String(detail.architecture.length + i + 1).padStart(2, '0')}</span>
+            <span class="pd__fig-label">Fig. {String(archCount + i + 1).padStart(2, '0')}</span>
             <span class="pd__fig-text">{fig.caption}</span>
           </figcaption>
         </figure>
@@ -228,6 +254,12 @@ const { detail } = Astro.props;
   .pd__plate img {
     display: block; width: 100%; height: auto; border-radius: 8px;
     box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+  }
+  /* Native-diagram plate: the diagram draws itself in our own palette (no baked-in
+     white screen), so the plate just frames it — a touch more breathing room, no
+     inner image shadow. */
+  .pd__plate--diagram {
+    padding: clamp(1.25rem, 3.5vw, 2.5rem);
   }
   /* Editorial figure note: a mono "Fig. 0N" label (machine voice) over the
      description in Instrument Serif (identity voice), tied to the figure by a
