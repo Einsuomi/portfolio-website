@@ -96,11 +96,19 @@
   import gsap from 'gsap';
 
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const el = document.getElementById('preloader');
+  // The preloader is a REFRESH intro only. With View Transitions this module
+  // runs once but fires on every astro:page-load; the closure flag plays the
+  // curtain on the true first load and hides any freshly-rendered curtain on
+  // in-site navigation so it can never re-appear and trap the visitor.
+  let firstLoad = true;
 
-  // Only run the intro when motion is allowed and the overlay exists; otherwise
-  // it stays display:none and the hero is shown immediately.
-  if (!reduce && el) {
+  function playPreloader() {
+    const el = document.getElementById('preloader');
+    if (!el) return;
+
+    // Reduced motion or any in-site navigation → never show the curtain.
+    if (reduce || !firstLoad) { el.style.display = 'none'; return; }
+
     const num = el.querySelector<HTMLElement>('.preloader__num')!;
     const fill = el.querySelector<HTMLElement>('.preloader__fill')!;
     const inner = el.querySelector<HTMLElement>('.preloader__inner')!;
@@ -125,4 +133,16 @@
       // Remove from the layout so it can never intercept clicks afterwards.
       .set(el, { display: 'none' });
   }
+
+  // Hide a freshly-rendered curtain before paint on in-site navigation.
+  document.addEventListener('astro:after-swap', () => {
+    if (firstLoad) return;
+    const el = document.getElementById('preloader');
+    if (el) el.style.display = 'none';
+  });
+
+  document.addEventListener('astro:page-load', () => {
+    playPreloader();
+    firstLoad = false;
+  });
 </script>

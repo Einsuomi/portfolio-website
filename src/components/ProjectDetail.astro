@@ -1,0 +1,298 @@
+---
+/**
+ * Reusable project case-study template. Data-driven from a single ProjectDetail
+ * object so every project page shares one premium layout. Fixed anatomy:
+ *   hero → context → architecture → how it works → gallery → (model&results) → outcome.
+ * Rides the same fixed scene backdrop as the homepage body (same world). Diagrams
+ * and screenshots sit in light "schematic plates" so they stay crisp over the dark scene.
+ */
+import { Image } from 'astro:assets';
+import type { ProjectDetail } from '../lib/projects';
+
+interface Props { detail: ProjectDetail; }
+const { detail } = Astro.props;
+---
+
+<main class="pd">
+  <!-- ── Hero band: rides the same continuous scene as the whole site, for
+       consistency (the body sections ride it too). Shares a transition:name
+       with its gallery card so the card morphs in. -->
+  <header class="pd__hero section--scene" transition:name={`card-${detail.slug}`}>
+    <div class="pd__hero-inner">
+      <a class="pd__back" href="/#projects"><span aria-hidden="true">←</span> Projects</a>
+      <h1 class="pd__name">{detail.name}</h1>
+      <p class="pd__value">{detail.value}</p>
+      <ul class="pd__stack">
+        {detail.stack.map((s) => <li>{s}</li>)}
+      </ul>
+      {detail.repo && (
+        <a class="pd__repo" href={detail.repo} target="_blank" rel="noopener noreferrer">
+          View repo <span aria-hidden="true">→</span>
+        </a>
+      )}
+    </div>
+  </header>
+
+  <!-- ── Context / problem ─────────────────────────────────────────── -->
+  <section class="section section--scene pd__section">
+    <div class="section__inner">
+      <p class="kicker">The problem</p>
+      {detail.context.map((p) => <p class="pd__lead" data-reveal>{p}</p>)}
+    </div>
+  </section>
+
+  <!-- ── Architecture (full-bleed diagrams in light plates) ────────── -->
+  <section class="section section--scene pd__section">
+    <div class="section__inner">
+      <p class="kicker">Architecture</p>
+      {detail.architecture.map((fig, i) => (
+        <figure class="pd__figure" data-reveal>
+          <div class="pd__plate"><Image src={fig.image} alt={fig.alt} loading="lazy" /></div>
+          <figcaption class="pd__caption">
+            <span class="pd__fig-label">Fig. {String(i + 1).padStart(2, '0')}</span>
+            <span class="pd__fig-text">{fig.caption}</span>
+          </figcaption>
+        </figure>
+      ))}
+    </div>
+  </section>
+
+  <!-- ── How it works ──────────────────────────────────────────────── -->
+  <section class="section section--scene pd__section">
+    <div class="section__inner">
+      <p class="kicker">How it works</p>
+      <ol class="pd__points">
+        {detail.howItWorks.map((pt) => (
+          <li data-reveal>
+            <h3 class="pd__point-title">{pt.title}</h3>
+            <p class="pd__point-body">{pt.body}</p>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <!-- ── Gallery: proof screenshots ────────────────────────────────── -->
+  <section class="section section--scene pd__section">
+    <div class="section__inner">
+      <p class="kicker">Inside the pipeline</p>
+      {detail.gallery.map((fig, i) => (
+        <figure class="pd__figure" data-reveal>
+          <div class="pd__plate"><Image src={fig.image} alt={fig.alt} loading="lazy" /></div>
+          <figcaption class="pd__caption">
+            <span class="pd__fig-label">Fig. {String(detail.architecture.length + i + 1).padStart(2, '0')}</span>
+            <span class="pd__fig-text">{fig.caption}</span>
+          </figcaption>
+        </figure>
+      ))}
+    </div>
+  </section>
+
+  <!-- ── Model & Results (optional — reserved for ML/DS pages) ──────── -->
+  {detail.modelResults && (
+    <section class="section section--scene pd__section">
+      <div class="section__inner">
+        <p class="kicker">Model & results</p>
+        <p class="pd__lead" data-reveal><strong>Problem.</strong> {detail.modelResults.problem}</p>
+        <p class="pd__lead" data-reveal><strong>Data.</strong> {detail.modelResults.data}</p>
+        <p class="pd__lead" data-reveal><strong>Features.</strong> {detail.modelResults.features}</p>
+        <p class="pd__lead" data-reveal><strong>Model.</strong> {detail.modelResults.model}</p>
+        <ul class="pd__metrics" data-reveal>
+          {detail.modelResults.metrics.map((m) => (
+            <li><span class="pd__metric-val">{m.value}</span><span class="pd__metric-label">{m.label}</span></li>
+          ))}
+        </ul>
+        <p class="pd__lead" data-reveal>{detail.modelResults.takeaway}</p>
+      </div>
+    </section>
+  )}
+
+  <!-- ── Outcome + close ───────────────────────────────────────────── -->
+  <section class="section section--scene pd__section pd__section--last">
+    <div class="section__inner">
+      <p class="kicker">Outcome</p>
+      {detail.outcome.map((p) => <p class="pd__lead" data-reveal>{p}</p>)}
+      <div class="pd__cta" data-reveal>
+        {detail.repo && (
+          <a class="pd__repo" href={detail.repo} target="_blank" rel="noopener noreferrer">
+            View the code <span aria-hidden="true">→</span>
+          </a>
+        )}
+        <a class="pd__back pd__back--end" href="/#projects"><span aria-hidden="true">←</span> Back to projects</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<style>
+  .pd { display: block; color: var(--ink); }
+
+  /* ── Hero band ─────────────────────────────────────────────────────
+     Rides the same fixed scene as the body (via .section--scene) with a
+     heavier local scrim so the big title stays legible — keeps the page in
+     one continuous world rather than a project-specific image. */
+  .pd__hero {
+    --scrim: linear-gradient(to top, rgba(8,7,6,0.93) 0%, rgba(8,7,6,0.5) 44%, rgba(8,7,6,0.62) 100%);
+    position: relative;
+    min-height: 72svh;
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+  }
+  .pd__hero-inner {
+    position: relative; z-index: 2;
+    width: 100%;
+    max-width: var(--maxw);
+    margin-inline: auto;
+    padding: 0 var(--pad-x) clamp(2.5rem, 7vh, 5rem);
+  }
+
+  /* Back link — quiet mono affordance, top of the hero copy. */
+  .pd__back {
+    display: inline-flex; align-items: center; gap: 0.45rem;
+    font-family: var(--font-mono);
+    font-size: clamp(0.7rem, 1.6vw, 0.8rem);
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-dim); text-decoration: none;
+    margin-bottom: clamp(1.2rem, 3vh, 2rem);
+  }
+  .pd__back:hover { color: var(--gold); }
+  .pd__back span { transition: transform 0.25s ease; }
+  .pd__back:hover span { transform: translateX(-3px); }
+
+  /* Name — the luxury serif identity voice (this is the project's name). */
+  .pd__name {
+    font-family: var(--font-luxe); font-weight: 380;
+    font-optical-sizing: auto;
+    font-size: clamp(2.6rem, 7vw, 5.4rem);
+    line-height: 1.02; letter-spacing: 0.01em;
+    color: var(--ink);
+    text-shadow: 0 2px 40px rgba(0,0,0,0.4);
+  }
+  .pd__value {
+    font-family: var(--font-serif);
+    font-size: clamp(1.2rem, 2.6vw, 1.7rem);
+    line-height: 1.4; max-width: 46ch;
+    color: var(--ink-dim);
+    margin-top: clamp(0.9rem, 2.2vh, 1.4rem);
+  }
+
+  /* Stack chips — mono machine voice. */
+  .pd__stack {
+    list-style: none; padding: 0; display: flex; flex-wrap: wrap;
+    gap: 0.4rem; margin-top: clamp(1.2rem, 3vh, 1.8rem);
+  }
+  .pd__stack li {
+    font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.04em;
+    color: var(--ink-dim); padding: 0.3rem 0.55rem;
+    border: 1px solid var(--line); border-radius: 999px; white-space: nowrap;
+  }
+
+  .pd__repo {
+    display: inline-flex; align-items: center; gap: 0.45rem;
+    font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.05em;
+    color: var(--gold); text-decoration: none; margin-top: clamp(1.2rem, 3vh, 1.8rem);
+  }
+  .pd__repo span { transition: transform 0.25s ease; }
+  .pd__repo:hover span { transform: translateX(4px); }
+
+  /* ── Body sections ─────────────────────────────────────────────── */
+  .pd__section { padding-block: clamp(3.5rem, 9vh, 7rem); }
+  .pd__section--last { padding-bottom: clamp(5rem, 14vh, 10rem); }
+
+  .pd__lead {
+    font-family: var(--font-serif);
+    font-size: clamp(1.15rem, 2.4vw, 1.5rem);
+    line-height: 1.5; max-width: 60ch;
+    color: var(--ink);
+  }
+  .pd__lead + .pd__lead { margin-top: 1rem; }
+  .pd__lead strong { color: var(--gold); font-weight: inherit; }
+
+  /* ── Schematic figure ──────────────────────────────────────────────
+     The supplied diagrams/screenshots have solid white backgrounds with dark
+     text baked in, so they can't go transparent or onto the dark scene directly.
+     Instead each sits in a DARK translucent panel (aligned to our background) as
+     a contained light "screen", matted by the dark frame so it no longer reads as
+     a stark white block. The caption sits below, on the scene. */
+  .pd__figure { margin: 0; }
+  .pd__figure + .pd__figure { margin-top: clamp(2.4rem, 6vh, 4rem); }
+  .pd__plate {
+    background: var(--bg-raise);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: clamp(1rem, 3vw, 2rem);
+    -webkit-backdrop-filter: blur(10px) saturate(1.05);
+    backdrop-filter: blur(10px) saturate(1.05);
+  }
+  .pd__plate img {
+    display: block; width: 100%; height: auto; border-radius: 8px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+  }
+  /* Editorial figure note: a mono "Fig. 0N" label (machine voice) over the
+     description in Instrument Serif (identity voice), tied to the figure by a
+     gold hairline rule that echoes the section kicker. Reads as a curated
+     annotation, not UI body text. */
+  .pd__caption {
+    margin-top: clamp(1rem, 2.5vh, 1.5rem);
+    padding-left: clamp(0.9rem, 2vw, 1.25rem);
+    border-left: 1.5px solid rgba(224, 163, 62, 0.55);
+    max-width: 60ch;
+  }
+  .pd__fig-label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.64rem; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.55rem;
+  }
+  .pd__fig-text {
+    display: block;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: clamp(1.02rem, 2vw, 1.22rem);
+    line-height: 1.5; color: var(--ink-dim);
+  }
+
+  /* ── How it works ──────────────────────────────────────────────── */
+  .pd__points {
+    list-style: none; padding: 0; margin: 0;
+    display: grid; gap: clamp(1.4rem, 3.5vh, 2.4rem);
+  }
+  @media (min-width: 48rem) {
+    .pd__points { grid-template-columns: 1fr 1fr; gap: clamp(1.8rem, 3vw, 2.8rem); }
+  }
+  .pd__point-title {
+    font-family: var(--font-display); font-weight: 400;
+    font-size: clamp(1.15rem, 2.4vw, 1.5rem);
+    text-transform: uppercase; letter-spacing: 0.01em;
+    color: var(--ink); margin-bottom: 0.5rem;
+  }
+  .pd__point-body {
+    font-family: var(--font-body);
+    font-size: clamp(0.98rem, 2vw, 1.08rem);
+    line-height: 1.55; color: var(--ink-dim); max-width: 52ch;
+  }
+
+  /* ── Model & results metrics (reserved block) ──────────────────── */
+  .pd__metrics {
+    list-style: none; padding: 0; display: flex; flex-wrap: wrap;
+    gap: clamp(1.4rem, 4vw, 3rem); margin: 1.6rem 0;
+  }
+  .pd__metric-val {
+    display: block; font-family: var(--font-luxe); font-weight: 400;
+    font-size: clamp(2rem, 5vw, 3rem); color: var(--gold); line-height: 1;
+  }
+  .pd__metric-label {
+    display: block; font-family: var(--font-mono); font-size: 0.72rem;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint);
+    margin-top: 0.4rem;
+  }
+
+  /* ── Close CTA ─────────────────────────────────────────────────── */
+  .pd__cta {
+    display: flex; flex-wrap: wrap; align-items: center; gap: clamp(1rem, 4vw, 2.2rem);
+    margin-top: clamp(2rem, 5vh, 3.2rem);
+  }
+  .pd__back--end { margin-bottom: 0; }
+</style>
