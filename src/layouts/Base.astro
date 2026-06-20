@@ -20,6 +20,9 @@ import '@fontsource/jetbrains-mono/400.css';
 import '@fontsource/jetbrains-mono/500.css';
 // Instrument Serif — refined editorial serif for the hero day/night line.
 import '@fontsource/instrument-serif/400.css';
+// Fraunces (variable, optical-size axis) — the luxury serif "identity" voice:
+// hero wordmark + Experience numerals. opsz subset auto-tunes contrast at display sizes.
+import '@fontsource-variable/fraunces/opsz.css';
 
 export interface Props {
   version: 'dark' | 'light';
@@ -88,8 +91,10 @@ const CANONICAL   = SITE ? SITE + PATH : PATH;
   <style define:vars={{ BG }}>
     /* Base reset and background — scoped per version via data-version. */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { background: var(--BG); }
-    body { background: var(--BG); }
+    /* overflow-x: clip kills any sub-pixel horizontal jitter without creating a
+       scroll container — so it never breaks the sticky-stack (hidden would). */
+    html { background: var(--BG); overflow-x: clip; }
+    body { background: var(--BG); overflow-x: clip; }
     :focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
   </style>
 </head>

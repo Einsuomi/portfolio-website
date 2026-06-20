@@ -59,11 +59,13 @@ const { video, still } = PAIRS[HERO_PAIR];
       </button>
 
       <!-- Hero copy lives in real HTML so it's present without/before JS. -->
+      <!-- Eyebrow is pinned top-left (its own element); the name + value block
+           rides centered, lifted to sit around the top of the doorway. -->
+      <p class="hero__eyebrow" data-anim>
+        <span class="hero__rule" aria-hidden="true"></span>
+        Building in public — Western Europe
+      </p>
       <div class="hero__inner">
-        <p class="hero__eyebrow" data-anim>
-          <span class="hero__rule" aria-hidden="true"></span>
-          Building in public — Western Europe
-        </p>
         <h1 class="hero__name" data-anim>Tong Nie</h1>
         <p class="hero__line" data-anim>
           By day, I orchestrate data.<br />
@@ -101,7 +103,7 @@ const { video, still } = PAIRS[HERO_PAIR];
       min-height: 100svh;
       overflow: hidden;
       display: flex;
-      align-items: flex-end; /* cinematic: copy anchored to the lower-left */
+      align-items: center; /* name/value block rides the vertical middle, lifted up */
     }
 
     /* ── Background video / still ───────────────────────────────── */
@@ -144,29 +146,47 @@ const { video, still } = PAIRS[HERO_PAIR];
     /* ── Copy block ─────────────────────────────────────────────── */
     .hero__inner {
       position: relative; z-index: 2;
-      padding: 0 clamp(1.5rem, 5.5vw, 5rem) clamp(2.5rem, 8vh, 6rem);
+      padding: 0 clamp(1.5rem, 5.5vw, 5rem);
       max-width: 60rem;
+      transform: translateY(-7vh); /* lift the name to ~ the top of the doorway */
     }
 
+    /* Eyebrow pinned to the top-left (back where it reads as a standing label). */
     .hero__eyebrow {
+      position: absolute; z-index: 2;
+      top: clamp(4.5rem, 9vh, 7rem);
+      left: clamp(1.5rem, 5.5vw, 5rem);
       display: flex; align-items: center; gap: 0.75rem;
       font-family: 'JetBrains Mono', ui-monospace, monospace;
       font-size: clamp(0.7rem, 1.6vw, 0.82rem);
       font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase;
       color: var(--hero-gold);
-      margin-bottom: clamp(0.9rem, 2vh, 1.4rem);
     }
     .hero__rule {
       display: block; width: clamp(28px, 6vw, 52px); height: 1px;
       background: var(--hero-gold); flex: none;
     }
 
+    /* Luxury serif wordmark — Fraunces, the "identity" voice. Optical sizing
+       (opsz axis) auto-raises the thick/thin contrast at display scale, and the
+       open letter-spacing gives the spaced-caps luxury-brand feel. */
     .hero__name {
-      font-family: 'Anton', 'Arial Narrow', sans-serif; font-weight: 400;
-      font-size: clamp(3.5rem, 14vw, 11rem);
-      line-height: 0.9; letter-spacing: 0.01em; text-transform: uppercase;
+      font-family: var(--font-luxe); font-weight: 360;
+      font-optical-sizing: auto;
+      /* Sized to stay one line in the left region, clear of the central doorway. */
+      font-size: clamp(2.8rem, 8.2vw, 6.6rem);
+      line-height: 1; letter-spacing: 0.04em; text-transform: uppercase;
+      white-space: nowrap;
       color: var(--hero-ink);
       text-shadow: 0 2px 40px rgba(0,0,0,0.35); /* extra safety over bright frames */
+    }
+    /* Mobile reflow: tighten the spaced caps and ease the size step so the
+       wordmark never breaks awkwardly or pushes the page sideways. */
+    @media (max-width: 30rem) {
+      .hero__name {
+        letter-spacing: 0.02em; font-size: clamp(2.9rem, 15vw, 4.5rem);
+        white-space: normal; /* allow TONG / NIE to stack if it can't fit one line */
+      }
     }
 
     .hero__line {
