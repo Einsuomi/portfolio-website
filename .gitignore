@@ -45,3 +45,9 @@ pnpm-debug.log*
 
 # retired-version snapshots — local backup copies (also in git history)
 backups/
+
+# Synced wiki — local-only build input for the chatbot corpus. Includes personal
+# (non-confidential) pages we must NOT publish to this public repo. The CURATED
+# corpus is compiled from the allowlist into knowledge.generated.ts, which IS
+# committed (only the professional sources) and is what Vercel builds from.
+src/content/wiki/

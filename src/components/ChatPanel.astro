@@ -1,0 +1,307 @@
+---
+/**
+ * Floating chat panel — the one live chat surface. Opened from anywhere via the
+ * `chat:open` custom event (the "Talk" launcher and the chatbot section both
+ * dispatch it). Streams replies from /api/chat over SSE, carries the privacy
+ * notice + opt-out, and exports the transcript (Markdown now, PDF lazy-loaded).
+ *
+ * Progressive enhancement: the panel is inert markup until the script wires it,
+ * so without JS it simply never opens (the launcher/section keep their no-JS
+ * fallbacks). Respects prefers-reduced-motion.
+ */
+---
+
+<!-- Dim backdrop, shown only in full-window mode (click to close). -->
+<div class="cp-backdrop" id="chat-backdrop" hidden></div>
+
+<div class="cp" id="chat-panel" role="dialog" aria-modal="true" aria-label="Chat with Tong's assistant" aria-hidden="true" hidden>
+  <div class="cp__head">
+    <span class="cp__title">Ask about Tong</span>
+    <button class="cp__close" type="button" aria-label="Close chat">✕</button>
+  </div>
+
+  <p class="cp__notice">
+    By chatting, you agree this conversation may be saved to improve the assistant —
+    please don't share sensitive personal info. <a href="/privacy">Privacy</a>.
+  </p>
+
+  <div class="cp__log" aria-live="polite">
+    <div class="cp__msg cp__msg--bot">
+      <p>Hi — I'm Tong's assistant. Ask me about his projects, the decisions behind them, or how he works.</p>
+    </div>
+  </div>
+
+  <form class="cp__form">
+    <textarea class="cp__input" rows="1" placeholder="Ask about my Databricks work…" aria-label="Your message" maxlength="2000"></textarea>
+    <button class="cp__send" type="submit" aria-label="Send">Send</button>
+  </form>
+
+  <div class="cp__foot">
+    <button class="cp__dl" type="button" data-fmt="md">Download .md</button>
+    <button class="cp__dl" type="button" data-fmt="pdf">Download PDF</button>
+  </div>
+</div>
+
+<style>
+  .cp {
+    position: fixed; z-index: 60;
+    right: clamp(1rem, 3vw, 1.8rem); bottom: clamp(4.5rem, 10vh, 5.5rem);
+    width: min(26rem, calc(100vw - 2rem)); max-height: min(34rem, 80vh);
+    /* Hidden until opened. Must be display:none by default — a bare `display:flex`
+       here would override the [hidden] attribute and leave the panel always on. */
+    display: none; flex-direction: column;
+    background:
+      var(--glass-sheen),
+      linear-gradient(rgba(8, 7, 6, 0.82), rgba(8, 7, 6, 0.82));
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.05);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.05);
+    border: 1px solid var(--glass-edge); border-radius: 1rem;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+    color: var(--ink); overflow: hidden;
+  }
+  .cp.is-open { display: flex; animation: cp-in 0.22s ease; }
+  @keyframes cp-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .cp.is-open { animation: none; } }
+
+  /* Full-window mode: a large centred modal. inset:0 + margin:auto centres a fixed
+     box on both axes; this overrides the corner positioning above. */
+  .cp.cp--full {
+    top: 0; right: 0; bottom: 0; left: 0; margin: auto;
+    width: min(48rem, 92vw); height: min(80vh, 44rem); max-height: none;
+    border-radius: 1.2rem;
+  }
+  .cp-backdrop {
+    position: fixed; inset: 0; z-index: 59;
+    background: rgba(6, 5, 4, 0.62); backdrop-filter: blur(2px);
+    display: none;
+  }
+  .cp-backdrop.is-open { display: block; }
+  @media (prefers-reduced-motion: no-preference) {
+    .cp-backdrop.is-open { animation: cp-fade 0.2s ease; }
+  }
+  @keyframes cp-fade { from { opacity: 0; } to { opacity: 1; } }
+
+  .cp__head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.85rem 1rem; border-bottom: 1px solid var(--line, rgba(245,239,227,0.12));
+  }
+  .cp__title { font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); }
+  .cp__close { background: none; border: none; color: var(--ink-dim); font-size: 1rem; cursor: pointer; line-height: 1; padding: 0.2rem; }
+  .cp__close:hover { color: var(--ink); }
+
+  .cp__notice {
+    font-family: var(--font-body); font-size: 0.7rem; line-height: 1.4;
+    color: var(--ink-faint); padding: 0.6rem 1rem; margin: 0;
+    border-bottom: 1px solid var(--line, rgba(245,239,227,0.08));
+  }
+  .cp__notice a { color: var(--ink-dim); text-decoration: underline; }
+
+  .cp__log { flex: 1; overflow-y: auto; padding: 0.9rem 1rem; display: flex; flex-direction: column; gap: 0.7rem; }
+  .cp__msg { font-family: var(--font-body); font-size: 0.9rem; line-height: 1.45; max-width: 88%; }
+  .cp__msg p { margin: 0; white-space: pre-wrap; }
+  .cp__msg--user { align-self: flex-end; background: rgba(224,163,62,0.14); border: 1px solid rgba(224,163,62,0.3); color: var(--ink); padding: 0.5rem 0.75rem; border-radius: 0.8rem 0.8rem 0.2rem 0.8rem; }
+  .cp__msg--bot { align-self: flex-start; color: var(--ink-dim); }
+
+  .cp__form { display: flex; gap: 0.5rem; padding: 0.7rem 1rem; border-top: 1px solid var(--line, rgba(245,239,227,0.12)); }
+  .cp__input {
+    flex: 1; resize: none; background: rgba(245,239,227,0.06); color: var(--ink);
+    border: 1px solid var(--glass-edge); border-radius: 0.6rem; padding: 0.55rem 0.7rem;
+    font-family: var(--font-body); font-size: 0.9rem; max-height: 6rem;
+  }
+  .cp__input:focus { outline: none; border-color: var(--gold); }
+  .cp__send {
+    flex: none; background: var(--gold); color: #1a1206; border: none; border-radius: 0.6rem;
+    padding: 0 0.9rem; font-family: var(--font-mono); font-size: 0.78rem; font-weight: 500; cursor: pointer;
+  }
+  .cp__send:disabled { opacity: 0.5; cursor: default; }
+
+  .cp__foot { display: flex; gap: 0.6rem; padding: 0.5rem 1rem 0.7rem; }
+  .cp__dl {
+    background: none; border: 1px solid var(--line, rgba(245,239,227,0.18)); color: var(--ink-faint);
+    border-radius: 999px; padding: 0.3rem 0.7rem; font-family: var(--font-mono); font-size: 0.64rem;
+    letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;
+  }
+  .cp__dl:hover { color: var(--ink-dim); border-color: var(--ink-faint); }
+
+  /* Phone: dock to a near-fullscreen sheet. */
+  @media (max-width: 30rem) {
+    .cp { right: 0.5rem; left: 0.5rem; bottom: 0.5rem; width: auto; max-height: 88vh; }
+  }
+</style>
+
+<script>
+  const panelEl = document.getElementById('chat-panel');
+  if (panelEl) initChat(panelEl);
+
+  function initChat(panel: HTMLElement) {
+    const log = panel.querySelector('.cp__log') as HTMLElement;
+    const form = panel.querySelector('.cp__form') as HTMLFormElement;
+    const input = panel.querySelector('.cp__input') as HTMLTextAreaElement;
+    const sendBtn = panel.querySelector('.cp__send') as HTMLButtonElement;
+    const closeBtn = panel.querySelector('.cp__close') as HTMLButtonElement;
+    const backdrop = document.getElementById('chat-backdrop');
+
+    // Per-visit session id + running history (stateless server; we resend each turn).
+    const sessionId = crypto.randomUUID();
+    const history: { role: 'user' | 'assistant'; content: string }[] = [];
+    let openedFrom = 'unknown';
+    let busy = false;
+
+    // Grow the panel into the full-window modal (with backdrop).
+    function goFull() {
+      panel.classList.add('cp--full');
+      backdrop?.removeAttribute('hidden');
+      backdrop?.classList.add('is-open');
+    }
+    function open(from: string, full?: boolean) {
+      openedFrom = from || 'unknown';
+      panel.hidden = false;
+      panel.setAttribute('aria-hidden', 'false');
+      panel.classList.add('is-open');
+      if (full) goFull();
+      input.focus();
+    }
+    function close() {
+      panel.classList.remove('is-open', 'cp--full');
+      panel.setAttribute('aria-hidden', 'true');
+      panel.hidden = true;
+      backdrop?.classList.remove('is-open');
+      backdrop?.setAttribute('hidden', '');
+    }
+
+    document.addEventListener('chat:open', (e) => {
+      const d = (e as CustomEvent).detail || {};
+      open(d.from, d.full);
+    });
+    closeBtn.addEventListener('click', close);
+    backdrop?.addEventListener('click', close);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !panel.hidden) close();
+    });
+
+    function addMsg(role: 'user' | 'bot', text: string): HTMLElement {
+      const el = document.createElement('div');
+      el.className = `cp__msg cp__msg--${role}`;
+      const p = document.createElement('p');
+      p.textContent = text;
+      el.appendChild(p);
+      log.appendChild(el);
+      log.scrollTop = log.scrollHeight;
+      return p;
+    }
+
+    async function send(text: string) {
+      if (busy || !text.trim()) return;
+      // Sending from the compact corner panel grows it into the full window.
+      if (!panel.classList.contains('cp--full')) goFull();
+      busy = true; sendBtn.disabled = true;
+      addMsg('user', text);
+      history.push({ role: 'user', content: text });
+      const botP = addMsg('bot', '');
+      let acc = '';
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: history, sessionId, openedFrom }),
+        });
+
+        if (!res.ok || !res.body) {
+          const data = await res.json().catch(() => ({}));
+          const msg =
+            data.blocked === 'rate' ? "You're sending messages quickly — give it a few seconds." :
+            data.blocked === 'turns' ? 'This conversation has reached its limit — you can download it below.' :
+            (data.blocked === 'budget' || data.blocked === 'unavailable') ? 'The assistant is taking a short break — please try again later.' :
+            'Something went wrong — please try again.';
+          botP.textContent = msg;
+          history.pop(); // don't keep the unanswered turn
+          return;
+        }
+
+        // Read the SSE stream.
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const parts = buf.split('\n\n');
+          buf = parts.pop() || '';
+          for (const part of parts) {
+            const line = part.trim();
+            if (!line.startsWith('data:')) continue;
+            const evt = JSON.parse(line.slice(5).trim());
+            if (evt.type === 'token') { acc += evt.text; botP.textContent = acc; log.scrollTop = log.scrollHeight; }
+            else if (evt.type === 'refusal') { acc = evt.text; botP.textContent = acc; }
+            else if (evt.type === 'error') { botP.textContent = evt.text; }
+          }
+        }
+        if (acc) history.push({ role: 'assistant', content: acc });
+        else history.pop();
+      } catch {
+        botP.textContent = 'Something went wrong — please try again.';
+        history.pop();
+      } finally {
+        busy = false; sendBtn.disabled = false;
+      }
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = input.value;
+      input.value = '';
+      input.style.height = 'auto';
+      send(text);
+    });
+    // Enter to send, Shift+Enter for newline; auto-grow.
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
+    });
+    input.addEventListener('input', () => {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 96) + 'px';
+    });
+
+    // --- transcript download ---------------------------------------------------
+    function transcriptText(): string {
+      const lines = ['# Chat with Tong\'s assistant', ''];
+      for (const m of history) lines.push(`**${m.role === 'user' ? 'You' : 'Assistant'}:** ${m.content}`, '');
+      return lines.join('\n');
+    }
+    function downloadBlob(blob: Blob, name: string) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name; a.click();
+      URL.revokeObjectURL(url);
+    }
+    panel.querySelectorAll('.cp__dl').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (history.length === 0) return;
+        const fmt = (btn as HTMLElement).dataset.fmt;
+        if (fmt === 'md') {
+          downloadBlob(new Blob([transcriptText()], { type: 'text/markdown' }), 'tong-chat.md');
+        } else {
+          // Lazy-load jsPDF only on click → its own chunk, no impact on page load.
+          const { jsPDF } = await import('jspdf');
+          const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+          const margin = 48; const width = doc.internal.pageSize.getWidth() - margin * 2;
+          let y = margin;
+          doc.setFontSize(14); doc.text("Chat with Tong's assistant", margin, y); y += 24;
+          doc.setFontSize(10);
+          for (const m of history) {
+            const who = m.role === 'user' ? 'You' : 'Assistant';
+            const lines = doc.splitTextToSize(`${who}: ${m.content}`, width);
+            for (const ln of lines) {
+              if (y > doc.internal.pageSize.getHeight() - margin) { doc.addPage(); y = margin; }
+              doc.text(ln, margin, y); y += 14;
+            }
+            y += 6;
+          }
+          doc.save('tong-chat.pdf');
+        }
+      });
+    });
+  }
+</script>

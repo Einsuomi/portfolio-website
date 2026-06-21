@@ -16,13 +16,21 @@
       architecture, the trade-offs behind each decision. Ask it what a CV can't tell you.
     </p>
 
-    <!-- Faux composer: clearly inert, labelled coming soon (no dead/erroring UI). -->
-    <div class="bot__composer" data-reveal aria-hidden="true">
+    <!-- Live composer: opens the floating chat panel. Falls back gracefully w/o JS. -->
+    <button class="bot__composer" type="button" data-reveal aria-label="Open the chat">
       <span class="bot__placeholder">Ask about my Databricks work…</span>
-      <span class="bot__badge">Coming soon</span>
-    </div>
+      <span class="bot__badge">Talk →</span>
+    </button>
+    <noscript><p class="bot__sub" style="font-size: 0.95rem;">The assistant needs JavaScript enabled to chat.</p></noscript>
   </div>
 </section>
+
+<script>
+  // The section's composer opens the same floating chat panel as the launcher.
+  document.querySelector('.bot__composer')?.addEventListener('click', () => {
+    document.dispatchEvent(new CustomEvent('chat:open', { detail: { from: 'section', full: true } }));
+  });
+</script>
 
 <style>
   .bot { text-align: left; display: flex; flex-direction: column; justify-content: center; }
@@ -48,6 +56,8 @@
      ringed and lit in gold so the eye lands on the invitation, not the copy. */
   .bot__composer {
     box-sizing: border-box; /* so max-width is the TOTAL width (aligns the right edge) */
+    /* Button reset — it's a real control now, opening the chat panel. */
+    width: 100%; cursor: pointer; text-align: left; -webkit-appearance: none; appearance: none;
     display: flex; align-items: center; justify-content: space-between; gap: 1rem;
     padding: 1.1rem 1.3rem;
     border: 1px solid var(--gold); border-radius: 999px;

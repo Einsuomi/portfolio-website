@@ -17,6 +17,16 @@
   <span class="launcher__label">Talk</span>
 </a>
 
+<script>
+  // With JS, the launcher opens the floating chat panel instead of jump-scrolling
+  // to the section. Without JS, the anchor href="#chatbot" still works (fallback).
+  const launcher = document.querySelector('.launcher');
+  launcher?.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.dispatchEvent(new CustomEvent('chat:open', { detail: { from: 'launcher' } }));
+  });
+</script>
+
 <style>
   .launcher {
     position: fixed; z-index: 50;
