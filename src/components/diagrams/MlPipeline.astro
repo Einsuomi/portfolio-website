@@ -1,0 +1,237 @@
+---
+/**
+ * Native architecture diagram for the hotel-rating-forecasting (ML thesis) page —
+ * one unified left-to-right flow built from real HTML/CSS (no runtime JS, no image),
+ * so a recruiter (or a screen reader via the parent's aria-label) reads the whole
+ * modelling pipeline at a glance. Grounded in the thesis: a Booking.com scrape →
+ * preprocess that binarizes the rating at the hotel's 8.4 average → 5 PNR features →
+ * 124 tuned models (4 algorithms × 31 feature subsets) ranked by a custom TN-score →
+ * the winning ANN feeds an at-booking "act before arrival" loop.
+ *
+ * Reflows from a 4-column horizontal flow (desktop) to a single stacked column
+ * (mobile), so it never produces horizontal overflow. Themed to the site tokens.
+ *
+ * Connectors are inlined as real <svg> markup (not set:html) so the scoped styles
+ * reach them — CSS points the chevron right in the row layout, down when stacked.
+ */
+---
+
+<div class="mlp">
+  <div class="mlp__flow">
+    <!-- 01 · Scrape -->
+    <article class="mlp__stage">
+      <header class="mlp__head">
+        <span class="mlp__idx">01</span>
+        <h3 class="mlp__title">Scrape</h3>
+      </header>
+      <p class="mlp__node">Booking.com reviews</p>
+      <p class="mlp__detail">BeautifulSoup pulls <strong>5,885</strong> reviews of one Helsinki hotel; 33 languages are detected and translated to English.</p>
+    </article>
+
+    <span class="mlp__arrow" aria-hidden="true">
+      <svg class="mlp__chev" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+
+    <!-- 02 · Prepare -->
+    <article class="mlp__stage">
+      <header class="mlp__head">
+        <span class="mlp__idx">02</span>
+        <h3 class="mlp__title">Prepare</h3>
+      </header>
+      <p class="mlp__node">Binarize at 8.4</p>
+      <p class="mlp__detail">The rating is split at the hotel's own 8.4 average — <strong>below-average</strong> is the class to catch. Five booking-time fields become the features.</p>
+      <ul class="mlp__feats">
+        <li>Country</li>
+        <li>Room type</li>
+        <li>Nights</li>
+        <li>Check-in month</li>
+        <li>Travel type</li>
+      </ul>
+    </article>
+
+    <span class="mlp__arrow" aria-hidden="true">
+      <svg class="mlp__chev" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+
+    <!-- 03 · Model — the search across 124 models (the heart) -->
+    <article class="mlp__stage mlp__stage--model">
+      <header class="mlp__head">
+        <span class="mlp__idx">03</span>
+        <h3 class="mlp__title">Model</h3>
+      </header>
+      <p class="mlp__node">124 tuned models</p>
+      <p class="mlp__detail">Four algorithms × 31 feature subsets, each hyperparameter-tuned and ranked by the custom TN-score:</p>
+      <ol class="mlp__algos">
+        <li class="mlp__algo"><span class="mlp__algo-name">Logistic Regression</span><span class="mlp__algo-score">0.50</span></li>
+        <li class="mlp__algo"><span class="mlp__algo-name">Random Forest</span><span class="mlp__algo-score">0.45</span></li>
+        <li class="mlp__algo"><span class="mlp__algo-name">XGBoost</span><span class="mlp__algo-score">0.44</span></li>
+        <li class="mlp__algo mlp__algo--win"><span class="mlp__algo-name">ANN</span><span class="mlp__algo-score">0.55</span></li>
+      </ol>
+    </article>
+
+    <span class="mlp__arrow" aria-hidden="true">
+      <svg class="mlp__chev" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+
+    <!-- 04 · Act -->
+    <article class="mlp__stage">
+      <header class="mlp__head">
+        <span class="mlp__idx">04</span>
+        <h3 class="mlp__title">Act</h3>
+      </header>
+      <p class="mlp__node">Before the guest arrives</p>
+      <p class="mlp__detail">A reservation flagged below-average is one a manager can still rescue. A parallel NLTK review analysis names <em>what</em> to fix.</p>
+      <ul class="mlp__fix">
+        <li>Room cleanliness</li>
+        <li>Bedding comfort</li>
+        <li>Breakfast quality</li>
+      </ul>
+      <p class="mlp__serve">→ Protect the rating</p>
+    </article>
+  </div>
+
+  <!-- Metric footnote — spans the whole flow underneath, like the governance band
+       on the data-pipeline diagrams. The custom metric is the methodological core. -->
+  <div class="mlp__metric">
+    <span class="mlp__metric-label">Metric</span>
+    <p class="mlp__metric-note"><strong>TN-score</strong> rewards catching true below-average reservations while penalizing false alarms — accuracy was the wrong objective for an imbalanced, cost-asymmetric problem.</p>
+  </div>
+</div>
+
+<style>
+  .mlp {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1.1rem, 2.6vw, 1.8rem);
+    container-type: inline-size;
+  }
+
+  /* ── Flow: stacked column by default, horizontal row when wide enough ── */
+  .mlp__flow {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+
+  .mlp__stage {
+    flex: 1;
+    background: rgba(245, 239, 227, 0.035);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: clamp(0.9rem, 2.2vw, 1.15rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .mlp__head { display: flex; align-items: baseline; gap: 0.55rem; }
+  .mlp__idx {
+    font-family: var(--font-mono);
+    font-size: 0.62rem; letter-spacing: 0.18em;
+    color: var(--gold);
+  }
+  .mlp__title {
+    font-family: var(--font-display); font-weight: 400;
+    font-size: clamp(1.05rem, 2.4vw, 1.3rem);
+    text-transform: uppercase; letter-spacing: 0.02em;
+    color: var(--ink); margin: 0;
+  }
+  .mlp__node {
+    font-family: var(--font-serif);
+    font-size: clamp(1rem, 2.1vw, 1.15rem);
+    line-height: 1.25; color: var(--ink); margin: 0;
+  }
+  .mlp__detail {
+    font-family: var(--font-body);
+    font-size: 0.82rem; line-height: 1.45;
+    color: var(--ink-dim); margin: 0;
+  }
+  .mlp__detail strong { color: var(--ink); font-weight: 600; }
+  .mlp__detail em { color: var(--ink); font-style: italic; }
+
+  /* ── Feature / fix chip lists ── */
+  .mlp__feats, .mlp__fix {
+    list-style: none; margin: 0.1rem 0 0; padding: 0;
+    display: flex; flex-wrap: wrap; gap: 0.3rem;
+  }
+  .mlp__feats li, .mlp__fix li {
+    font-family: var(--font-mono);
+    font-size: 0.64rem; letter-spacing: 0.02em;
+    color: var(--ink-dim);
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 0.22rem 0.5rem; white-space: nowrap;
+  }
+
+  /* ── Connectors ── */
+  .mlp__arrow {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gold); flex: 0 0 auto;
+  }
+  .mlp__chev {
+    width: 22px; height: 22px;
+    transform: rotate(90deg);              /* points down in the stacked layout */
+    opacity: 0.85;
+  }
+
+  /* ── Model: the four algorithms, each with its best TN-score; ANN wins (gold) ── */
+  .mlp__algos {
+    list-style: none; margin: 0.1rem 0 0; padding: 0;
+    display: flex; flex-direction: column; gap: 0.4rem;
+  }
+  .mlp__algo {
+    border-left: 2.5px solid var(--line);
+    padding: 0.4rem 0 0.4rem 0.7rem;
+    display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem;
+  }
+  .mlp__algo-name {
+    font-family: var(--font-mono);
+    font-size: 0.66rem; letter-spacing: 0.06em;
+    color: var(--ink-dim);
+  }
+  .mlp__algo-score {
+    font-family: var(--font-mono);
+    font-size: 0.7rem; letter-spacing: 0.02em;
+    color: var(--ink-dim);
+  }
+  .mlp__algo--win { border-left-color: var(--gold); }
+  .mlp__algo--win .mlp__algo-name,
+  .mlp__algo--win .mlp__algo-score { color: var(--gold); }
+
+  /* ── Act: outcome hand-off ── */
+  .mlp__serve {
+    font-family: var(--font-mono);
+    font-size: 0.74rem; letter-spacing: 0.04em;
+    color: var(--gold); margin: 0.25rem 0 0;
+  }
+
+  /* ── Metric band (the custom-metric core) ── */
+  .mlp__metric {
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    padding: clamp(0.85rem, 2.2vw, 1.1rem);
+    display: flex; flex-direction: column; gap: 0.7rem;
+  }
+  .mlp__metric-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .mlp__metric-note {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 0.8rem; line-height: 1.5; color: var(--ink-dim);
+  }
+  .mlp__metric-note strong {
+    font-family: var(--font-mono); font-weight: 500;
+    font-size: 0.78rem; letter-spacing: 0.03em; color: var(--gold);
+  }
+
+  /* ── Horizontal layout once the container is wide enough ──
+       Container query: the diagram cares about its plate's width, not the
+       viewport — so it stays correct regardless of where it's embedded. */
+  @container (min-width: 46rem) {
+    .mlp__flow { flex-direction: row; align-items: stretch; gap: 0.4rem; }
+    .mlp__chev { transform: none; }        /* points right in the row layout */
+  }
+</style>
