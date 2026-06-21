@@ -85,7 +85,7 @@ export const PROJECTS: Project[] = [
     name: 'J&D Power BI CI/CD',
     summary: 'Validation + release pipeline for Power BI — automated quality gates on Microsoft Fabric.',
     stack: ['Azure DevOps', 'Microsoft Fabric', 'Power BI'],
-    url: 'https://github.com/Einsuomi/J-D-Power-BI-CI-CD',
+    slug: 'jd-power-bi-cicd',   // has an on-site case study → links to its detail page
   },
   {
     name: 'Heureka Science Centre BI',

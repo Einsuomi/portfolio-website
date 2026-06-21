@@ -10,6 +10,8 @@ import { Image } from 'astro:assets';
 import type { ProjectDetail, ArchitectureDiagramId } from '../lib/projects';
 import DltArchitecture from './diagrams/DltArchitecture.astro';
 import DltCicd from './diagrams/DltCicd.astro';
+import PbiValidate from './diagrams/PbiValidate.astro';
+import PbiRelease from './diagrams/PbiRelease.astro';
 
 interface Props { detail: ProjectDetail; }
 const { detail } = Astro.props;
@@ -19,6 +21,8 @@ const { detail } = Astro.props;
 const DIAGRAMS: Record<ArchitectureDiagramId, typeof DltArchitecture> = {
   dlt: DltArchitecture,
   'dlt-cicd': DltCicd,
+  'pbi-validate': PbiValidate,
+  'pbi-release': PbiRelease,
 };
 const nativeDiagrams = detail.architectureDiagrams ?? [];
 // Figure numbering spans native diagrams + image diagrams, so the gallery continues it.

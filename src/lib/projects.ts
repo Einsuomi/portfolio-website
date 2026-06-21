@@ -14,6 +14,12 @@ import adfIncremental from '../assets/projects/fingrid-data-platform/adf-increme
 import dltJobDag from '../assets/projects/aws-dlt-pipeline/job-task-dag.jpg';
 import dltLineage from '../assets/projects/aws-dlt-pipeline/dlt-lineage-graph.jpg';
 
+// J&D Power BI CI/CD assets — the two real Power BI dashboard screenshots, kept
+// as proof figures (the architecture itself is rebuilt natively, see PbiValidate
+// and PbiRelease).
+import jdOverview from '../assets/projects/jd-power-bi-cicd/Screenshot 2025-07-27 201111.jpg';
+import jdCustomers from '../assets/projects/jd-power-bi-cicd/Screenshot 2025-07-27 202244.jpg';
+
 /** An image with a caption — used for both diagrams and screenshots. */
 export interface Figure {
   image: ImageMetadata;
@@ -33,10 +39,12 @@ export interface Point {
  * the template renders; `alt`/`caption` give it the same figure note as an image.
  * Pages render these native diagrams (in order) before any image `architecture`
  * figures; image-only pages (Fingrid) leave the list undefined and are unaffected.
- *   - `dlt`      — the end-to-end data flow (medallion)
- *   - `dlt-cicd` — the CI/CD delivery / promotion rail (dev → test → prod)
+ *   - `dlt`          — the end-to-end data flow (medallion)
+ *   - `dlt-cicd`     — the CI/CD delivery / promotion rail (dev → test → prod)
+ *   - `pbi-validate` — the Power BI CI validation gate (BPA + PBI Inspector)
+ *   - `pbi-release`  — the Power BI CD release rail (dev → test → prod workspaces)
  */
-export type ArchitectureDiagramId = 'dlt' | 'dlt-cicd';
+export type ArchitectureDiagramId = 'dlt' | 'dlt-cicd' | 'pbi-validate' | 'pbi-release';
 export interface NativeDiagram {
   id: ArchitectureDiagramId;
   alt: string;
@@ -213,6 +221,78 @@ export const PROJECT_DETAILS: Record<string, ProjectDetail> = {
     ],
     outcome: [
       'The result is a hands-off, config-driven lakehouse: a new Fingrid dataset is one row in a control table, and it flows — ingested incrementally, refined through bronze, silver, and gold, and modeled into the star schema — all the way to Power BI, governed end to end and reproducible across every environment.',
+    ],
+  },
+
+  'jd-power-bi-cicd': {
+    slug: 'jd-power-bi-cicd',
+    name: 'J&D Power BI CI/CD',
+    value:
+      'CI/CD for a Power BI report — the .pbip project version-controlled, automatically quality-gated, and promoted dev → test → prod behind an approval. Software engineering discipline, applied to BI.',
+    stack: [
+      'Power BI (PBIP)',
+      'Azure DevOps',
+      'Azure Pipelines',
+      'Tabular Editor · BPA',
+      'PBI Inspector',
+      'Deployment Pipelines',
+      'Microsoft Fabric',
+      'DAX',
+    ],
+    repo: 'https://github.com/Einsuomi/J-D-Power-BI-CI-CD',
+    context: [
+      'Most Power BI lives as clickops: a .pbix binary passed around and edited live in a workspace, with no version history and no quality gate. A broken measure or a sloppy model reaches production before anyone notices — and there is no clean way to review, roll back, or reproduce a change.',
+      'I rebuilt the J&D sales report’s delivery the way software ships. The report is source-controlled as a .pbip project, every change is automatically validated against model and report best practices, and it is promoted through isolated environments behind a human approval — reviewable, reproducible, and safe to release.',
+    ],
+    architectureDiagrams: [
+      {
+        id: 'pbi-validate',
+        alt: 'CI validation gate: the report is authored in Power BI Desktop as a .pbip project and committed to Azure DevOps Git; a commit to the dev branch triggers a validation pipeline with two gates — dataset and model rules via Tabular Editor Best Practice Analyzer, and report rules via PBI Inspector — and the pull request can only merge to main once both pass.',
+        caption:
+          'The validation gate. The report is authored as a .pbip project in Azure DevOps Git; a commit to dev runs the validation pipeline — Tabular Editor’s Best Practice Analyzer on the model, PBI Inspector on the report — and only a green run lets the change merge to main.',
+      },
+      {
+        id: 'pbi-release',
+        alt: 'CD release rail: from main, a release pipeline using Power BI Deployment Pipelines promotes the report across three isolated workspaces — Development, then Test, then Production — with a Release Manager approval gating the step into production.',
+        caption:
+          'The release rail. From main, Power BI Deployment Pipelines promote the report across isolated Development, Test, and Production workspaces — with a Release Manager approval gating the step into production.',
+      },
+    ],
+    architecture: [],
+    howItWorks: [
+      {
+        title: 'Report as code',
+        body: 'Saved in the .pbip format, the report’s model and pages are plain-text files — so they branch, diff, and pull-request in Azure DevOps Git like any other code, instead of living as an opaque .pbix binary.',
+      },
+      {
+        title: 'Automated quality gates',
+        body: 'Every commit to dev runs a validation pipeline: Tabular Editor’s Best Practice Analyzer checks the model and measures, PBI Inspector checks the report pages. A pull request can’t merge to main until both gates are green.',
+      },
+      {
+        title: 'Promoted, not republished',
+        body: 'Once on main, Power BI Deployment Pipelines promote the same report through isolated Development, Test, and Production workspaces — so changes are tested in a production-like setting before anyone sees them live.',
+      },
+      {
+        title: 'A human before production',
+        body: 'The step into Production is gated by a Release Manager approval — deliberate oversight and compliance before a change goes live, not an automatic push.',
+      },
+    ],
+    gallery: [
+      {
+        image: jdOverview,
+        alt: 'Power BI Overview page: revenue, orders, profit and return-rate KPIs, a revenue trend against target, orders by category, and the top subcategories by orders and return rate.',
+        caption:
+          'The Overview page — headline KPIs, a revenue trend against target, and the top subcategories by orders and return rate. Hidden slicers and drill-through keep it clean while staying explorable.',
+      },
+      {
+        image: jdCustomers,
+        alt: 'Power BI Customer Details page: total customers and revenue-per-customer KPIs, orders by income and occupation, a top-100-customers table, and the top customer by revenue.',
+        caption:
+          'The Customer Details page — switchable KPIs, top customers by segment, and a no-purchase cohort that surfaces re-engagement opportunities.',
+      },
+    ],
+    outcome: [
+      'The result is a Power BI report you can trust like code: every change is versioned, automatically checked against model and report best practices, and promoted to production only after it passes validation and a person signs off — no more editing live in the workspace and hoping nothing breaks.',
     ],
   },
 };

@@ -1,0 +1,183 @@
+---
+/**
+ * Native CI validation-gate diagram for the J&D Power BI CI/CD page (Fig 01) —
+ * the quality gate the report passes through before it can merge. Built from
+ * real HTML/SVG (no runtime JS, no image), grounded in the shipped
+ * `powerbi-CI-pipelines.yml`: the report is authored in Power BI Desktop as a
+ * `.pbip` project and version-controlled in Azure DevOps Git; a commit to the
+ * `dev` branch triggers a validation pipeline with two real gates — dataset/model
+ * rules via Tabular Editor's Best Practice Analyzer, and report rules via PBI
+ * Inspector — and only a green run lets the PR merge to `main`.
+ *
+ * Deliberately TWO gates, not the three drawn in the old drawio: the shipped
+ * pipeline has no DAX-query job, and the repo is public.
+ *
+ * Matched visual language with the DLT diagrams (cards, gold accents, chevrons).
+ * Reflows from a horizontal flow (wide) to a stacked column (narrow) via a
+ * container query, so it never produces horizontal overflow.
+ */
+---
+
+<div class="pbiv">
+  <!-- ── Authoring lane: Power BI Desktop → PBIP in Azure DevOps Git ── -->
+  <div class="pbiv__lead">
+    <article class="pbiv__node">
+      <span class="pbiv__tag">Author</span>
+      <p class="pbiv__node-name">Power BI Desktop</p>
+      <p class="pbiv__node-note">report saved as a <strong>.pbip</strong> project — datasets &amp; reports as plain-text files</p>
+    </article>
+
+    <span class="pbiv__arrow" aria-hidden="true">
+      <svg class="pbiv__chev" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+
+    <article class="pbiv__node">
+      <span class="pbiv__tag">Version control</span>
+      <p class="pbiv__node-name">Azure DevOps Git</p>
+      <p class="pbiv__node-note">PBIP committed to the <strong>dev</strong> branch</p>
+    </article>
+  </div>
+
+  <!-- connector down: the commit triggers the pipeline -->
+  <span class="pbiv__down" aria-hidden="true">
+    <span class="pbiv__down-label">commit to dev triggers</span>
+    <svg class="pbiv__chev pbiv__chev--down" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+
+  <!-- ── Validation pipeline: two automated gates ── -->
+  <div class="pbiv__track">
+    <span class="pbiv__track-label">Validation pipeline · runs on every commit</span>
+    <ol class="pbiv__gates">
+      <li class="pbiv__gate">
+        <span class="pbiv__gate-idx">Gate 01</span>
+        <p class="pbiv__gate-name">Dataset &amp; model rules</p>
+        <p class="pbiv__gate-tool">Tabular Editor · Best Practice Analyzer</p>
+        <p class="pbiv__gate-note">flags model anti-patterns — relationships, measures, naming — before they ship</p>
+      </li>
+      <li class="pbiv__gate">
+        <span class="pbiv__gate-idx">Gate 02</span>
+        <p class="pbiv__gate-name">Report rules</p>
+        <p class="pbiv__gate-tool">PBI Inspector</p>
+        <p class="pbiv__gate-note">checks report pages against layout &amp; best-practice rules</p>
+      </li>
+    </ol>
+  </div>
+
+  <!-- connector down: green run unlocks the merge -->
+  <span class="pbiv__down" aria-hidden="true">
+    <span class="pbiv__down-label">PR merges only when both gates pass</span>
+    <svg class="pbiv__chev pbiv__chev--down" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+
+  <!-- ── Merge target ── -->
+  <article class="pbiv__node pbiv__node--main">
+    <span class="pbiv__tag">Trusted branch</span>
+    <p class="pbiv__node-name">main</p>
+    <p class="pbiv__node-note">only validated changes land here — the source for release</p>
+  </article>
+</div>
+
+<style>
+  .pbiv {
+    display: flex; flex-direction: column;
+    gap: clamp(0.5rem, 1.6vw, 0.9rem);
+    container-type: inline-size;
+  }
+
+  /* ── Shared card ── */
+  .pbiv__node,
+  .pbiv__gate {
+    background: rgba(245, 239, 227, 0.035);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: clamp(0.85rem, 2.1vw, 1.1rem);
+  }
+  .pbiv__tag,
+  .pbiv__gate-idx {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 0.4rem;
+  }
+  .pbiv__node-name {
+    font-family: var(--font-serif);
+    font-size: clamp(1rem, 2.1vw, 1.18rem);
+    line-height: 1.2; color: var(--ink); margin: 0;
+  }
+  .pbiv__node-note {
+    font-family: var(--font-body);
+    font-size: 0.78rem; line-height: 1.45; color: var(--ink-dim);
+    margin: 0.3rem 0 0;
+  }
+  .pbiv__node-note strong {
+    font-family: var(--font-mono); font-weight: 500;
+    font-size: 0.74rem; color: var(--ink);
+  }
+
+  /* ── Authoring lead row ── */
+  .pbiv__lead {
+    display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem;
+  }
+  .pbiv__lead .pbiv__node { flex: 1; }
+
+  /* ── Connectors ── */
+  .pbiv__arrow {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gold); flex: 0 0 auto;
+  }
+  .pbiv__down {
+    display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+    color: var(--gold); padding: 0.15rem 0;
+  }
+  .pbiv__down-label {
+    font-family: var(--font-mono);
+    font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .pbiv__chev { width: 20px; height: 20px; opacity: 0.85; transform: rotate(90deg); }
+  .pbiv__chev--down { transform: rotate(90deg); }
+
+  /* ── Validation track ── */
+  .pbiv__track {
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    padding: clamp(0.85rem, 2.1vw, 1.15rem);
+    display: flex; flex-direction: column; gap: 0.7rem;
+  }
+  .pbiv__track-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .pbiv__gates {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem;
+  }
+  .pbiv__gate { flex: 1; display: flex; flex-direction: column; gap: 0.25rem; }
+  /* gold left rule reads each card as a "gate" the run must pass */
+  .pbiv__gate { border-left: 2.5px solid rgba(224, 163, 62, 0.5); }
+  .pbiv__gate-name {
+    font-family: var(--font-serif);
+    font-size: clamp(0.98rem, 2vw, 1.12rem);
+    line-height: 1.2; color: var(--ink); margin: 0;
+  }
+  .pbiv__gate-tool {
+    font-family: var(--font-mono);
+    font-size: 0.68rem; letter-spacing: 0.02em; color: var(--gold); margin: 0;
+  }
+  .pbiv__gate-note {
+    font-family: var(--font-body);
+    font-size: 0.76rem; line-height: 1.4; color: var(--ink-dim); margin: 0.15rem 0 0;
+  }
+
+  /* ── Merge target ── */
+  .pbiv__node--main { border-color: rgba(224, 163, 62, 0.5); }
+  .pbiv__node--main .pbiv__node-name { color: var(--gold); font-family: var(--font-mono); letter-spacing: 0.04em; }
+
+  /* ── Horizontal once the container is wide enough ── */
+  @container (min-width: 46rem) {
+    .pbiv__lead { flex-direction: row; align-items: stretch; }
+    .pbiv__gates { flex-direction: row; align-items: stretch; }
+    .pbiv__arrow .pbiv__chev { transform: none; }   /* point right in the lead row */
+  }
+</style>

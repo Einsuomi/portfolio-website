@@ -1,0 +1,179 @@
+---
+/**
+ * Native CD release-rail diagram for the J&D Power BI CI/CD page (Fig 02) — what
+ * happens once a validated change reaches `main`: a release pipeline promotes the
+ * report through Power BI Deployment Pipelines across three isolated workspaces
+ * (Development → Test → Production), with a Release Manager approval gating the
+ * step into production.
+ *
+ * Adapted from DltCicd (same env-rail + approval-lock language), retargeted from
+ * Databricks Asset Bundles to Power BI workspaces. Real HTML/SVG, no runtime JS;
+ * reflows from a horizontal rail (wide) to a stacked column (narrow) via a
+ * container query, so it never produces horizontal overflow.
+ */
+---
+
+<div class="pbir">
+  <!-- ── main → release pipeline ── -->
+  <div class="pbir__lead">
+    <article class="pbir__node">
+      <span class="pbir__tag">Source</span>
+      <p class="pbir__node-name">main</p>
+    </article>
+
+    <span class="pbir__arrow" aria-hidden="true">
+      <svg class="pbir__chev" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+
+    <article class="pbir__node pbir__node--ci">
+      <span class="pbir__tag">Release pipeline</span>
+      <p class="pbir__node-name">Power BI Deployment Pipelines</p>
+      <p class="pbir__node-note">promotes the report across isolated workspaces</p>
+    </article>
+  </div>
+
+  <!-- connector down into the promotion rail -->
+  <span class="pbir__down" aria-hidden="true">
+    <svg class="pbir__chev pbir__chev--down" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </span>
+
+  <!-- ── Promote across isolated workspaces ── -->
+  <div class="pbir__track">
+    <span class="pbir__track-label">Promote the same report across isolated workspaces</span>
+    <ol class="pbir__envs">
+      <li class="pbir__env">
+        <span class="pbir__env-name">Development</span>
+        <p class="pbir__env-note">build &amp; iterate</p>
+        <span class="pbir__infra">dev workspace</span>
+      </li>
+
+      <span class="pbir__arrow" aria-hidden="true">
+        <svg class="pbir__chev" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+
+      <li class="pbir__env">
+        <span class="pbir__env-name">Test</span>
+        <p class="pbir__env-note">validate on production-like data</p>
+        <span class="pbir__infra">test workspace</span>
+      </li>
+
+      <!-- approval gate before prod -->
+      <span class="pbir__gate" aria-hidden="true">
+        <svg class="pbir__lock" viewBox="0 0 24 24" focusable="false"><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="5.5" y="11" width="13" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        <span class="pbir__gate-label">Release Manager approval</span>
+        <svg class="pbir__chev pbir__chev--gate" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+
+      <li class="pbir__env pbir__env--prod">
+        <span class="pbir__env-name">Production</span>
+        <p class="pbir__env-note">live for the business</p>
+        <span class="pbir__infra">prod workspace</span>
+      </li>
+    </ol>
+  </div>
+</div>
+
+<style>
+  .pbir {
+    display: flex; flex-direction: column;
+    gap: clamp(0.6rem, 1.8vw, 1rem);
+    container-type: inline-size;
+  }
+
+  /* ── Shared node / card ── */
+  .pbir__node,
+  .pbir__env {
+    background: rgba(245, 239, 227, 0.035);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: clamp(0.85rem, 2.1vw, 1.1rem);
+  }
+  .pbir__tag {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 0.4rem;
+  }
+  .pbir__node-name {
+    font-family: var(--font-serif);
+    font-size: clamp(1rem, 2.1vw, 1.18rem);
+    line-height: 1.2; color: var(--ink); margin: 0;
+  }
+  .pbir__node-note {
+    font-family: var(--font-body);
+    font-size: 0.78rem; line-height: 1.4; color: var(--ink-dim);
+    margin: 0.3rem 0 0;
+  }
+
+  /* ── main → release lead row ── */
+  .pbir__lead {
+    display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem;
+  }
+  .pbir__node--ci { flex: 1; }
+
+  /* ── Connectors ── */
+  .pbir__arrow, .pbir__down {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gold); flex: 0 0 auto;
+  }
+  .pbir__chev { width: 20px; height: 20px; opacity: 0.85; transform: rotate(90deg); }
+  .pbir__chev--down { transform: rotate(90deg); }
+  .pbir__down { padding: 0.1rem 0; }
+
+  /* ── Promotion rail ── */
+  .pbir__track {
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    padding: clamp(0.85rem, 2.1vw, 1.15rem);
+    display: flex; flex-direction: column; gap: 0.7rem;
+  }
+  .pbir__track-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .pbir__envs {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem;
+  }
+  .pbir__env { flex: 1; display: flex; flex-direction: column; gap: 0.4rem; }
+  .pbir__env--prod { border-color: rgba(224, 163, 62, 0.5); }
+  .pbir__env-name {
+    font-family: var(--font-mono);
+    font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink);
+  }
+  .pbir__env--prod .pbir__env-name { color: var(--gold); }
+  .pbir__env-note {
+    font-family: var(--font-body); font-size: 0.78rem; line-height: 1.4;
+    color: var(--ink-dim); margin: 0;
+  }
+  .pbir__infra {
+    font-family: var(--font-mono);
+    font-size: 0.64rem; letter-spacing: 0.02em; color: var(--ink-faint);
+    padding-top: 0.2rem; border-top: 1px solid var(--line); margin-top: auto;
+  }
+
+  /* ── Approval gate ── */
+  .pbir__gate {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0.35rem; flex: 0 0 auto; color: var(--gold);
+  }
+  .pbir__lock { width: 18px; height: 18px; }
+  .pbir__gate-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--gold); text-align: center;
+  }
+  .pbir__chev--gate { width: 18px; height: 18px; transform: rotate(90deg); opacity: 0.85; }
+
+  /* ── Horizontal rail once the container is wide enough ── */
+  @container (min-width: 46rem) {
+    .pbir__lead { flex-direction: row; align-items: stretch; }
+    .pbir__envs { flex-direction: row; align-items: stretch; }
+    .pbir__chev { transform: none; }              /* point right in the rail */
+    .pbir__chev--gate { transform: none; }
+    .pbir__chev--down { transform: rotate(90deg); } /* the lead→rail link stays vertical */
+    .pbir__gate { flex-direction: column; gap: 0.2rem; }
+  }
+</style>
