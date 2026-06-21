@@ -15,6 +15,7 @@ import Writes from '../components/Writes.astro';
 import Chatbot from '../components/Chatbot.astro';
 import HeroBar from '../components/HeroBar.astro';
 import ChatLauncher from '../components/ChatLauncher.astro';
+import ChatPanel from '../components/ChatPanel.astro';
 import Preloader from '../components/Preloader.astro';
 
 // Single swap point: flip 'B' -> 'A' to A/B the two grades in the real layout.
@@ -88,8 +89,9 @@ const { video, still } = PAIRS[HERO_PAIR];
     </div>
   </main>
 
-  <!-- Persistent chatbot launcher — present from the hero down. -->
+  <!-- Persistent chatbot launcher + the floating chat panel it opens. -->
   <ChatLauncher />
+  <ChatPanel />
 
   <style>
     /* ── Hero design tokens (scoped to this page) ───────────────── */

@@ -1,0 +1,59 @@
+---
+/**
+ * Privacy page — discloses the site's data collection (anonymous analytics + chat
+ * logs), purpose, lawful basis, retention, rights, and processors. Linked from the
+ * in-chat notice. Kept truthful against what the code actually does (see /api/track
+ * and /api/chat). Plain, phone-friendly prose over the dark backbone tokens.
+ */
+import Base from '../layouts/Base.astro';
+import '../styles/backbone.css';
+
+const CONTACT = 'ethan.nie2020@gmail.com';
+---
+
+<Base version="dark" title="Privacy — Tong Nie" description="What this site collects, why, how long it's kept, and how to request deletion." path="/privacy">
+  <main class="prose">
+    <a class="back" href="/">← Back</a>
+    <h1>Privacy</h1>
+    <p class="dek">Plain-language summary of what this site collects and why. Tong Nie is the data controller; reach him at <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.</p>
+
+    <h2>What's collected</h2>
+    <ul>
+      <li><strong>Anonymous analytics</strong> (every page): the page path, referrer, your country and a coarse device type (mobile/desktop), and a one-way salted hash of your IP address. The raw IP is never stored.</li>
+      <li><strong>Chat logs</strong> (only if you use the assistant): the messages you send and the assistant's replies, plus the same hashed-IP / country / device, which section you opened the chat from, and the model used. By chatting you agree this may be saved to improve the assistant; you can object at any time (see Your rights).</li>
+    </ul>
+
+    <h2>Why</h2>
+    <p>Analytics help Tong understand which work resonates. Chat logs let him review real questions and improve the assistant's answers. The lawful basis is legitimate interest; the data is minimised (hashed IP, no names required) and you can object at any time (see Rights).</p>
+
+    <h2>How long it's kept</h2>
+    <p>Chat logs are purged after about six months. You can ask for your data to be deleted sooner.</p>
+
+    <h2>Your rights</h2>
+    <p>You can request access to, or deletion of, your data, and you can object to the chat logging. Email <a href={`mailto:${CONTACT}`}>{CONTACT}</a> and reference roughly when you visited.</p>
+
+    <h2>Who processes the data</h2>
+    <ul>
+      <li><strong>AI model provider</strong> (Anthropic, USA) — receives chat messages to generate replies.</li>
+      <li><strong>Database</strong> (Supabase) — stores the analytics and chat logs.</li>
+      <li><strong>Host</strong> (Vercel) — serves the site and runs the functions.</li>
+    </ul>
+    <p>These are data processors acting on Tong's behalf under data-processing agreements. Some processing happens outside the EU, under appropriate safeguards (standard contractual clauses). Fonts are self-hosted, so no third-party font service sees your visit.</p>
+  </main>
+</Base>
+
+<style>
+  .prose {
+    max-width: 44rem; margin: 0 auto; padding: clamp(3rem, 10vh, 6rem) 1.25rem 5rem;
+    color: var(--ink); font-family: var(--font-body); line-height: 1.6;
+  }
+  .back { font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink-dim); text-decoration: none; }
+  .back:hover { color: var(--ink); }
+  .prose h1 { font-family: var(--font-luxe); font-weight: 400; font-size: clamp(2rem, 6vw, 3rem); margin: 1.2rem 0 0.6rem; }
+  .prose h2 { font-family: var(--font-mono); font-size: 0.9rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); margin: 2rem 0 0.6rem; }
+  .dek { color: var(--ink-dim); margin-bottom: 1rem; }
+  .prose ul { padding-left: 1.2rem; }
+  .prose li { margin: 0.4rem 0; }
+  .prose a { color: var(--ink); text-decoration: underline; }
+  .prose strong { color: var(--ink); }
+</style>

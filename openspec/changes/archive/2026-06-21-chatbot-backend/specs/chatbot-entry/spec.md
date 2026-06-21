@@ -1,24 +1,7 @@
-# Chatbot Entry
-
-## Purpose
-
-The chatbot's presence — a persistent floating launcher from the hero down plus a dedicated climax
-section at the end of the page. Both are live entry points to the chat: the launcher and the section
-input open the floating chat panel (see `chatbot-ui`). The conversational backend is implemented
-(see `chatbot-conversation`); when the chat is genuinely unavailable the UI degrades to a
-"coming soon"-style state.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Persistent floating launcher
-A floating chatbot launcher SHALL be present and reachable from the hero down through the entire page,
-docked in a fixed position (conventional bottom corner). It SHALL be visible enough never to be missed yet
-quiet enough not to obscure section content. Its label SHALL read "Talk" (inviting conversation rather than
-a one-shot question), and it SHALL carry a subtle gold shimmer / attention pulse that draws the eye without
-becoming distracting. The shimmer SHALL respect `prefers-reduced-motion` and SHALL NOT play when reduced
-motion is requested. When JavaScript is available, activating the launcher SHALL open the floating chat
-panel; without JavaScript it SHALL fall back to a non-deceptive control (an anchor to the chatbot
-section), never a dead control.
+A floating chatbot launcher SHALL be present and reachable from the hero down through the entire page, docked in a fixed position (conventional bottom corner). It SHALL be visible enough never to be missed yet quiet enough not to obscure section content. Its label SHALL read "Talk" (inviting conversation rather than a one-shot question), and it SHALL carry a subtle gold shimmer / attention pulse that draws the eye without becoming distracting. The shimmer SHALL respect `prefers-reduced-motion` and SHALL NOT play when reduced motion is requested. When JavaScript is available, activating the launcher SHALL open the floating chat panel; without JavaScript it SHALL fall back to a non-deceptive control (an anchor to the chatbot section), never a dead control.
 
 #### Scenario: Launcher visible while scrolling
 - **WHEN** the recruiter scrolls anywhere from the hero to the end of the page
@@ -55,10 +38,8 @@ The page SHALL include a dedicated chatbot section placed at the end of the page
 - **WHEN** the chatbot section is in view
 - **THEN** at most one element (the input glow) carries the gold accent, while the headline emphasis stays quieter
 
-### Requirement: Launcher fallback
-When JavaScript is unavailable, the persistent launcher SHALL degrade gracefully — it SHALL NOT leave a
-dead control that appears interactive but does nothing.
+## REMOVED Requirements
 
-#### Scenario: JavaScript disabled
-- **WHEN** the page is rendered with JavaScript disabled
-- **THEN** the launcher is either hidden or rendered as a plain non-deceptive element, and the rest of the page remains fully usable
+### Requirement: Backend out of scope
+**Reason**: Superseded by this change — the conversational backend is now implemented (see the `chatbot-conversation`, `chatbot-ui`, `chat-logging`, and `chat-abuse-controls` capabilities). The launcher and section are no longer placeholder-only.
+**Migration**: The "coming soon" placeholder is replaced by the live floating chat panel. When the chat is genuinely unavailable (e.g. the global daily budget ceiling is exceeded), the UI degrades to a "coming soon"-style unavailable state per the `chat-abuse-controls` capability — preserving the no-broken-UI guarantee in that case.
