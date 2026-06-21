@@ -67,19 +67,21 @@ export interface Project {
   url?: string;        // external repo link — only used when there is no detail page
 }
 
-/** Four curated projects — quality over quantity, strongest signal first. */
+/** Four curated projects — quality over quantity, strongest signal first.
+ *  AWS DLT and Fingrid both feed off the Fingrid grid API; the summaries deliberately
+ *  stress the different cloud/approach so the pair reads as multi-cloud breadth. */
 export const PROJECTS: Project[] = [
   {
-    name: 'Fingrid Data Platform',
-    summary: "Azure lakehouse turning Finland's national grid API into governed, analytics-ready data.",
-    stack: ['Azure Data Factory', 'Databricks', 'Delta Lake', 'Power BI'],
-    slug: 'fingrid-data-platform',   // has an on-site case study → links to its detail page
-  },
-  {
     name: 'AWS DLT Pipeline',
-    summary: 'Terraform-provisioned Databricks on AWS running Delta Live Tables under centralized governance.',
+    summary: 'Terraform-provisioned Databricks on AWS running Delta Live Tables — a self-building medallion under centralized governance.',
     stack: ['Databricks DLT', 'Terraform', 'S3', 'Unity Catalog'],
     slug: 'aws-dlt-pipeline',   // has an on-site case study → links to its detail page
+  },
+  {
+    name: 'Fingrid Data Platform',
+    summary: "An Azure / Data Factory lakehouse — metadata-driven ingestion of Finland's grid API into a governed star schema.",
+    stack: ['Azure Data Factory', 'Databricks', 'Delta Lake', 'Power BI'],
+    slug: 'fingrid-data-platform',   // has an on-site case study → links to its detail page
   },
   {
     name: 'J&D Power BI CI/CD',
@@ -88,9 +90,10 @@ export const PROJECTS: Project[] = [
     slug: 'jd-power-bi-cicd',   // has an on-site case study → links to its detail page
   },
   {
-    name: 'Heureka Science Centre BI',
-    summary: 'Ticket-sales analysis for the science centre — surfaced a 20% year-over-year growth insight.',
-    stack: ['Power BI', 'DAX', 'Star Schema'],
+    name: 'Forecasting Reservation Ratings',
+    summary: "Master's-thesis ML: predict a reservation's rating from booking data, with a purpose-built cost-aware metric.",
+    stack: ['Python', 'scikit-learn', 'XGBoost', 'Keras'],
+    slug: 'hotel-rating-forecasting',   // has an on-site case study → links to its detail page
   },
 ];
 

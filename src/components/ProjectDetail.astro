@@ -12,6 +12,7 @@ import DltArchitecture from './diagrams/DltArchitecture.astro';
 import DltCicd from './diagrams/DltCicd.astro';
 import PbiValidate from './diagrams/PbiValidate.astro';
 import PbiRelease from './diagrams/PbiRelease.astro';
+import MlPipeline from './diagrams/MlPipeline.astro';
 
 interface Props { detail: ProjectDetail; }
 const { detail } = Astro.props;
@@ -23,6 +24,7 @@ const DIAGRAMS: Record<ArchitectureDiagramId, typeof DltArchitecture> = {
   'dlt-cicd': DltCicd,
   'pbi-validate': PbiValidate,
   'pbi-release': PbiRelease,
+  'ml-pipeline': MlPipeline,
 };
 const nativeDiagrams = detail.architectureDiagrams ?? [];
 // Figure numbering spans native diagrams + image diagrams, so the gallery continues it.
@@ -102,21 +104,23 @@ const archCount = detail.architecture.length + nativeDiagrams.length;
     </div>
   </section>
 
-  <!-- ── Gallery: proof screenshots ────────────────────────────────── -->
-  <section class="section section--scene pd__section">
-    <div class="section__inner">
-      <p class="kicker">Inside the pipeline</p>
-      {detail.gallery.map((fig, i) => (
-        <figure class="pd__figure" data-reveal>
-          <div class="pd__plate"><Image src={fig.image} alt={fig.alt} loading="lazy" /></div>
-          <figcaption class="pd__caption">
-            <span class="pd__fig-label">Fig. {String(archCount + i + 1).padStart(2, '0')}</span>
-            <span class="pd__fig-text">{fig.caption}</span>
-          </figcaption>
-        </figure>
-      ))}
-    </div>
-  </section>
+  <!-- ── Gallery: proof screenshots (only when a page provides figures) ── -->
+  {detail.gallery.length > 0 && (
+    <section class="section section--scene pd__section">
+      <div class="section__inner">
+        <p class="kicker">Inside the pipeline</p>
+        {detail.gallery.map((fig, i) => (
+          <figure class="pd__figure" data-reveal>
+            <div class="pd__plate"><Image src={fig.image} alt={fig.alt} loading="lazy" /></div>
+            <figcaption class="pd__caption">
+              <span class="pd__fig-label">Fig. {String(archCount + i + 1).padStart(2, '0')}</span>
+              <span class="pd__fig-text">{fig.caption}</span>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </section>
+  )}
 
   <!-- ── Model & Results (optional — reserved for ML/DS pages) ──────── -->
   {detail.modelResults && (

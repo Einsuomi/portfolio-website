@@ -43,8 +43,14 @@ export interface Point {
  *   - `dlt-cicd`     — the CI/CD delivery / promotion rail (dev → test → prod)
  *   - `pbi-validate` — the Power BI CI validation gate (BPA + PBI Inspector)
  *   - `pbi-release`  — the Power BI CD release rail (dev → test → prod workspaces)
+ *   - `ml-pipeline`  — the ML modelling flow (scrape → prepare → 124 models → act)
  */
-export type ArchitectureDiagramId = 'dlt' | 'dlt-cicd' | 'pbi-validate' | 'pbi-release';
+export type ArchitectureDiagramId =
+  | 'dlt'
+  | 'dlt-cicd'
+  | 'pbi-validate'
+  | 'pbi-release'
+  | 'ml-pipeline';
 export interface NativeDiagram {
   id: ArchitectureDiagramId;
   alt: string;
@@ -293,6 +299,76 @@ export const PROJECT_DETAILS: Record<string, ProjectDetail> = {
     ],
     outcome: [
       'The result is a Power BI report you can trust like code: every change is versioned, automatically checked against model and report best practices, and promoted to production only after it passes validation and a person signs off — no more editing live in the workspace and hoping nothing breaks.',
+    ],
+  },
+
+  'hotel-rating-forecasting': {
+    slug: 'hotel-rating-forecasting',
+    name: 'Forecasting Reservation Ratings',
+    value:
+      "A machine-learning early-warning model: predict, from what a guest gives at booking, which reservations will rate below a hotel's average — so the hotel can fix the stay before the review is ever written.",
+    stack: [
+      'Python',
+      'scikit-learn',
+      'XGBoost',
+      'Keras',
+      'pandas',
+      'BeautifulSoup',
+      'NLTK',
+    ],
+    context: [
+      "A hotel's online rating is its reputation, and a single below-average review drags it down. But by the time a low rating is posted, it is already too late to act. My master's thesis (Åbo Akademi University, 2023) asked whether that low rating could be seen coming — predicted from the only thing known before the stay: the data a guest gives when they book.",
+      'The target hotel is the Radisson Blu Seaside in Helsinki. The idea is an early-warning model: flag a reservation likely to rate below the hotel’s own average, while the guest can still be moved to a better room or have a problem pre-empted — and pair it with a review analysis that tells managers exactly what tends to go wrong.',
+    ],
+    architectureDiagrams: [
+      {
+        id: 'ml-pipeline',
+        alt: 'The modelling pipeline: Booking.com reviews are scraped and translated, the rating is binarized at the hotel’s 8.4 average with five booking-time features, 124 models (four algorithms across 31 feature subsets) are trained and ranked by a custom TN-score with an ANN winning at 0.55, and a flagged below-average reservation is acted on before arrival, guided by an NLTK review analysis.',
+        caption:
+          'The pipeline. 5,885 Booking.com reviews are scraped and translated, the rating is split at the hotel’s own 8.4 average, and 124 tuned models — four algorithms across every feature subset — are ranked by a purpose-built TN-score. The winning ANN feeds an act-before-arrival loop, with a parallel NLTK analysis naming what to fix.',
+      },
+    ],
+    architecture: [],
+    howItWorks: [
+      {
+        title: 'Scrape and normalize',
+        body: 'A BeautifulSoup scraper collects 5,885 public reviews of the hotel from Booking.com. The reviews span 33 languages, so a translation step folds them all into English before any analysis — a clean, comparable corpus from a messy public source.',
+      },
+      {
+        title: 'A target the business cares about',
+        body: 'The 0–10 rating is binarized at 8.4 — the hotel’s own average — so the model predicts a single, decision-ready class: will this reservation drag the average down? Five booking-time fields (country, room type, nights, check-in month, travel type) are the only predictors, because they are all that is known in advance.',
+      },
+      {
+        title: '124 models, not one',
+        body: 'Four algorithms — logistic regression, random forest, XGBoost, and a neural network — are each trained across all 31 feature subsets and hyperparameter-tuned: 124 models in total, compared on equal footing to find which signal and which method actually carry the prediction.',
+      },
+      {
+        title: 'A metric built for the cost',
+        body: 'Accuracy is the wrong objective here: the classes are imbalanced and the costs are asymmetric. So I designed TN-score — it rewards catching genuine below-average reservations while penalizing false alarms, because a missed warning and a wasted intervention cost the hotel very different things.',
+      },
+    ],
+    gallery: [],
+    modelResults: {
+      problem:
+        "Predict, at booking time, whether a future reservation will rate below the hotel's 8.4 average — a binary, cost-asymmetric classification on data known before the guest arrives.",
+      data:
+        '5,885 Booking.com reviews of the Radisson Blu Seaside, Helsinki, scraped with BeautifulSoup and translated from 33 languages to English; missing rows dropped, categoricals one-hot encoded.',
+      features:
+        'Five PNR (booking-record) fields — country, room type, nights, check-in month, travel type — searched across all 31 non-empty subsets.',
+      model:
+        'Logistic regression, random forest, XGBoost, and a Keras ANN, each tuned across every feature subset (124 models) and ranked by a custom TN-score. A 6-layer ANN on {room type, travel type, check-in month, nights} won.',
+      metrics: [
+        { label: 'Best TN-score (ANN)', value: '0.55' },
+        { label: 'Below-average reservations caught', value: '60%' },
+        { label: 'Models trained & tuned', value: '124' },
+        { label: 'Reviews scraped & analysed', value: '5,885' },
+      ],
+      takeaway:
+        'The best model caught 60% of below-average reservations — but catching more of them also raised false alarms, so its precision stayed near 50%. The honest finding: booking-time data alone does not reliably predict a guest’s eventual rating, because satisfaction is shaped by what happens during the stay. The contribution is the framing and the method — a decision-ready target, a custom cost-aware metric, and an exhaustive, honestly-reported model search.',
+    },
+    outcome: [
+      'Alongside the predictive model, an NLTK text analysis of the reviews gives managers the other half of the answer: across thousands of comments, the recurring complaints cluster on room cleanliness, bedding comfort, and breakfast — concrete levers to pull when a reservation is flagged, or simply to raise the baseline.',
+      'The thesis lands on a mature conclusion rather than an inflated one: it maps a real problem end to end, builds the data and the metric to fit the business cost, and reports a result that says as much about the limits of the data as the power of the model — the judgment a data role actually runs on.',
     ],
   },
 };
