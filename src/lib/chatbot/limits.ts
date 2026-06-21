@@ -11,7 +11,7 @@ export const LIMITS = {
   MAX_MESSAGE_CHARS: 2000,    // per single user message
   MAX_HISTORY_CHARS: 14000,   // whole conversation sent in one request
   MAX_TURNS: 20,              // user turns per session
-  MAX_TOKENS: 800,            // model reply cap
+  MAX_TOKENS: 1500,           // model reply cap — ceiling not a target; ~1.5-2x the longest real answer so nothing truncates (output is cheap; you only pay for tokens actually generated)
   RATE_PER_MIN: 15,           // requests per IP per 60s
   DAILY_BUDGET: 2000,         // global request ceiling per day (cost backstop)
 };

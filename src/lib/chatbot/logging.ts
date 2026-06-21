@@ -53,14 +53,23 @@ export function logSession(meta: SessionMeta): Promise<void> {
   return insert('chat_sessions', meta);
 }
 
-/** Insert one turn's two messages (user + assistant). */
+/** Insert one turn's two messages (user + assistant). Token usage from the model
+ *  response is stored on the assistant row so per-session cost is derivable at read
+ *  time (SUM over messages), consistent with how duration/turn_count are derived. */
 export function logMessages(
   sessionId: string,
   userText: string,
   assistantText: string,
+  usage: { input_tokens: number; output_tokens: number } | null = null,
 ): Promise<void> {
   return insert('chat_messages', [
     { session_id: sessionId, role: 'user', content: userText },
-    { session_id: sessionId, role: 'assistant', content: assistantText },
+    {
+      session_id: sessionId,
+      role: 'assistant',
+      content: assistantText,
+      input_tokens: usage?.input_tokens ?? null,
+      output_tokens: usage?.output_tokens ?? null,
+    },
   ]);
 }
