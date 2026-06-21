@@ -322,6 +322,18 @@ const findCollisions = ({ threshold }) => {
         const containerB = overlapContainer(els[j]);
         if (containerA && containerB && containerA === containerB) continue;
 
+        // Cross-panel occlusion exemption: the body sections are .section--scene
+        // panels that paint an OPAQUE scene background and pin via position:sticky,
+        // so as one slides up over another the upper panel cleanly occludes the
+        // lower (by design — see backbone.css). Two text elements in DIFFERENT
+        // such panels can overlap geometrically mid-slide but are never both
+        // visible; the bbox check can't see the opaque occlusion. Exempt the pair
+        // when the elements live in different .section--scene panels. (Only fires
+        // in live desktop, where the sticky-stack is active.)
+        const panelA = els[i].closest('.section--scene');
+        const panelB = els[j].closest('.section--scene');
+        if (panelA && panelB && panelA !== panelB) continue;
+
         results.push({
           a: shortSel(els[i]),
           b: shortSel(els[j]),

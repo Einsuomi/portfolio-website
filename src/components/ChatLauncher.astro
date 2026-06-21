@@ -7,7 +7,9 @@
  */
 ---
 
-<a class="launcher" href="#chatbot" aria-label="Talk to the assistant about Tong">
+<!-- data-fixed-chrome: intentional floating UI, exempt from the verify-ui
+     content-overlap check (it rides over content by design, like any chat FAB). -->
+<a class="launcher" href="#chatbot" aria-label="Talk to the assistant about Tong" data-fixed-chrome>
   <svg class="launcher__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none">
     <path d="M4 5h16v11H8l-4 4V5z" stroke="currentColor" stroke-width="1.6"
           stroke-linejoin="round" />
