@@ -10,6 +10,9 @@ node_modules/
 # local-only working dir — verify-ui JSON reports, screenshots, scratch notes (public repo)
 logs/
 
+# Lighthouse CI local report output (@lhci/cli writes here on every local run)
+.lighthouseci/
+
 # design reference material — local only, third-party copyrighted content (public repo)
 reference/
 
