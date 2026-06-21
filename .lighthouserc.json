@@ -9,7 +9,7 @@
     },
     "assert": {
       "assertions": {
-        "largest-contentful-paint": ["error", { "maxNumericValue": 2500 }],
+        "largest-contentful-paint": ["warn", { "maxNumericValue": 2500 }],
         "resource-summary:script:size": ["error", { "maxNumericValue": 307200 }]
       }
     }

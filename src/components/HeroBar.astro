@@ -14,8 +14,11 @@ import { CERTS } from '../lib/timeline';
   <!-- Gold flow glow drifting behind the names — marks the seam as intentional. -->
   <div class="bar__flow" aria-hidden="true"></div>
   <div class="bar__track">
-    {[0, 1].map(() => (
-      <>
+    {[0, 1].map((cycle) => (
+      // Second cycle is a pure visual duplicate for the seamless -50% loop —
+      // hide it from assistive tech so the certs aren't announced twice, and
+      // drop it entirely under reduced motion (no loop, so it's redundant).
+      <span class="bar__cycle" aria-hidden={cycle === 1 ? 'true' : undefined}>
         <span class="bar__lead">Certified —</span>
         {CERTS.map((c, i) => (
           <>
@@ -24,7 +27,7 @@ import { CERTS } from '../lib/timeline';
           </>
         ))}
         <span class="bar__dot" aria-hidden="true">✦</span>
-      </>
+      </span>
     ))}
   </div>
 </div>
@@ -47,6 +50,13 @@ import { CERTS } from '../lib/timeline';
     will-change: transform;
     /* Slow drift right → left. */
     animation: bar-marquee 38s linear infinite;
+  }
+  /* Each cycle is one full pass of the cert list; two are rendered so the
+     -50% loop is seamless. Grouping them lets us hide the duplicate cleanly. */
+  .bar__cycle {
+    display: inline-flex;
+    align-items: center;
+    gap: 1.4rem;
   }
 
   /* Gold gradient flow drifting behind the names — the Banner "flow" effect in
@@ -92,10 +102,20 @@ import { CERTS } from '../lib/timeline';
     to   { background-position: 200% 0; }
   }
 
-  /* No drift under reduced motion — names sit still, the glow holds static. */
+  /* No drift under reduced motion — names sit still, the glow holds static.
+     The marquee WRAPS onto multiple lines instead of becoming a horizontal
+     scroll region: every cert stays visible, and there's no keyboard-trapped
+     scroll container (the axe scrollable-region-focusable flag the old
+     overflow-x:auto raised). The duplicate cycle is dropped — no loop to feed. */
   @media (prefers-reduced-motion: reduce) {
-    .bar { overflow-x: auto; }
-    .bar__track { animation: none; }
+    .bar__track {
+      display: flex;
+      flex-wrap: wrap;
+      white-space: normal;
+      animation: none;
+    }
+    .bar__cycle { flex-wrap: wrap; }
+    .bar__cycle + .bar__cycle { display: none; }
     .bar__flow { animation: none; }
   }
 </style>
