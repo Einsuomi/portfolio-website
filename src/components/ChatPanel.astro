@@ -14,7 +14,10 @@
 <!-- Dim backdrop, shown only in full-window mode (click to close). -->
 <div class="cp-backdrop" id="chat-backdrop" hidden></div>
 
-<div class="cp" id="chat-panel" role="dialog" aria-modal="true" aria-label="Chat with Tong's assistant" aria-hidden="true" hidden>
+<!-- data-lenis-prevent: this panel owns its own scroll (.cp__log); without it Lenis
+     hijacks every wheel event over the panel (redirecting it to the page, or — once
+     full-screen stops Lenis — preventDefault-ing it into doing nothing at all). -->
+<div class="cp" id="chat-panel" role="dialog" aria-modal="true" aria-label="Chat with Tong's assistant" aria-hidden="true" hidden data-lenis-prevent>
   <div class="cp__head">
     <span class="cp__title">Ask about Tong</span>
     <button class="cp__close" type="button" aria-label="Close chat">✕</button>
@@ -188,6 +191,13 @@
     let openedFrom = 'unknown';
     let busy = false;
 
+    // The hero's background video keeps decoding/playing behind everything by design
+    // (it's the fixed backdrop for the whole page). Once the full-screen chat covers
+    // it completely, that's pure wasted GPU work — and worse, the panel's blur effect
+    // has to recomposite over a moving frame every tick. Pausing it while hidden (and
+    // resuming on close) was the fix for the chat-causes-fan-spin-up issue.
+    const heroVideo = document.querySelector<HTMLVideoElement>('.hero__media video');
+
     // Grow the panel to fill the screen. Pause Lenis + lock the page so wheel
     // events scroll the chat log, not the page behind it (see scroll.ts).
     function goFull() {
@@ -196,6 +206,7 @@
       backdrop?.classList.add('is-open');
       (window as Window & { __lenis?: { stop: () => void; start: () => void } | null }).__lenis?.stop();
       document.documentElement.classList.add('cp-lock');
+      heroVideo?.pause();
     }
     function open(from: string, full?: boolean) {
       openedFrom = from || 'unknown';
@@ -214,6 +225,10 @@
       // Release the page scroll lock and resume Lenis.
       document.documentElement.classList.remove('cp-lock');
       (window as Window & { __lenis?: { stop: () => void; start: () => void } | null }).__lenis?.start();
+      // Resume the hero video, unless reduced motion means it was never playing.
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        heroVideo?.play().catch(() => { /* autoplay blocked → poster stays, fine */ });
+      }
     }
 
     document.addEventListener('chat:open', (e) => {
