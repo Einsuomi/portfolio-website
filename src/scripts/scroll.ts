@@ -28,6 +28,7 @@ function teardown() {
   if (tickerFn) gsap.ticker.remove(tickerFn);
   lenis?.destroy();
   lenis = null;
+  (window as Window & { __lenis?: Lenis | null }).__lenis = null;
   tickerFn = null;
 }
 
@@ -40,6 +41,10 @@ function init() {
 
   // Smooth scroll, wired into ScrollTrigger so triggers stay in sync with Lenis.
   lenis = new Lenis({ duration: 1.1, smoothWheel: true });
+  // Expose the instance so overlays (e.g. the full-screen chat) can pause page
+  // scrolling while open, then resume it — otherwise wheel events inside the
+  // overlay scroll the page behind it instead of the overlay's own content.
+  (window as Window & { __lenis?: Lenis | null }).__lenis = lenis;
   lenis.on('scroll', ScrollTrigger.update);
   tickerFn = (time) => lenis!.raf(time * 1000);
   gsap.ticker.add(tickerFn);

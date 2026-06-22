@@ -107,6 +107,7 @@ export const POST: APIRoute = async ({ request }) => {
   const stream = new ReadableStream({
     async start(controller) {
       let assistantText = '';
+      let usage: { input_tokens: number; output_tokens: number } | null = null;
       try {
         const modelStream = client.messages.stream({
           model,
@@ -114,6 +115,12 @@ export const POST: APIRoute = async ({ request }) => {
           // Frozen, cache-controlled knowledge prefix (cache_read ~0.1x; DeepSeek auto-caches too).
           system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
           messages,
+          // DeepSeek's v4 models default reasoning ON, which adds latency and eats the
+          // token cap before any visible text. Our answers come from the grounded system
+          // prompt, not multi-step reasoning, so we disable thinking for fast, complete
+          // replies. For Anthropic, disabled is already the default (thinking is opt-in
+          // there), so sending it is a no-op — safe for both providers.
+          thinking: { type: 'disabled' },
         });
 
         for await (const event of modelStream) {
@@ -127,6 +134,8 @@ export const POST: APIRoute = async ({ request }) => {
         }
 
         const final = await modelStream.finalMessage();
+        // Token usage for this turn — logged per-message so per-session cost is derivable.
+        usage = { input_tokens: final.usage.input_tokens, output_tokens: final.usage.output_tokens };
         if (final.stop_reason === 'refusal' && !assistantText) {
           controller.enqueue(
             encoder.encode(
@@ -158,7 +167,7 @@ export const POST: APIRoute = async ({ request }) => {
             provider,
           });
         }
-        await logMessages(sessionId, lastUser, assistantText);
+        await logMessages(sessionId, lastUser, assistantText, usage);
       }
 
       controller.close();
