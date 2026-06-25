@@ -44,6 +44,18 @@
   --glass-blur:  16px;
   /* Luminous sheen — brighter at the top-left corner, fading out, = the "crystal". */
   --glass-sheen: linear-gradient(150deg, rgba(245, 239, 227, 0.14), rgba(245, 239, 227, 0.02) 46%);
+
+  /* Gallery-card treatment ("variant B") — scoped to the Projects + Experience
+     cards (NOT the chatbot input / Writes / callouts, which keep --glass-edge).
+     A thicker, brighter rim does the work of reading as a real glass pane; a soft
+     diagonal fill adds depth and a top-edge highlight = light caught from above. */
+  --card-edge:     rgba(245, 239, 227, 0.48);  /* brighter + paired with 1.5px below */
+  --card-fill:     linear-gradient(135deg,
+                     rgba(245, 239, 227, 0.12) 0%,
+                     rgba(245, 239, 227, 0.04) 38%,
+                     rgba(8, 7, 6, 0.18) 100%);
+  --card-top-glow: inset 0 1.5px 0 rgba(245, 239, 227, 0.40),  /* lit-from-above lip */
+                   inset 0 0 0 1px rgba(245, 239, 227, 0.06);  /* faint inner glow ring */
 }
 
 .backbone {
