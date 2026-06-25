@@ -19,8 +19,9 @@ export const LIMITS = {
 let redis: Redis | null = null;
 function kv(): Redis | null {
   if (redis) return redis;
-  const url = import.meta.env.VERCEL_KV_REST_API_URL;
-  const token = import.meta.env.VERCEL_KV_REST_API_TOKEN;
+  // Env names injected by the Upstash (Vercel KV) marketplace integration.
+  const url = import.meta.env.KV_REST_API_URL;
+  const token = import.meta.env.KV_REST_API_TOKEN;
   if (!url || !token) return null; // not configured → checks skipped
   redis = new Redis({ url, token });
   return redis;
