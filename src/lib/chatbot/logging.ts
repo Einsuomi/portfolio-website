@@ -62,8 +62,17 @@ export function logMessages(
   assistantText: string,
   usage: { input_tokens: number; output_tokens: number } | null = null,
 ): Promise<void> {
+  // Both rows must carry the SAME keys: PostgREST bulk insert rejects a heterogeneous
+  // array ("All object keys must match"). Token counts only apply to the assistant turn,
+  // so the user row gets explicit nulls rather than omitting the columns.
   return insert('chat_messages', [
-    { session_id: sessionId, role: 'user', content: userText },
+    {
+      session_id: sessionId,
+      role: 'user',
+      content: userText,
+      input_tokens: null,
+      output_tokens: null,
+    },
     {
       session_id: sessionId,
       role: 'assistant',

@@ -44,7 +44,7 @@ const { video, still } = PAIRS[HERO_PAIR];
           muted
           loop
           playsinline
-          preload="auto"
+          preload="none"
           disablepictureinpicture
         >
           <source src={video} type="video/mp4" />
@@ -251,8 +251,15 @@ const { video, still } = PAIRS[HERO_PAIR];
       if (!document.querySelector('.hero__name')) return;
 
       // (Re)start the background video; a blocked autoplay just leaves the poster.
+      // On phones we skip the video entirely — the graded poster (~147 KB) is the hero,
+      // saving the ~5 MB clip on cellular. preload="none" means nothing loads until we
+      // opt in here, so desktop bumps it back to "auto" before playing.
       const video = document.querySelector<HTMLVideoElement>('.hero__media video');
-      if (!reduce && video) video.play().catch(() => { /* autoplay blocked → poster stays */ });
+      const isPhone = window.matchMedia('(max-width: 768px)').matches;
+      if (!reduce && !isPhone && video) {
+        video.preload = 'auto';
+        video.play().catch(() => { /* autoplay blocked → poster stays */ });
+      }
 
       // Reduced motion never hid the copy — nothing to reveal.
       if (reduce) { firstLoad = false; return; }
