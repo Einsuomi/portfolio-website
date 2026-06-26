@@ -36,10 +36,19 @@ import { WRITES } from '../lib/timeline';
 
 <style>
   .writes { display: flex; flex-direction: column; justify-content: center; }
-  /* Nudge the whole block (kicker + card) up a little from dead-center. The
-     transform sits on the inner wrapper (no data-reveal) so it never clashes
-     with the reveal animation on the kicker/card. */
-  .writes .section__inner { transform: translateY(clamp(-4rem, -8vh, -1.5rem)); }
+  /* Left-anchor the whole block (header + card) to the hero's content inset
+     (--pad-x + 2.5vw) so WRITING lines up under TONG NIE and EXPERIENCE instead
+     of floating centred in the middle of the page. Mirrors Experience's anchor.
+     The translateY nudge (on this no-reveal wrapper, so it never clashes with the
+     reveal animation) lifts the block a touch above dead-centre. */
+  .writes .section__inner {
+    /* margin-right:0 (not auto) keeps the flex item STRETCHED to --maxw instead
+       of shrink-wrapping to its content — so the card holds the full width even
+       when the inner text is capped. margin-left is the hero inset. */
+    width: 100%; max-width: var(--maxw);
+    margin-left: 2.5vw; margin-right: 0;
+    transform: translateY(clamp(-4rem, -8vh, -1.5rem));
+  }
   /* Promoted section heading — confident Bricolage title, no kicker. */
   .writes__head {
     font-family: var(--font-display); font-weight: 800;
@@ -54,10 +63,16 @@ import { WRITES } from '../lib/timeline';
      list inside scrolls. */
   .writes__card {
     width: 100%;
-    max-width: var(--composer-width);
+    /* Widen to the Experience block's measure (--maxw) so, left-anchored, the
+       card's right edge meets EXPERIENCE's — both stacked sections share one
+       aligned column instead of leaving a right-side gutter. */
+    max-width: var(--maxw);
     background: transparent;
-    border: 1px solid var(--glass-edge);
+    /* Thicker, brighter rim + lit-from-above lip — the Projects gallery-card
+       "variant B" edge, so this card reads as the same defined glass pane. */
+    border: 1.5px solid var(--card-edge);
     border-radius: 18px;
+    box-shadow: var(--card-top-glow);
     backdrop-filter: blur(var(--glass-blur)) saturate(1.05);
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.05);
     overflow: hidden;
@@ -100,13 +115,26 @@ import { WRITES } from '../lib/timeline';
     color: var(--gold); padding-top: 0.5rem; line-height: 1;
   }
 
-  .wrow__text { display: block; }
+  /* Cap the text measure so the now-wide row keeps a readable line length
+     (~75ch); the arrow stays pushed to the far right by the 1fr column, giving
+     a wide editorial-list row (index · text · arrow) rather than over-long lines. */
+  .wrow__text { display: block; max-width: 46rem; }
   .wrow__title {
     display: block;
     font-family: var(--font-display); font-weight: 500;
     font-size: var(--t-sm); line-height: var(--lh-snug);
     color: var(--ink); margin-bottom: 0.5rem;
   }
+  /* Per-letter gold wave on the title when its row is hovered/focused — the same
+     mechanism as the Projects card titles. scroll.ts splits each title into .char
+     spans carrying their index in --i; the trigger here is pure CSS, so under
+     reduced motion (no split) the title simply stays ink — graceful, not broken. */
+  .wrow__title :global(.char) {
+    transition: color 0.42s ease;
+    transition-delay: calc(var(--i, 0) * 18ms);
+  }
+  .wrow__link:hover .wrow__title :global(.char),
+  .wrow__link:focus-visible .wrow__title :global(.char) { color: var(--gold); }
   .wrow__summary {
     display: block;
     font-family: var(--font-body); font-size: var(--t-body);
