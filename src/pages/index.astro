@@ -64,7 +64,7 @@ const { video, still } = PAIRS[HERO_PAIR];
            rides centered, lifted to sit around the top of the doorway. -->
       <p class="hero__eyebrow" data-anim>
         <span class="hero__rule" aria-hidden="true"></span>
-        Building in public — Western Europe
+        Building in public, Western Europe
       </p>
       <div class="hero__inner">
         <h1 class="hero__name" data-anim>Tong Nie</h1>
@@ -96,8 +96,8 @@ const { video, still } = PAIRS[HERO_PAIR];
   <style>
     /* ── Hero design tokens (scoped to this page) ───────────────── */
     .hero {
-      --hero-ink:   #f5efe3; /* warm off-white — never pure white over warm footage */
-      --hero-gold:  #e0a33e; /* accent sampled from the doorway sunset glow */
+      --hero-ink:   var(--ink);  /* folded into the global ramp (same warm off-white) */
+      --hero-gold:  var(--gold); /* folded into the global accent */
       --hero-scrim: #0c0a09; /* warm near-black, used only in the gradient */
 
       position: relative;
@@ -159,8 +159,8 @@ const { video, still } = PAIRS[HERO_PAIR];
       top: clamp(4.5rem, 9vh, 7rem);
       left: clamp(1.5rem, 5.5vw, 5rem);
       display: flex; align-items: center; gap: 0.75rem;
-      font-family: 'JetBrains Mono', ui-monospace, monospace;
-      font-size: clamp(0.7rem, 1.6vw, 0.82rem);
+      font-family: var(--font-mono);
+      font-size: var(--t-label);
       font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase;
       color: var(--hero-gold);
     }
@@ -169,35 +169,30 @@ const { video, still } = PAIRS[HERO_PAIR];
       background: var(--hero-gold); flex: none;
     }
 
-    /* Luxury serif wordmark — Fraunces, the "identity" voice. Optical sizing
-       (opsz axis) auto-raises the thick/thin contrast at display scale, and the
-       open letter-spacing gives the spaced-caps luxury-brand feel. */
+    /* Bricolage wordmark — the identity voice. Weight floored at ~430 so the light
+       display strokes stay legible over the moving footage (no faux italic; the
+       family ships none). */
     .hero__name {
-      font-family: var(--font-luxe); font-weight: 360;
-      font-optical-sizing: auto;
+      font-family: var(--font-display); font-weight: 430;
       /* Sized to stay one line in the left region, clear of the central doorway. */
-      font-size: clamp(2.8rem, 8.2vw, 6.6rem);
-      line-height: 1; letter-spacing: 0.04em; text-transform: uppercase;
+      font-size: var(--t-xl);
+      line-height: var(--lh-tight); letter-spacing: 0.01em; text-transform: uppercase;
       white-space: nowrap;
       color: var(--hero-ink);
       text-shadow: 0 2px 40px rgba(0,0,0,0.35); /* extra safety over bright frames */
     }
-    /* Mobile reflow: tighten the spaced caps and ease the size step so the
-       wordmark never breaks awkwardly or pushes the page sideways. */
+    /* Mobile reflow: let TONG / NIE stack rather than push the page sideways. */
     @media (max-width: 30rem) {
-      .hero__name {
-        letter-spacing: 0.02em; font-size: clamp(2.9rem, 15vw, 4.5rem);
-        white-space: normal; /* allow TONG / NIE to stack if it can't fit one line */
-      }
+      .hero__name { white-space: normal; }
     }
 
     .hero__line {
-      font-family: 'Instrument Serif', Georgia, serif;
+      font-family: var(--font-body);
       font-weight: 400;
-      font-size: clamp(1.35rem, 3vw, 2.1rem);
-      line-height: 1.28; max-width: 30ch;
+      font-size: var(--t-sm);
+      line-height: 1.3; max-width: 32ch;
       color: var(--hero-ink);
-      margin-top: clamp(1rem, 2.5vh, 1.6rem);
+      margin-top: var(--space-sm);
     }
 
     /* ── Entrance animation ─────────────────────────────────────────

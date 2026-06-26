@@ -11,21 +11,15 @@ import TrackBeacon from '../components/TrackBeacon.astro';
 import { ClientRouter } from 'astro:transitions';
 
 // Self-hosted fonts — no gstatic at runtime (GDPR requirement).
-// Anton is already in package.json; the rest were added this phase.
-import '@fontsource/anton/index.css';
-import '@fontsource/archivo/800.css';
-import '@fontsource/archivo/900.css';
-import '@fontsource/inter/400.css';
-import '@fontsource/inter/500.css';
-import '@fontsource/inter/600.css';
-import '@fontsource-variable/space-grotesk/index.css';
+// Three-voice premium system: Bricolage (display/identity + machine), Geist (body/UI),
+// JetBrains Mono (labels/data). Bricolage ships no italic, so emphasis uses weight, not faux italic.
+import '@fontsource-variable/bricolage-grotesque/wght.css';  // variable weight axis 200–800
+import '@fontsource/geist-sans/400.css';
+import '@fontsource/geist-sans/500.css';
+import '@fontsource/geist-sans/600.css';
+import '@fontsource/geist-sans/700.css';
 import '@fontsource/jetbrains-mono/400.css';
 import '@fontsource/jetbrains-mono/500.css';
-// Instrument Serif — refined editorial serif for the hero day/night line.
-import '@fontsource/instrument-serif/400.css';
-// Fraunces (variable, optical-size axis) — the luxury serif "identity" voice:
-// hero wordmark + Experience numerals. opsz subset auto-tunes contrast at display sizes.
-import '@fontsource-variable/fraunces/opsz.css';
 
 export interface Props {
   version: 'dark' | 'light';

@@ -31,7 +31,7 @@
   <div class="cp__log" aria-live="polite">
     <div class="cp__msg cp__msg--bot">
       <span class="cp__who">Tong's assistant</span>
-      <div class="cp__bubble"><p>Hi — I'm Tong's assistant. Ask me about his projects, the decisions behind them, or how he works.</p></div>
+      <div class="cp__bubble"><p>Hi, I'm Tong's assistant. Ask me about his projects, the decisions behind them, or how he works.</p></div>
     </div>
   </div>
 
@@ -97,13 +97,13 @@
     display: flex; align-items: center; justify-content: space-between;
     padding: 0.85rem 1rem; border-bottom: 1px solid var(--line, rgba(245,239,227,0.12));
   }
-  .cp__title { font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); }
-  .cp__close { background: none; border: none; color: var(--ink-dim); font-size: 1rem; cursor: pointer; line-height: 1; padding: 0.2rem; }
+  .cp__title { font-family: var(--font-mono); font-size: var(--t-label); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); }
+  .cp__close { background: none; border: none; color: var(--ink-dim); font-size: var(--t-body); cursor: pointer; line-height: 1; padding: 0.2rem; }
   .cp__close:hover { color: var(--ink); }
 
   .cp__notice {
-    font-family: var(--font-body); font-size: 0.7rem; line-height: 1.4;
-    color: var(--ink-faint); padding: 0.6rem 1rem; margin: 0;
+    font-family: var(--font-body); font-size: var(--t-micro); line-height: 1.4;
+    color: var(--ink-dim); padding: 0.6rem 1rem; margin: 0;
     border-bottom: 1px solid var(--line, rgba(245,239,227,0.08));
   }
   .cp__notice a { color: var(--ink-dim); text-decoration: underline; }
@@ -118,8 +118,8 @@
      NOTE: messages are created in JS (document.createElement), so they never get
      Astro's scoped data-attribute — these selectors MUST be :global or they only
      match the static greeting and skip every streamed message. */
-  :global(.cp__msg) { font-family: var(--font-body); font-size: 0.9rem; line-height: 1.5; max-width: 88%; display: flex; flex-direction: column; gap: 0.25rem; }
-  :global(.cp__who) { font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.09em; text-transform: uppercase; }
+  :global(.cp__msg) { font-family: var(--font-body); font-size: var(--t-body); line-height: 1.5; max-width: 88%; display: flex; flex-direction: column; gap: 0.25rem; }
+  :global(.cp__who) { font-family: var(--font-mono); font-size: var(--t-micro); letter-spacing: 0.09em; text-transform: uppercase; }
   :global(.cp__bubble) { padding: 0.6rem 0.85rem; border-radius: 0.9rem; }
 
   :global(.cp__msg--user) { align-self: flex-end; align-items: flex-end; }
@@ -150,19 +150,19 @@
   .cp__input {
     flex: 1; resize: none; background: rgba(245,239,227,0.06); color: var(--ink);
     border: 1px solid var(--glass-edge); border-radius: 0.6rem; padding: 0.55rem 0.7rem;
-    font-family: var(--font-body); font-size: 0.9rem; max-height: 6rem;
+    font-family: var(--font-body); font-size: var(--t-body); max-height: 6rem;
   }
   .cp__input:focus { outline: none; border-color: var(--gold); }
   .cp__send {
     flex: none; background: var(--gold); color: #1a1206; border: none; border-radius: 0.6rem;
-    padding: 0 0.9rem; font-family: var(--font-mono); font-size: 0.78rem; font-weight: 500; cursor: pointer;
+    padding: 0 0.9rem; font-family: var(--font-mono); font-size: var(--t-label); font-weight: 500; cursor: pointer;
   }
   .cp__send:disabled { opacity: 0.5; cursor: default; }
 
   .cp__foot { display: flex; gap: 0.6rem; padding: 0.5rem 1rem 0.7rem; }
   .cp__dl {
-    background: none; border: 1px solid var(--line, rgba(245,239,227,0.18)); color: var(--ink-faint);
-    border-radius: 999px; padding: 0.3rem 0.7rem; font-family: var(--font-mono); font-size: 0.64rem;
+    background: none; border: 1px solid var(--line, rgba(245,239,227,0.18)); color: var(--ink-dim);
+    border-radius: 999px; padding: 0.3rem 0.7rem; font-family: var(--font-mono); font-size: var(--t-micro);
     letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;
   }
   .cp__dl:hover { color: var(--ink-dim); border-color: var(--ink-faint); }

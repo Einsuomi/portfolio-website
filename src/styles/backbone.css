@@ -27,13 +27,40 @@
      the Writes card stack reference this so their right edges stay matched. */
   --composer-width: 54.5rem;
 
-  --font-display: 'Anton', 'Arial Narrow', sans-serif;
-  --font-serif:   'Instrument Serif', Georgia, serif;
+  /* ── Three voices ──────────────────────────────────────────────────
+     One expressive display family carries BOTH identity (light weight) and the
+     machine voice (heavy uppercase); Geist carries all body/UI; mono = data. */
+  --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+  --font-body:    'Geist Sans', system-ui, sans-serif;
   --font-mono:    'JetBrains Mono', ui-monospace, monospace;
-  --font-body:    'Inter', system-ui, sans-serif;
-  /* Luxury "identity" serif — hero wordmark + Experience numerals. The duality:
-     this serif = the person; Anton (--font-display) = the machine. */
-  --font-luxe:    'Fraunces Variable', 'Instrument Serif', Georgia, serif;
+
+  /* ── Modular type-size scale (~1.25), responsive. All text uses a token. ── */
+  --t-micro:   clamp(0.64rem, 0.6rem + 0.2vw, 0.66rem);
+  --t-label:   clamp(0.74rem, 0.7rem + 0.3vw, 0.82rem);
+  --t-body:    1rem;                                   /* 16px floor */
+  --t-lead:    clamp(1.1rem, 1rem + 0.6vw, 1.25rem);
+  --t-sm:      clamp(1.35rem, 1.2rem + 1vw, 1.6rem);
+  --t-md:      clamp(1.6rem, 1.3rem + 1.6vw, 2.05rem);
+  --t-lg:      clamp(2.4rem, 1.8rem + 3vw, 3.25rem);
+  --t-xl:      clamp(3rem, 2rem + 5vw, 5.25rem);
+  --t-display: clamp(5rem, 22vw, 16rem);              /* preloader name outlier only */
+
+  /* ── Fluid spacing scale — section padding, gaps, rhythm. Never cramped. ── */
+  --space-2xs: clamp(0.5rem, 1vw, 0.75rem);
+  --space-xs:  clamp(0.75rem, 1.5vw, 1rem);
+  --space-sm:  clamp(1rem, 2vw, 1.5rem);
+  --space-md:  clamp(1.5rem, 3vw, 2.5rem);
+  --space-lg:  clamp(2.5rem, 5vw, 4rem);
+  --space-xl:  clamp(4rem, 8vw, 7rem);
+  --space-2xl: clamp(5.5rem, 11vw, 10rem);            /* section block padding */
+
+  /* ── Micro-typography helpers ──
+     Negative tracking makes large machine caps read as solid blocks; near-zero on
+     small caps keeps them legible; mono micro-labels get positive tracking. */
+  --lh-tight: 1.05;  --lh-snug: 1.15;  --lh-body: 1.6;
+  --track-machine:    -0.03em;   /* large machine caps (--t-lg/--t-xl) */
+  --track-machine-sm: -0.01em;   /* small machine caps (~card titles) */
+  --track-label:       0.08em;   /* mono micro labels (>= 0.05em) */
 
   /* Crystal-glass surface — a bright top-left sheen over a LIGHT local dim, so a
      card reads as clear, lively glass yet keeps its text ≥4.5:1 over ANY patch of
@@ -68,7 +95,7 @@
 /* Shared section shell. */
 .section {
   position: relative;
-  padding-block: clamp(4.5rem, 12vh, 9rem);
+  padding-block: var(--space-2xl);
   padding-inline: var(--pad-x);
 }
 .section__inner { max-width: var(--maxw); margin-inline: auto; }
@@ -133,10 +160,10 @@
 .kicker {
   display: flex; align-items: center; gap: 0.75rem;
   font-family: var(--font-mono);
-  font-size: clamp(0.7rem, 1.6vw, 0.82rem);
+  font-size: var(--t-label);
   font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase;
   color: var(--gold);
-  margin-bottom: clamp(1.4rem, 3.5vh, 2.4rem);
+  margin-bottom: var(--space-md);
 }
 .kicker::before {
   content: ''; display: block; flex: none;

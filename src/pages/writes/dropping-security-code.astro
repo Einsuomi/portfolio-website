@@ -47,14 +47,14 @@ import WriteLayout from '../../layouts/WriteLayout.astro';
 
 <style>
   .lead {
-    font-family: var(--font-serif);
-    font-size: clamp(1.3rem, 2.8vw, 1.7rem); line-height: 1.45;
+    font-family: var(--font-body);
+    font-size: var(--t-sm); line-height: var(--lh-snug);
     color: var(--ink); margin-bottom: 1.4rem;
   }
   p {
     font-family: var(--font-body);
-    font-size: clamp(1rem, 2.1vw, 1.12rem); line-height: 1.65;
-    color: var(--ink-dim);
+    font-size: var(--t-lead); line-height: var(--lh-body);
+    color: var(--ink-dim); max-width: 66ch;
   }
   p + p { margin-top: 1.2rem; }
 
@@ -69,12 +69,12 @@ import WriteLayout from '../../layouts/WriteLayout.astro';
   }
   .frame__label {
     display: block; font-family: var(--font-mono);
-    font-size: 0.64rem; letter-spacing: 0.22em; text-transform: uppercase;
+    font-size: var(--t-micro); letter-spacing: 0.22em; text-transform: uppercase;
     color: var(--gold); margin-bottom: 0.7rem;
   }
   .frame__text {
-    font-family: var(--font-serif); font-style: italic;
-    font-size: clamp(1.15rem, 2.6vw, 1.5rem); line-height: 1.4; color: var(--ink);
+    font-family: var(--font-display); font-weight: 500;
+    font-size: var(--t-sm); line-height: var(--lh-snug); color: var(--ink);
   }
   .principle { color: var(--ink); margin-top: clamp(1.6rem, 4vh, 2.4rem); }
 </style>

@@ -49,7 +49,7 @@
   }
   .preloader__label {
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    font-size: clamp(0.66rem, 1.6vw, 0.8rem);
+    font-size: var(--t-label);
     letter-spacing: 0.32em;
     text-transform: uppercase;
     color: var(--gold, #e0a33e);
@@ -57,16 +57,17 @@
   .preloader__count {
     display: flex;
     align-items: flex-start;
-    font-family: var(--font-display, 'Anton', sans-serif);
+    font-family: var(--font-display, system-ui, sans-serif);
+    font-weight: 800;
     line-height: 0.9;
     color: var(--ink, #f5efe3);
   }
   .preloader__num {
-    font-size: clamp(5rem, 22vw, 16rem);
+    font-size: var(--t-display);
     font-variant-numeric: tabular-nums;
   }
   .preloader__pct {
-    font-size: clamp(1.6rem, 6vw, 4rem);
+    font-size: var(--t-lg);
     color: var(--gold, #e0a33e);
     margin-top: 0.4em;
     margin-left: 0.1em;

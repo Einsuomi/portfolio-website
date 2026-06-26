@@ -9,8 +9,7 @@
 
 <section class="section section--scene section--stack bot" id="chatbot" aria-label="Ask the assistant">
   <div class="section__inner bot__inner">
-    <p class="kicker" data-reveal>Beyond the CV</p>
-    <h2 class="bot__head" data-reveal>Don't just read — <em>talk.</em></h2>
+    <h2 class="bot__head" data-reveal>Don't just read. <em>Talk.</em></h2>
     <p class="bot__sub" data-reveal>
       An assistant that knows the reasoning, not just the résumé — my pipelines, my
       architecture, the trade-offs behind each decision. Ask it what a CV can't tell you.
@@ -21,7 +20,7 @@
       <span class="bot__placeholder">Ask about my Databricks work…</span>
       <span class="bot__badge">Talk →</span>
     </button>
-    <noscript><p class="bot__sub" style="font-size: 0.95rem;">The assistant needs JavaScript enabled to chat.</p></noscript>
+    <noscript><p class="bot__sub" style="font-size: var(--t-body);">The assistant needs JavaScript enabled to chat.</p></noscript>
   </div>
 </section>
 
@@ -38,18 +37,19 @@
      cramped column). The scene now sits more behind the text — by design. */
   .bot__inner { max-width: 62rem; }
   .bot__head {
-    font-family: var(--font-display); font-weight: 400;
-    /* Bumped up a step; still one line on desktop within the wider block. */
-    font-size: clamp(2.3rem, 5.8vw, 4.6rem); line-height: 0.95;
-    text-transform: uppercase; color: var(--ink-dim); margin-bottom: 1.2rem;
+    font-family: var(--font-display); font-weight: 800;
+    /* Heavy machine caps; still one line on desktop within the wider block. */
+    font-size: var(--t-lg); line-height: var(--lh-tight);
+    text-transform: uppercase; letter-spacing: var(--track-machine);
+    color: var(--ink-dim); margin-bottom: var(--space-sm);
   }
   @media (min-width: 40rem) { .bot__head { white-space: nowrap; } }
   /* "talk." carries the gold accent (the CTA word), tying it to the Talk launcher. */
   .bot__head em { color: var(--gold); font-style: normal; }
   .bot__sub {
-    font-family: var(--font-serif);
-    font-size: clamp(1.2rem, 2.6vw, 1.7rem); line-height: 1.35;
-    color: var(--ink-dim); max-width: 58rem; margin-bottom: clamp(1.8rem, 4vh, 2.6rem);
+    font-family: var(--font-body);
+    font-size: var(--t-sm); line-height: var(--lh-snug);
+    color: var(--ink-dim); max-width: 58rem; margin-bottom: var(--space-lg);
   }
 
   /* Glass input bar — THE single gold beat of this section: a clear-glass pill
@@ -72,10 +72,11 @@
        with the Writes card stack via the token so the two blocks line up. */
     max-width: var(--composer-width);
   }
-  .bot__placeholder { font-family: var(--font-body); color: var(--ink-faint); }
-  /* Quiet "coming soon" — no gold (scarcity rule); a plain ink/line chip. */
+  /* Placeholder carries reading text → ink-dim for legibility, not faint. */
+  .bot__placeholder { font-family: var(--font-body); color: var(--ink-dim); }
+  /* Quiet chip — non-gold so the composer ring stays the single gold beat. */
   .bot__badge {
-    font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.12em;
+    font-family: var(--font-mono); font-size: var(--t-micro); letter-spacing: 0.12em;
     text-transform: uppercase; color: var(--ink-dim);
     padding: 0.3rem 0.7rem; border: 1px solid var(--line); border-radius: 999px;
     flex: none;
