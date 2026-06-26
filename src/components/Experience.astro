@@ -1,21 +1,22 @@
 ---
 /**
- * Experience — intro held at the left while a staggered "ladder" of year rungs
- * cascades on the right (à la the Tres Mares numbers): two columns, the right
- * one dropped half a step so the rungs alternate upper-left / lower-right. This
- * leaves room for more years over time. Rides the continuous scene backdrop and
- * reveals rung-by-rung; on phones it flattens to a plain readable stack.
+ * Experience — a single vertical "spine" timeline. The intro holds sticky on the
+ * left while a gold line draws down the right, igniting each year's node as it
+ * passes: the beat at the frontier lights brightest, past beats stay lit, future
+ * ones rest dim. The year anchors each rung (no watermark), and the stack tags
+ * live in the Projects section — so each beat carries only year · keyword · role ·
+ * one outcome. A soft gold "reading light" tracks the cursor over the hovered beat.
+ *
+ * Progressive enhancement: the scroll/cursor behaviour is added by scroll.ts
+ * (which adds `.is-live`). Without JS or under reduced motion every beat renders
+ * fully lit and static, and the page stays a plain readable list.
  */
 import { EXPERIENCE } from '../lib/timeline';
-
-// Split into the two alternating columns by chronological position.
-const colA = EXPERIENCE.filter((_, i) => i % 2 === 0); // 2021, 2024, 2026
-const colB = EXPERIENCE.filter((_, i) => i % 2 === 1); // 2023, 2025
 ---
 
 <section class="section section--scene exp" id="experience" aria-label="Experience">
   <div class="exp__grid">
-    <!-- Left: intro, held centered while the ladder scrolls past. -->
+    <!-- Left: intro, held centered while the spine scrolls past it. -->
     <div class="exp__intro-col">
       <div>
         <h2 class="exp__head" data-reveal>Experience</h2>
@@ -26,150 +27,198 @@ const colB = EXPERIENCE.filter((_, i) => i % 2 === 1); // 2023, 2025
       </div>
     </div>
 
-    <!-- Right: the alternating ladder, two columns, the second dropped down. -->
-    <div class="ladder">
-      <div class="ladder__col">
-        {colA.map((b) => (
-          <article class="rung" data-reveal data-spotlight>
-            <p class="rung__year">{b.year}</p>
-            <h3 class="rung__kw" set:html={b.keyword} />
-            <p class="rung__role">{b.role}</p>
-            <p class="rung__outcome" set:html={b.outcome} />
-            <ul class="rung__stack" aria-label="Stack">
-              {b.stack.map((s) => <li>{s}</li>)}
-            </ul>
-          </article>
-        ))}
-      </div>
-      <div class="ladder__col ladder__col--drop">
-        {colB.map((b) => (
-          <article class="rung" data-reveal data-spotlight>
-            <p class="rung__year">{b.year}</p>
-            <h3 class="rung__kw" set:html={b.keyword} />
-            <p class="rung__role">{b.role}</p>
-            <p class="rung__outcome" set:html={b.outcome} />
-            <ul class="rung__stack" aria-label="Stack">
-              {b.stack.map((s) => <li>{s}</li>)}
-            </ul>
-          </article>
-        ))}
-      </div>
-    </div>
+    <!-- Right: the spine. Each beat = year (anchor) · node · keyword · role · outcome. -->
+    <ol class="exp__spine">
+      <!-- The gold line that draws down as you scroll (height driven by --p). -->
+      <div class="exp__fill" aria-hidden="true"></div>
+      {EXPERIENCE.map((b) => (
+        <li class="exp__beat">
+          <p class="exp__year">{b.year}</p>
+          <span class="exp__node" aria-hidden="true"></span>
+          <div class="exp__body">
+            <span class="exp__glow" aria-hidden="true"></span>
+            <h3 class="exp__kw" set:html={b.keyword} />
+            <p class="exp__role">{b.role}</p>
+            <p class="exp__out" set:html={b.outcome} />
+          </div>
+        </li>
+      ))}
+    </ol>
   </div>
 </section>
 
 <style>
   .exp__grid {
     display: grid;
-    /* Intro gets more room (fewer lines); ladder is narrower and pushed right. */
-    grid-template-columns: 1fr 1.2fr;
+    /* Intro column widened so the paragraph reads in ~3 lines, not 4; the spine
+       still keeps a wide-enough track for one-line keywords. */
+    grid-template-columns: 1.4fr 1.3fr;
     gap: clamp(1.5rem, 4vw, 4rem);
     max-width: var(--maxw);
-    margin-inline: auto;
+    /* Left-anchor to the hero's content inset (the hero is nudged 2.5vw right of
+       --pad-x) so EXPERIENCE lines up under TONG NIE and the intro under the
+       tagline on every width — not centered, which drifts right on wide screens. */
+    margin-left: 2.5vw;
+    margin-right: auto;
     align-items: start;
   }
 
-  /* Left intro stays centered in view while the ladder scrolls. */
+  /* Left intro stays centered in view while the spine scrolls. */
   .exp__intro-col {
     position: sticky; top: 0;
     min-height: 100svh;
     display: flex; align-items: center;
   }
-  /* Promoted section heading — a confident Bricolage title stands alone (no kicker). */
+  /* Promoted heavy machine heading — aligned with Projects/Writes (uppercase). */
   .exp__head {
-    font-family: var(--font-display); font-weight: 600;
+    font-family: var(--font-display); font-weight: 800;
     font-size: var(--t-lg); line-height: var(--lh-tight);
-    letter-spacing: -0.01em; color: var(--ink); margin: 0 0 var(--space-md);
+    text-transform: uppercase; letter-spacing: var(--track-machine);
+    color: var(--ink); margin: 0 0 var(--space-md);
   }
   .exp__intro {
     font-family: var(--font-body);
     font-size: var(--t-sm); line-height: 1.4;
-    color: var(--ink-dim); max-width: 30ch; margin-top: 0;
+    color: var(--ink-dim); max-width: 42ch; margin-top: 0;
   }
 
-  /* Two alternating columns; the second is dropped half a rung. */
-  .ladder {
+  /* ── The spine ──────────────────────────────────────────────────────
+     A 3-column grid per beat: [year] [rail] [body]. The track + gold fill
+     sit at the centre of the rail column, so year, line, node and copy never
+     overlap. */
+  .exp__spine {
+    --col-year: clamp(3rem, 6vw, 5rem);
+    --col-rail: clamp(2.8rem, 4.8vw, 3.8rem); /* wider rail = year sits clear of the dot */
+    --line-x: calc(var(--col-year) + var(--col-rail) / 2);
+    /* Slide the whole timeline horizontally toward the doorway. Positive = right
+       (screen-right). Tune this one value to land the keywords where you want them
+       relative to the door; negative would move them left. */
+    --exp-shift: 0vw;
+    list-style: none; margin: 0; padding: 0;
+    position: relative;
+    transform: translateX(var(--exp-shift));
+  }
+  /* Faint full-height track — always present (a quiet vertical line). */
+  .exp__spine::before {
+    content: ''; position: absolute; top: 0.6rem; bottom: 0.6rem;
+    left: var(--line-x); width: 2px; transform: translateX(-50%);
+    background: rgba(245, 239, 227, 0.16);
+  }
+  /* Gold fill — its height is set in px by scroll.ts as the line draws. 0 by
+     default, so without JS it stays invisible and the quiet track shows through.
+     (px, not %, because the spine's height is auto and a % would collapse to 0.) */
+  .exp__fill {
+    position: absolute; top: 0.6rem;
+    left: var(--line-x); width: 2px; transform: translateX(-50%);
+    height: 0;
+    background: linear-gradient(var(--gold), rgba(224, 163, 62, 0.4));
+    box-shadow: 0 0 12px rgba(224, 163, 62, 0.5);
+  }
+
+  .exp__beat {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: clamp(1rem, 2vw, 1.6rem);
-    padding-block: clamp(3rem, 10vh, 7rem);
+    grid-template-columns: var(--col-year) var(--col-rail) 1fr;
+    align-items: start;
+    padding: clamp(2rem, 6vh, 4rem) 0;
   }
-  /* min-width: 0 keeps both columns equal width — without it a long keyword or a
-     one-line tag row makes its column wider than the other. */
-  .ladder__col { display: flex; flex-direction: column; gap: clamp(1rem, 2vw, 1.6rem); min-width: 0; }
-  .ladder__col--drop { margin-top: clamp(4rem, 16vh, 11rem); }
+  /* Live (JS + motion) starts beats dimmed; scroll then lights them. */
+  .exp__spine.is-live .exp__beat {
+    opacity: 0.32; filter: saturate(0.7);
+    transition: opacity 0.55s ease, filter 0.55s ease;
+  }
+  .exp__spine.is-live .exp__beat.is-lit { opacity: 1; filter: none; }
 
-  /* Each rung: clear bright crystal glass over the scene — luminous sheen + bright
-     edge riding a LIGHT local dim that still keeps text legible. Compact (less
-     tall) and lively. Pairs with [data-spotlight] for the gold flow on hover. */
-  .rung {
-    position: relative; min-width: 0;
-    overflow: hidden; /* clip the ghosted year watermark to the card */
-    padding: clamp(1.1rem, 2vw, 1.6rem) clamp(1.3rem, 2.4vw, 2rem);
-    /* Gallery glass (variant B): thick bright rim + soft diagonal fill + a
-       lit-from-above top highlight = a defined, premium glass pane. Legibility
-       still carried by the section scrim + text-shadow under the fill. Keeps the
-       gold-flow ring (its hover box-shadow replaces the inset glow while held). */
-    background: var(--card-fill);
-    border: 1.5px solid var(--card-edge);
-    border-radius: 16px;
-    box-shadow: var(--card-top-glow);
-    backdrop-filter: blur(var(--glass-blur)) saturate(1.05);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.05);
+  .exp__year {
+    grid-column: 1; text-align: right;
+    padding-right: clamp(0.9rem, 2.2vw, 1.6rem); /* sit the year further left of the line */
+    font-family: var(--font-display); font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(1.5rem, 1rem + 2vw, 2.4rem); line-height: 1;
+    color: var(--ink-dim); margin: 0;
+    text-shadow: 0 1px 14px rgba(0, 0, 0, 0.6);
+    transition: color 0.55s ease;
   }
-  /* Year = a large semi-opaque ghosted serif watermark behind the content (the
-     same device as the Projects index), so the KEYWORD can lead. */
-  .rung__year {
-    position: absolute; top: 0.7rem; right: 0.85rem; z-index: 0;
-    font-family: var(--font-display); font-weight: 600;
-    font-optical-sizing: auto; font-variant-numeric: tabular-nums;
-    font-size: clamp(2.0rem, 4.0vw, 3.05rem); line-height: 1;
-    /* Ghosted fill, but with a brighter, slightly heavier gold outline so the
-       numerals read as a confident gold watermark, not a vague blur. */
-    color: rgba(245, 239, 227, 0.06);
-    -webkit-text-stroke: 1.25px rgba(224, 163, 62, 0.55);
-    margin: 0; pointer-events: none; user-select: none;
+  /* Lit years turn gold (the "achieved" marker); the current one scales a touch. */
+  .exp__spine.is-live .exp__beat.is-lit .exp__year { color: var(--gold); }
+  .exp__beat.is-current .exp__year { scale: 1.06; }
+
+  .exp__node {
+    grid-column: 2; justify-self: center; margin-top: 0.22em;
+    width: 13px; height: 13px; border-radius: 50%;
+    background: var(--bg); border: 2px solid rgba(224, 163, 62, 0.5);
+    transition: background 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease, scale 0.45s ease;
   }
-  /* Keyword = the heavy Bricolage machine title (the highlight). */
-  .rung__kw {
-    position: relative; z-index: 1;
+  /* Live: nodes rest dim until the fill reaches them, then ignite gold. */
+  .exp__spine.is-live .exp__node { border-color: rgba(245, 239, 227, 0.3); }
+  .exp__spine.is-live .exp__beat.is-lit .exp__node {
+    background: var(--gold); border-color: var(--gold);
+    box-shadow: 0 0 14px rgba(224, 163, 62, 0.8);
+  }
+  .exp__beat.is-current .exp__node { scale: 1.3; }
+
+  .exp__body {
+    grid-column: 3; position: relative;
+    /* No overflow clip here: the long keyword (GOVERNANCE AT SCALE) is nowrap and
+       must be free to use the space to its right. The glow is sized to the body
+       (inset 0) so it can't spill, so clipping isn't needed. */
+    padding-left: clamp(0.6rem, 1.4vw, 1.1rem); max-width: 44ch;
+  }
+  /* Cursor "reading light": a soft gold hotspot that follows the pointer over
+     the hovered beat (--gx/--gy set by scroll.ts). Gated to fine-pointer + motion. */
+  .exp__glow {
+    position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    opacity: 0; transition: opacity 0.45s ease;
+    background: radial-gradient(220px circle at var(--gx, 50%) var(--gy, 50%),
+                rgba(224, 163, 62, 0.14), transparent 68%);
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .exp__beat:hover .exp__glow { opacity: 1; }
+  }
+  .exp__kw, .exp__role, .exp__out { position: relative; z-index: 1; }
+
+  .exp__kw {
     font-family: var(--font-display); font-weight: 800;
     font-size: var(--t-md); line-height: var(--lh-tight);
     text-transform: uppercase; letter-spacing: var(--track-machine-sm);
-    color: var(--ink); margin-bottom: 0.7rem;
+    color: var(--ink); margin: 0 0 0.4rem;
+    text-shadow: 0 2px 22px rgba(0, 0, 0, 0.45);
+    white-space: nowrap; /* keep each keyword on one line (e.g. GOVERNANCE AT SCALE) */
   }
-  /* Keep the rest of the rung content above the watermark. */
-  .rung__role, .rung__outcome, .rung__stack { position: relative; z-index: 1; }
-  .rung__role {
-    font-family: var(--font-mono);
-    font-size: var(--t-label); letter-spacing: var(--track-label);
-    color: var(--ink-dim); margin-bottom: 0.6rem;
-  }
-  .rung__outcome {
-    font-family: var(--font-body);
-    font-size: var(--t-lead); line-height: var(--lh-body);
+  /* Per-letter gold flow: scroll.ts splits the keyword into .char spans (each
+     carrying its index in --i). When the beat becomes current, the letters turn
+     gold left→right in a staggered wave; scrolling past reverses them to white.
+     Solid color per letter (no gradient-text), staggered via transition-delay. */
+  .exp__kw :global(.char) {
     color: var(--ink);
+    transition: color 0.42s ease;
+    transition-delay: calc(var(--i, 0) * 26ms);
   }
-  .rung__outcome :global(strong) { color: var(--gold); font-weight: 400; }
-  /* Tags on a single row, left-aligned flush with the card text. padding: 0
-     removes the browser's default <ul> 40px indent so the first tag lines up
-     with the keyword/outcome above it. */
-  .rung__stack {
-    list-style: none; padding: 0; display: flex; flex-wrap: nowrap;
-    justify-content: flex-start; gap: 0.22rem; margin-top: 1rem;
+  .exp__beat.is-current .exp__kw :global(.char) { color: var(--gold); }
+  .exp__role {
+    font-family: var(--font-mono); font-size: var(--t-label);
+    letter-spacing: var(--track-label); color: var(--ink-dim); margin: 0 0 0.7rem;
   }
-  .rung__stack li {
-    font-family: var(--font-mono); font-size: 0.5rem; letter-spacing: 0;
-    color: var(--ink-dim); padding: 0.2rem 0.34rem;
-    border: 1px solid var(--line); border-radius: 999px;
-    white-space: nowrap; flex: none;
+  .exp__out {
+    font-family: var(--font-body); font-size: var(--t-lead);
+    line-height: var(--lh-body); color: var(--ink); margin: 0;
+    text-shadow: 0 1px 16px rgba(0, 0, 0, 0.5);
   }
+  .exp__out :global(strong) { color: var(--gold); font-weight: 500; }
 
-  /* Phones: single readable column, intro on top, no stagger, no sticky. */
+  /* Phones: single readable column, intro on top, year above each beat, no
+     sticky, no stagger. Keywords may wrap here (narrow), which is fine. */
   @media (max-width: 48rem) {
     .exp__grid { grid-template-columns: 1fr; gap: 2rem; }
     .exp__intro-col { position: static; min-height: 0; display: block; }
-    .ladder { grid-template-columns: 1fr; padding-block: 1rem; }
-    .ladder__col--drop { margin-top: 0; }
+    .exp__spine { --col-year: 1; --exp-shift: 0; }
+    .exp__beat {
+      grid-template-columns: clamp(1.4rem, 7vw, 2.4rem) 1fr;
+      column-gap: clamp(0.8rem, 3vw, 1.4rem); padding: 1.4rem 0;
+    }
+    .exp__year { grid-column: 2; text-align: left; margin-bottom: 0.5rem; font-size: 1.5rem; }
+    .exp__node { grid-column: 1; margin-top: 0.5rem; }
+    .exp__body { grid-column: 2; padding-left: 0; }
+    .exp__spine::before, .exp__fill { left: clamp(0.7rem, 3.5vw, 1.2rem); }
+    .exp__kw { white-space: normal; }
   }
 </style>
