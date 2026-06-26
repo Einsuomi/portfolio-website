@@ -84,7 +84,7 @@ function initWrites() {
     if (el.dataset.split) return;
     // 'words, chars' keeps whole words intact so long multi-word titles still
     // wrap cleanly at spaces; each char carries its global index for the wave.
-    const split = new SplitType(el, { types: 'words, chars' });
+    const split = new SplitType(el, { types: 'words,chars' });
     (split.chars ?? []).forEach((c, i) => c.style.setProperty('--i', String(i)));
     el.dataset.split = '1';
   });
@@ -104,7 +104,7 @@ function initProjects() {
       if (el.dataset.split) return;
       // 'words, chars' keeps whole words intact so multi-word titles still wrap
       // cleanly at spaces; each char still carries its global index for the wave.
-      const split = new SplitType(el, { types: 'words, chars' });
+      const split = new SplitType(el, { types: 'words,chars' });
       (split.chars ?? []).forEach((c, i) => c.style.setProperty('--i', String(i)));
       el.dataset.split = '1';
     });
