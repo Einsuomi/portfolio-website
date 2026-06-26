@@ -80,7 +80,7 @@ export const PROJECTS: Project[] = [
   {
     name: 'Fingrid Data Platform',
     summary: "An Azure / Data Factory lakehouse — metadata-driven ingestion of Finland's grid API into a governed star schema.",
-    stack: ['Azure Data Factory', 'Databricks', 'Delta Lake', 'Power BI'],
+    stack: ['ADF', 'Databricks', 'Delta Lake', 'Power BI'],
     slug: 'fingrid-data-platform',   // has an on-site case study → links to its detail page
   },
   {
