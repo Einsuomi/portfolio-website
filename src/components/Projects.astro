@@ -54,9 +54,12 @@ import { PROJECTS } from '../lib/timeline';
 </section>
 
 <style>
-  /* Header sits up top; the gallery rides below it in the pinned panel. */
-  .proj { display: flex; flex-direction: column; justify-content: flex-start; }
-  .proj > .section__inner { margin-top: 0; }
+  /* Header sits up top; the gallery rides below it in the pinned panel.
+     Trimmed top padding lifts the whole block up a little within the panel. */
+  .proj { display: flex; flex-direction: column; justify-content: flex-start; padding-top: var(--space-xl); }
+  /* Drop the auto-centering so the heading left-aligns to the same gutter (pad-x)
+     as the cards below it, instead of floating to the middle of the panel. */
+  .proj > .section__inner { margin-top: 0; margin-inline: 0; max-width: none; }
   /* Promoted heavy machine heading — stands alone, no kicker. */
   .proj__head {
     font-family: var(--font-display); font-weight: 800;
@@ -78,10 +81,11 @@ import { PROJECTS } from '../lib/timeline';
     padding: 0.5rem var(--pad-x) 1.5rem;
     /* Drop the cards a little below the kicker. */
     margin-top: clamp(1.5rem, 6vh, 4rem);
-    scrollbar-width: thin;
+    /* Hide the native scrollbar — scroll stays fully functional (wheel, drag,
+       snap, touch), it just isn't drawn. Cleaner than a styled bar at this size. */
+    scrollbar-width: none;
   }
-  .proj__strip::-webkit-scrollbar { height: 6px; }
-  .proj__strip::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+  .proj__strip::-webkit-scrollbar { display: none; }
 
   /* Smaller, crystal-glass cards with more negative space — gallery feel.
      Glass tokens give the clear-glass look while the dim keeps text legible. */
@@ -119,6 +123,16 @@ import { PROJECTS } from '../lib/timeline';
     -webkit-text-stroke: 1.25px rgba(224, 163, 62, 0.55);
     pointer-events: none; user-select: none;
   }
+  /* Hover/focus gold flow (matches the Experience keyword wave, pointer-driven).
+     scroll.ts splits the watermark into .char spans carrying their index in --i;
+     on hover each digit fills solid gold left→right (the gold stroke is already
+     there, so a gold fill reads as a solid gold numeral), then reverts on leave. */
+  .card__num :global(.char) {
+    transition: color 0.42s ease;
+    transition-delay: calc(var(--i, 0) * 70ms);
+  }
+  .card:hover .card__num :global(.char),
+  .card:focus-within .card__num :global(.char) { color: var(--gold); }
 
   .card__body { padding: 1.3rem 1.3rem 0.6rem; flex: 1; }
   .card__name {
@@ -128,22 +142,37 @@ import { PROJECTS } from '../lib/timeline';
     letter-spacing: var(--track-machine-sm); color: var(--ink);
     margin-bottom: 0.7rem;
   }
+  /* Same per-letter gold wave on the title when the card is hovered/focused. */
+  .card__name :global(.char) {
+    transition: color 0.42s ease;
+    transition-delay: calc(var(--i, 0) * 22ms);
+  }
+  .card:hover .card__name :global(.char),
+  .card:focus-within .card__name :global(.char) { color: var(--gold); }
   .card__summary {
     font-family: var(--font-body);
     font-size: var(--t-body);
     line-height: var(--lh-body); color: var(--ink-dim);
   }
-  /* Tags on a single left-aligned row (no wrap), flush with the card text.
-     padding: 0 removes the default <ul> 40px indent so the first tag lines up. */
+  /* Stack as a single mono "spec line" on one row — no pill borders (they read
+     cramped at this width). Tags sit at the --t-micro floor with tracking at the
+     0.05em mono minimum so all four fit one line; gold-disc separators between
+     them carry the accent. padding: 0 removes the default <ul> 40px indent.
+     Extra margin-top sets the tag row apart from the summary above it. */
   .card__stack {
-    list-style: none; padding: 0; display: flex; flex-wrap: nowrap;
-    justify-content: flex-start; gap: 0.22rem; margin-top: 1rem;
+    list-style: none; padding: 0; margin-top: 1.75rem;
+    display: flex; flex-wrap: nowrap; align-items: center; gap: 0.42rem;
+    font-family: var(--font-mono); font-size: var(--t-micro);
+    letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--ink-dim);
   }
   .card__stack li {
-    font-family: var(--font-mono); font-size: 0.5rem; letter-spacing: 0;
-    color: var(--ink-faint); padding: 0.2rem 0.34rem;
-    border: 1px solid var(--line); border-radius: 999px;
-    white-space: nowrap; flex: none;
+    display: flex; align-items: center; gap: 0.42rem; flex: none; white-space: nowrap;
+  }
+  /* A small gold disc separates each tag from the next (not before the first). */
+  .card__stack li + li::before {
+    content: ''; width: 4px; height: 4px; border-radius: 50%;
+    background: var(--gold); flex: none;
   }
 
   /* The whole card IS the link: this anchor fills the card and holds all the
@@ -165,4 +194,24 @@ import { PROJECTS } from '../lib/timeline';
   a.card__full:hover .card__link span { transform: translateX(4px); }
   /* Muted (inert) link carries reading text → ink-dim for the 4.5:1 floor, not faint. */
   .card__link--muted { color: var(--ink-dim); }
+
+  /* Continuous "flow" while the card is hovered: a brighter gold band sweeps
+     left→right across the label on a loop (clipped to the text), echoing the
+     title/number gold flow but ongoing rather than one-shot. Real links only
+     (inert cards render a <div>, so this never fires). Motion-gated. */
+  @media (prefers-reduced-motion: no-preference) {
+    a.card__full:hover .card__link {
+      background: linear-gradient(100deg,
+        var(--gold) 0%, var(--gold) 38%, #f6dca0 50%, var(--gold) 62%, var(--gold) 100%);
+      background-size: 220% 100%;
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent; color: transparent;
+      text-shadow: none; /* clipped text + a glyph shadow would smear */
+      animation: cardLinkFlow 1.7s linear infinite;
+    }
+  }
+  @keyframes cardLinkFlow {
+    from { background-position: 120% 0; }
+    to   { background-position: -120% 0; }
+  }
 </style>

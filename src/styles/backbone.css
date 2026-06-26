@@ -95,6 +95,11 @@
 /* Shared section shell. */
 .section {
   position: relative;
+  /* border-box so min-height:100svh on the sticky sections INCLUDES the block
+     padding — otherwise content-box adds ~2×--space-2xl on top, making each
+     stacked section taller than the viewport and dumping centered content low
+     (very visible on short screens). */
+  box-sizing: border-box;
   padding-block: var(--space-2xl);
   padding-inline: var(--pad-x);
 }

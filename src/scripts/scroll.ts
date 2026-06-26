@@ -67,6 +67,48 @@ function init() {
   });
 
   initSpine();
+  initProjects();
+  initWrites();
+}
+
+/*
+ * Writes list: split each numbered row's title into per-letter spans (carrying
+ * their index in --i) so the gold flow can wave across it left→right on row
+ * hover/focus — the same pointer-driven mechanism as the Projects card titles.
+ * The hover trigger itself is pure CSS; this only prepares the letters. Guarded
+ * so a re-init never double-wraps.
+ */
+function initWrites() {
+  const titles = gsap.utils.toArray<HTMLElement>('.writes .wrow__title');
+  titles.forEach((el) => {
+    if (el.dataset.split) return;
+    // 'words, chars' keeps whole words intact so long multi-word titles still
+    // wrap cleanly at spaces; each char carries its global index for the wave.
+    const split = new SplitType(el, { types: 'words,chars' });
+    (split.chars ?? []).forEach((c, i) => c.style.setProperty('--i', String(i)));
+    el.dataset.split = '1';
+  });
+}
+
+/*
+ * Projects cards: split each card's index watermark and title into per-letter
+ * spans (each carrying its index in --i) so the gold flow can wave across them
+ * left→right on hover/focus — the same mechanism as the Experience keywords,
+ * but pointer-driven here. The hover trigger itself is pure CSS; this only
+ * prepares the letters. Guarded so a re-init never double-wraps.
+ */
+function initProjects() {
+  const cards = gsap.utils.toArray<HTMLElement>('.proj .card');
+  cards.forEach((card) => {
+    card.querySelectorAll<HTMLElement>('.card__num, .card__name').forEach((el) => {
+      if (el.dataset.split) return;
+      // 'words, chars' keeps whole words intact so multi-word titles still wrap
+      // cleanly at spaces; each char still carries its global index for the wave.
+      const split = new SplitType(el, { types: 'words,chars' });
+      (split.chars ?? []).forEach((c, i) => c.style.setProperty('--i', String(i)));
+      el.dataset.split = '1';
+    });
+  });
 }
 
 /*
