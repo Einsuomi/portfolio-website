@@ -54,17 +54,32 @@ const { video, still } = PAIRS[HERO_PAIR];
       <!-- Scrim: bottom-anchored gradient keeps text ≥4.5:1 on any frame. -->
       <div class="hero__scrim" aria-hidden="true"></div>
 
-      <!-- Top-right menu icon — placeholder affordance, nothing to open yet. -->
-      <button class="menu" type="button" aria-label="Menu">
-        <span></span><span></span>
-      </button>
+      <!-- Top-right menu: the hamburger toggles a dropdown of every section.
+           Opens on hover (desktop) or click/tap (everywhere); bars cross to an X. -->
+      <nav class="nav" aria-label="Sections" data-open="false">
+        <button
+          class="menu"
+          type="button"
+          aria-label="Menu"
+          aria-expanded="false"
+          aria-controls="nav-menu"
+        >
+          <span></span><span></span>
+        </button>
+        <div class="nav__panel" id="nav-menu" role="menu" aria-hidden="true">
+          <a class="nav__link" href="#experience" role="menuitem"><span class="nav__idx">01</span> Experience</a>
+          <a class="nav__link" href="#projects"   role="menuitem"><span class="nav__idx">02</span> Projects</a>
+          <a class="nav__link" href="#writes"     role="menuitem"><span class="nav__idx">03</span> Writes</a>
+          <a class="nav__link" href="#chatbot"    role="menuitem"><span class="nav__idx">04</span> Ask</a>
+        </div>
+      </nav>
 
       <!-- Hero copy lives in real HTML so it's present without/before JS. -->
       <!-- Eyebrow is pinned top-left (its own element); the name + value block
            rides centered, lifted to sit around the top of the doorway. -->
       <p class="hero__eyebrow" data-anim>
         <span class="hero__rule" aria-hidden="true"></span>
-        Building in public, Western Europe
+        Building in public, Europe
       </p>
       <div class="hero__inner">
         <h1 class="hero__name" data-anim>Tong Nie</h1>
@@ -125,11 +140,15 @@ const { video, still } = PAIRS[HERO_PAIR];
         linear-gradient(to bottom, rgba(12,10,9,0.28) 0%, rgba(12,10,9,0) 22%);
     }
 
-    /* ── Top-right menu icon (no top bar) ───────────────────────── */
-    .menu {
+    /* ── Top-right menu (toggle + dropdown, no top bar) ─────────── */
+    .nav {
       position: fixed; z-index: 10;
       top: clamp(1.1rem, 2.5vw, 1.8rem);
       right: clamp(1.1rem, 4vw, 2.5rem);
+    }
+    .menu {
+      position: relative; z-index: 1;
+      margin-left: auto;
       width: 46px; height: 46px;
       display: flex; flex-direction: column; align-items: flex-end;
       justify-content: center; gap: 6px;
@@ -138,19 +157,69 @@ const { video, still } = PAIRS[HERO_PAIR];
     }
     .menu span {
       display: block; height: 2px; background: var(--hero-ink);
-      transition: width 0.25s ease, background 0.25s ease;
+      transition: width 0.25s ease, background 0.25s ease,
+                  transform 0.3s ease;
     }
     .menu span:nth-child(1) { width: 26px; }
     .menu span:nth-child(2) { width: 18px; }
     .menu:hover span,
     .menu:focus-visible span { background: var(--hero-gold); width: 26px; }
+    /* Open: both bars go full-width gold and cross into an X. */
+    .menu[aria-expanded='true'] span { background: var(--hero-gold); width: 26px; }
+    .menu[aria-expanded='true'] span:nth-child(1) { transform: translateY(4px)  rotate(45deg); }
+    .menu[aria-expanded='true'] span:nth-child(2) { transform: translateY(-4px) rotate(-45deg); }
+
+    /* Borderless dropdown: no card, no frame — just the section names floating
+       in a right-aligned column under the icon (legible via text-shadow). */
+    .nav__panel {
+      position: absolute; top: calc(100% + 14px); right: 0;
+      display: flex; flex-direction: column; align-items: flex-end;
+      gap: 0.1rem;
+      /* Closed state — the JS toggles [data-open] on .nav to reveal it. */
+      opacity: 0; transform: translateY(-6px); pointer-events: none;
+      transition: opacity 0.22s ease,
+                  transform 0.28s cubic-bezier(0.2, 0.7, 0.2, 1);
+    }
+    /* Invisible bridge across the gap so hover doesn't drop between the icon
+       and the links (keeps the pointer "inside" .nav). */
+    .nav__panel::before {
+      content: ''; position: absolute; right: 0; top: -16px; width: 100%; height: 16px;
+    }
+    .nav[data-open='true'] .nav__panel {
+      opacity: 1; transform: translateY(0); pointer-events: auto;
+    }
+
+    .nav__link {
+      display: flex; align-items: baseline; justify-content: flex-end; gap: 0.55rem;
+      padding: 0.28rem 0;
+      font-family: var(--font-body); font-size: 1.05rem; font-weight: 500;
+      color: var(--hero-ink); text-decoration: none;
+      text-shadow: 0 1px 14px rgba(0, 0, 0, 0.7);
+      transition: color 0.2s ease, transform 0.2s ease;
+    }
+    .nav__link:hover,
+    .nav__link:focus-visible { color: var(--hero-gold); transform: translateX(-4px); }
+    .nav__idx {
+      font-family: var(--font-mono); font-size: 0.72rem;
+      letter-spacing: 0.05em; color: var(--hero-gold); opacity: 0.85;
+    }
+
+    /* No-JS fallback only: with the toggle script absent, reveal the panel on
+       hover/focus so the sections stay reachable. Gated to html:not(.js) so it
+       never fights the JS click-to-close on desktop (where both would apply). */
+    html:not(.js) .nav:hover .nav__panel,
+    html:not(.js) .nav:focus-within .nav__panel {
+      opacity: 1; transform: translateY(0) scale(1); pointer-events: auto;
+    }
 
     /* ── Copy block ─────────────────────────────────────────────── */
     .hero__inner {
       position: relative; z-index: 2;
       padding: 0 clamp(1.5rem, 5.5vw, 5rem);
       max-width: 60rem;
-      transform: translateY(-7vh); /* lift the name to ~ the top of the doorway */
+      /* Nudge the block down + right a touch so the name sits lower in the left
+         negative-space (clear of the eyebrow) rather than floating high. */
+      transform: translate(2.5vw, -3vh);
     }
 
     /* Eyebrow pinned to the top-left (back where it reads as a standing label). */
@@ -173,9 +242,10 @@ const { video, still } = PAIRS[HERO_PAIR];
        display strokes stay legible over the moving footage (no faux italic; the
        family ships none). */
     .hero__name {
-      font-family: var(--font-display); font-weight: 430;
-      /* Sized to stay one line in the left region, clear of the central doorway. */
-      font-size: var(--t-xl);
+      font-family: var(--font-display); font-weight: 540;
+      /* Sized to stay one line in the left region, clear of the central doorway.
+         A touch larger than the --t-xl ramp to strengthen the focal point. */
+      font-size: clamp(3.4rem, 2.2rem + 5.8vw, 6rem);
       line-height: var(--lh-tight); letter-spacing: 0.01em; text-transform: uppercase;
       white-space: nowrap;
       color: var(--hero-ink);
@@ -189,7 +259,8 @@ const { video, still } = PAIRS[HERO_PAIR];
     .hero__line {
       font-family: var(--font-body);
       font-weight: 400;
-      font-size: var(--t-sm);
+      /* Bumped a step above --t-sm to match the larger wordmark. */
+      font-size: clamp(1.45rem, 1.25rem + 1.15vw, 1.8rem);
       line-height: 1.3; max-width: 32ch;
       color: var(--hero-ink);
       margin-top: var(--space-sm);
@@ -273,6 +344,70 @@ const { video, still } = PAIRS[HERO_PAIR];
     }
 
     document.addEventListener('astro:page-load', onPageLoad);
+  </script>
+
+  <!-- Top-right menu: toggle the section dropdown + smooth-scroll its links. -->
+  <script>
+    type LenisLike = { scrollTo: (t: Element, o?: object) => void };
+
+    function initNav() {
+      const nav = document.querySelector<HTMLElement>('.nav');
+      const btn = nav?.querySelector<HTMLButtonElement>('.menu');
+      const panel = nav?.querySelector<HTMLElement>('.nav__panel');
+      if (!nav || !btn || !panel) return;
+
+      const open = () => {
+        nav.dataset.open = 'true';
+        btn.setAttribute('aria-expanded', 'true');
+        panel.setAttribute('aria-hidden', 'false');
+      };
+      const close = () => {
+        nav.dataset.open = 'false';
+        btn.setAttribute('aria-expanded', 'false');
+        panel.setAttribute('aria-hidden', 'true');
+      };
+
+      // Desktop pointers use hover (open on enter, close on leave); touch devices
+      // (no hover) use a click/tap toggle. Splitting them avoids the case where a
+      // click closes what hover just opened.
+      if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+        nav.addEventListener('pointerenter', open);
+        nav.addEventListener('pointerleave', close);
+      } else {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          nav.dataset.open === 'true' ? close() : open();
+        });
+      }
+
+      // Links: smooth-scroll to the section via Lenis (falls back to native).
+      panel.querySelectorAll<HTMLAnchorElement>('a[href^="#"]').forEach((a) => {
+        a.addEventListener('click', (e) => {
+          const target = document.querySelector(a.getAttribute('href') || '');
+          if (target) {
+            e.preventDefault();
+            const lenis = (window as Window & { __lenis?: LenisLike | null }).__lenis;
+            lenis ? lenis.scrollTo(target, { duration: 1.2 })
+                  : target.scrollIntoView({ behavior: 'smooth' });
+          }
+          close();
+        });
+      });
+
+      // Dismiss on outside click or Escape; clean the doc listeners on swap.
+      const onDocClick = (e: MouseEvent) => { if (!nav.contains(e.target as Node)) close(); };
+      const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+      document.addEventListener('click', onDocClick);
+      document.addEventListener('keydown', onKey);
+      document.addEventListener('astro:before-swap', () => {
+        document.removeEventListener('click', onDocClick);
+        document.removeEventListener('keydown', onKey);
+      }, { once: true });
+
+      close();
+    }
+
+    document.addEventListener('astro:page-load', initNav);
   </script>
 
   <!-- Body scroll engine: Lenis smooth scroll + ScrollTrigger reveals. -->

@@ -23,7 +23,7 @@ export const EXPERIENCE: YearBeat[] = [
   {
     year: '2023',
     keyword: 'Liftoff',
-    role: 'Data Analyst → Analytics Engineer · Neste, then PostNord',
+    role: 'Data Analyst · Neste',
     stack: ['Azure', 'Snowflake', 'Power BI'],
     outcome: 'Into industry — first <strong>production pipelines</strong> and the dashboards that turned them into decisions.',
   },
