@@ -19,7 +19,7 @@ import { CERTS } from '../lib/timeline';
       // hide it from assistive tech so the certs aren't announced twice, and
       // drop it entirely under reduced motion (no loop, so it's redundant).
       <span class="bar__cycle" aria-hidden={cycle === 1 ? 'true' : undefined}>
-        <span class="bar__lead">Certified —</span>
+        <span class="bar__lead">Certified</span>
         {CERTS.map((c, i) => (
           <>
             {i > 0 && <span class="bar__dot" aria-hidden="true">✦</span>}
@@ -83,15 +83,15 @@ import { CERTS } from '../lib/timeline';
     animation: bar-flow 20s linear infinite;
   }
   .bar__lead {
-    font-family: var(--font-mono); font-size: 0.72rem;
+    font-family: var(--font-mono); font-size: var(--t-label);
     letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold);
     padding-right: 0.6rem;
   }
   .bar__item {
-    font-family: var(--font-mono); font-size: 0.82rem;
-    letter-spacing: 0.04em; color: var(--ink-dim);
+    font-family: var(--font-mono); font-size: var(--t-label);
+    letter-spacing: var(--track-label); color: var(--ink-dim);
   }
-  .bar__dot { color: var(--gold); font-size: 0.6rem; opacity: 0.8; }
+  .bar__dot { color: var(--gold); font-size: var(--t-micro); opacity: 0.8; }
 
   @keyframes bar-marquee {
     from { transform: translateX(0); }

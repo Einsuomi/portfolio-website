@@ -80,7 +80,7 @@ const { slug, title, dek, description } = Astro.props;
   .wl__back {
     display: inline-flex; align-items: center; gap: 0.45rem;
     font-family: var(--font-mono);
-    font-size: clamp(0.7rem, 1.6vw, 0.8rem);
+    font-size: var(--t-label);
     letter-spacing: 0.16em; text-transform: uppercase;
     color: var(--ink-dim); text-decoration: none;
     margin-bottom: clamp(1.2rem, 3vh, 2rem);
@@ -89,20 +89,19 @@ const { slug, title, dek, description } = Astro.props;
   .wl__back span { transition: transform 0.25s ease; }
   .wl__back:hover span { transform: translateX(-3px); }
 
-  /* Title — the luxury serif identity voice. */
+  /* Title — the Bricolage identity voice. */
   .wl__title {
-    font-family: var(--font-luxe); font-weight: 380;
-    font-optical-sizing: auto;
-    font-size: clamp(2.2rem, 6vw, 4.6rem);
-    line-height: 1.04; letter-spacing: 0.01em;
+    font-family: var(--font-display); font-weight: 500;
+    font-size: var(--t-xl);
+    line-height: var(--lh-tight); letter-spacing: 0.01em;
     color: var(--ink); max-width: 20ch;
     text-shadow: 0 2px 40px rgba(0,0,0,0.4);
   }
   .wl__dek {
-    font-family: var(--font-serif);
-    font-size: clamp(1.2rem, 2.6vw, 1.7rem);
-    line-height: 1.4; max-width: 46ch; color: var(--ink-dim);
-    margin-top: clamp(0.9rem, 2.2vh, 1.4rem);
+    font-family: var(--font-body);
+    font-size: var(--t-sm);
+    line-height: var(--lh-snug); max-width: 46ch; color: var(--ink-dim);
+    margin-top: var(--space-sm);
   }
 
   /* ── Body ── constrained reading measure, centered over the scene. */

@@ -1,13 +1,4 @@
-# Visual Language
-
-## Purpose
-
-The cross-cutting design-system rules that govern the whole site's look: the three-voice typographic
-system and its beat-to-voice mapping, the modular type-size and fluid spacing scales, the
-micro-typography discipline, the locked ink-plus-gold text-color system, and how cards sit over the
-photographic scene. These are versioned here so the calls are not re-litigated section by section.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Typographic duality
 The site SHALL use a disciplined three-voice typographic system in which a single expressive display family carries BOTH identity beats and machine/product beats — distinguished by weight and case rather than by a second font — a neutral sans carries all body, prose, UI, and short leads, and a monospace voice carries labels, meta, tags, and data. The display family SHALL be Bricolage Grotesque, the sans SHALL be Geist, and the mono SHALL be JetBrains Mono. Identity beats (the hero wordmark, Experience titles) SHALL use the display family at a light weight (~380, optionally italic for the human note); machine/product beats (Projects titles, the Chatbot headline, company names) SHALL use the SAME display family at a heavy uppercase weight (700–800). The site SHALL NOT use a serif voice, and SHALL NOT load or use Fraunces, Instrument Serif, Inter, or Anton.
@@ -27,6 +18,8 @@ The site SHALL use a disciplined three-voice typographic system in which a singl
 #### Scenario: Banned families are absent
 - **WHEN** the production build's loaded fonts are inspected
 - **THEN** Fraunces, Instrument Serif, Inter, Anton, Archivo, and Space Grotesk are not present
+
+## ADDED Requirements
 
 ### Requirement: Modular type-size scale
 The site SHALL define a single modular type-size scale of eight responsive tokens (`--t-micro` through `--t-xl`, ratio ≈1.25), each expressed via `clamp()`, with body anchored at a 16px minimum on mobile. All text SHALL reference a scale token rather than an ad-hoc `font-size` value; exactly one oversize display outlier (the preloader name) is permitted outside the scale.
@@ -80,9 +73,8 @@ The site SHALL use a locked text-color system: one warm off-white ink ramp in th
 - **WHEN** text carrying reading content renders over its background
 - **THEN** its contrast ratio is at least 4.5:1, with faint (40%) used only for non-reading decoration
 
-### Requirement: Transparent cards over the scene
-Cards over the photographic scene SHALL be transparent — a frosted blur and a thin bright edge, with no dark fill — so the scene reads through them. The gold-flow ring SHALL remain. Card text legibility SHALL be carried by the section scrim, text-shadow, and the backdrop blur together (not a dim fill); foreground text SHALL remain readable over any patch of the scene.
+## REMOVED Requirements
 
-#### Scenario: Text on a transparent card
-- **WHEN** a transparent card renders text over the scene backdrop
-- **THEN** the scene shows through the card and the card's text stays readable, carried by the scrim, text-shadow, and blur
+### Requirement: Gold accent scarcity
+**Reason**: The per-viewport gold-count cap was dropped in practice on 2026-06-25 (card-glass-edge) and is superseded by the Text color system requirement, which governs gold as the single locked page-level accent.
+**Migration**: Gold usage is now governed by the locked single-accent ink-plus-gold ramp (see Text color system); there is no per-viewport emphasis count to enforce.

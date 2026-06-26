@@ -11,7 +11,7 @@ import { WRITES } from '../lib/timeline';
 
 <section class="section section--scene section--stack writes" id="writes" aria-label="Writes">
   <div class="section__inner">
-    <p class="kicker" data-reveal>Writes · decisions in prose</p>
+    <h2 class="writes__head" data-reveal>Writing</h2>
 
     <!-- The single card carries the glass + spotlight treatment; the inner list
          is the only scroll surface. -->
@@ -40,6 +40,12 @@ import { WRITES } from '../lib/timeline';
      transform sits on the inner wrapper (no data-reveal) so it never clashes
      with the reveal animation on the kicker/card. */
   .writes .section__inner { transform: translateY(clamp(-4rem, -8vh, -1.5rem)); }
+  /* Promoted section heading — confident Bricolage title, no kicker. */
+  .writes__head {
+    font-family: var(--font-display); font-weight: 600;
+    font-size: var(--t-lg); line-height: var(--lh-tight);
+    letter-spacing: -0.01em; color: var(--ink); margin: 0 0 var(--space-md);
+  }
 
   /* The one card — transparent glass over the scene, width-matched to the chatbot
      composer. overflow: hidden keeps the spotlight ring on its own border (the
@@ -88,21 +94,22 @@ import { WRITES } from '../lib/timeline';
 
   /* Index — mono gold numeral, the "01 / 02 / 03" list marker. */
   .wrow__num {
-    font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.1em;
+    font-family: var(--font-mono); font-size: var(--t-label); letter-spacing: var(--track-label);
+    font-variant-numeric: tabular-nums;
     color: var(--gold); padding-top: 0.5rem; line-height: 1;
   }
 
   .wrow__text { display: block; }
   .wrow__title {
     display: block;
-    font-family: var(--font-serif); font-weight: 400;
-    font-size: clamp(1.3rem, 3vw, 1.9rem); line-height: 1.18;
+    font-family: var(--font-display); font-weight: 500;
+    font-size: var(--t-sm); line-height: var(--lh-snug);
     color: var(--ink); margin-bottom: 0.5rem;
   }
   .wrow__summary {
     display: block;
-    font-family: var(--font-body); font-size: clamp(0.94rem, 2vw, 1.04rem);
-    line-height: 1.55; color: var(--ink-dim);
+    font-family: var(--font-body); font-size: var(--t-body);
+    line-height: var(--lh-body); color: var(--ink-dim);
   }
 
   /* Arrow advances on row hover — the clickable affordance. */
